@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, X, Link as LinkIcon, Calendar } from 'lucide-react';
+import { Plus, Edit, Trash2, X} from 'lucide-react';
 
 // --- Tipe Data ---
 interface ExternalEvent {

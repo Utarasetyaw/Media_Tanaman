@@ -1,5 +1,5 @@
 import React from 'react';
-import { Newspaper, CheckCircle, Clock, Edit } from 'lucide-react';
+import { CheckCircle, Clock, Edit } from 'lucide-react';
 
 // Komponen Kartu Statistik
 const StatCard: React.FC<{ icon: React.ElementType; title: string; value: number; color: string }> = ({ icon: Icon, title, value, color }) => (

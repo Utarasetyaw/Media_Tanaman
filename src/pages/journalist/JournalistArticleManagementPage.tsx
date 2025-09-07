@@ -19,7 +19,7 @@ const initialArticles: Article[] = [
 ];
 
 export const JournalistArticleManagementPage: React.FC = () => {
-    const [articles, setArticles] = useState<Article[]>(initialArticles);
+    const [articles] = useState<Article[]>(initialArticles);
 
     const getStatusChip = (status: Article['status']) => {
         const styles = {

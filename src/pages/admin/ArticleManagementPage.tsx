@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, X, CheckCircle, XCircle, Eye, MessageSquare, Edit3, Clock, Lock } from 'lucide-react';
+import { Plus, Edit, Trash2, X, CheckCircle, XCircle, Eye, MessageSquare, Edit3, Clock } from 'lucide-react';
 
 // Tipe data untuk Artikel
 interface Article {
@@ -33,7 +33,6 @@ export const ArticleManagementPage: React.FC = () => {
     const [activeFilter, setActiveFilter] = useState<ArticleFilter>('all');
     
     // States for modals
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
@@ -106,11 +105,10 @@ export const ArticleManagementPage: React.FC = () => {
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-3xl font-bold text-gray-800">Manajemen Artikel</h2>
-                <button onClick={() => setIsCreateModalOpen(true)} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center gap-2">
+                <button className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center gap-2">
                     <Plus size={20} /> Buat Artikel Baru
                 </button>
             </div>
-
             {/* Navigasi Filter */}
             <div className="mb-6 pb-2 border-b">
                 <div className="flex gap-2 overflow-x-auto -mb-px">
