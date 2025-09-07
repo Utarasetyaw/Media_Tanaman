@@ -1,14 +1,57 @@
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { events } from '../data/events'; // Sesuaikan path jika perlu
-import EventCard from '../components/EventCard'; // Sesuaikan path jika perlu
+import { Link } from 'react-router-dom';
+import { events } from '../data/events';
+import type { Event } from '../data/events'; // UBAH: Import Event type juga
 import { Calendar, MapPin } from 'lucide-react';
 
+// BARU: Import komponen iklan
+import VerticalAd from '../components/VerticalAd';
+import HorizontalAd from '../components/HorizontalAd';
+
+
+// BARU: Komponen EventCard yang lebih ringkas untuk halaman ini
+interface EventCardProps {
+  event: Event;
+  isPast?: boolean;
+}
+
+const EventCard: FC<EventCardProps> = ({ event, isPast }) => {
+  return (
+    <Link to={`/events/${event.id}`} className="block group">
+      <div className={`bg-white rounded-lg shadow-md overflow-hidden h-full flex flex-col transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1 ${isPast ? 'opacity-70' : ''}`}>
+        <div className="relative">
+          <img 
+            src={event.imageUrl} 
+            alt={event.title} 
+            className={`w-full h-48 object-cover ${isPast ? 'grayscale' : ''}`} 
+          />
+          {isPast && (
+            <div className="absolute top-2 right-2 bg-gray-800 text-white text-xs font-bold px-2 py-1 rounded">
+              SELESAI
+            </div>
+          )}
+        </div>
+        <div className="p-4 flex flex-col flex-grow">
+          <p className="text-sm text-green-700 font-semibold">{event.displayDate}</p>
+          <h4 className="text-lg font-bold text-gray-900 mt-1 flex-grow group-hover:text-green-800">{event.title}</h4>
+          <p className="text-sm text-gray-500 mt-2 flex items-center">
+            <MapPin size={16} className="mr-2 flex-shrink-0" />
+            {event.location}
+          </p>
+        </div>
+      </div>
+    </Link>
+  );
+};
+
+
+// Komponen Utama Halaman Event
 const EventPage: FC = () => {
   const { t } = useTranslation();
 
   const today = new Date();
-  today.setHours(0, 0, 0, 0); // Normalisasi ke awal hari
+  today.setHours(0, 0, 0, 0);
 
   const upcomingEvents = events.filter(event => new Date(event.date) >= today).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   const pastEvents = events.filter(event => new Date(event.date) < today).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -26,7 +69,11 @@ const EventPage: FC = () => {
   }
 
   return (
-    <div className="bg-stone-50 min-h-screen">
+    <div className="bg-stone-50 min-h-screen relative">
+      {/* BARU: Iklan Vertikal */}
+      <VerticalAd position="left" />
+      <VerticalAd position="right" />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* Header Halaman */}
         <div className="text-center mb-16">
@@ -62,11 +109,18 @@ const EventPage: FC = () => {
           </section>
         )}
 
+        {/* BARU: Iklan Horizontal */}
+        {(otherUpcomingEvents.length > 0 || pastEvents.length > 0) && (
+            <div className="mb-12">
+                <HorizontalAd />
+            </div>
+        )}
+
         {/* --- Event Mendatang Lainnya --- */}
         {otherUpcomingEvents.length > 0 && (
           <section className="mb-20">
             <h3 className="text-3xl font-bold text-center text-gray-800 mb-8">{t('eventPage.otherEvents')}</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
               {otherUpcomingEvents.map(event => <EventCard key={event.id} event={event} />)}
             </div>
           </section>
@@ -76,7 +130,7 @@ const EventPage: FC = () => {
         {pastEvents.length > 0 && (
           <section>
             <h3 className="text-3xl font-bold text-center text-gray-800 mb-8">{t('eventPage.pastEvents')}</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
               {pastEvents.map(event => <EventCard key={event.id} event={event} isPast />)}
             </div>
           </section>

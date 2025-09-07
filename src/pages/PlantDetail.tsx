@@ -3,6 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { plants } from '../data/plants'; // Sesuaikan path
 import { ArrowLeft, Zap, Maximize, Sprout, ExternalLink } from 'lucide-react';
 
+// Import komponen iklan
+import VerticalAd from '../components/VerticalAd';
+import HorizontalAd from '../components/HorizontalAd';
+
 const PlantDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
@@ -18,12 +22,17 @@ const PlantDetail = () => {
   }
 
   return (
-    <div className="bg-white min-h-screen">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div className="bg-white min-h-screen relative">
+      <VerticalAd position="left" />
+      <VerticalAd position="right" />
+
+      {/* UBAH: max-w-6xl menjadi max-w-7xl untuk area konten yang lebih lebar */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <Link to="/plants" className="inline-flex items-center gap-2 text-green-800 font-semibold hover:underline mb-8">
           <ArrowLeft size={20} />
           {t('plantPage.detail.backLink')}
         </Link>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           {/* Kolom Gambar */}
           <div>
@@ -68,6 +77,10 @@ const PlantDetail = () => {
               ))}
             </div>
           </div>
+        </div>
+        
+        <div className="mt-16">
+          <HorizontalAd />
         </div>
       </div>
     </div>

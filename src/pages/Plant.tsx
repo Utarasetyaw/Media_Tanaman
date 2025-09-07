@@ -5,6 +5,10 @@ import { plants } from '../data/plants';
 import PlantCard from '../components/PlantCard';
 import { Search } from 'lucide-react';
 
+// BARU: Import komponen iklan
+import VerticalAd from '../components/VerticalAd';
+import HorizontalAd from '../components/HorizontalAd';
+
 const PlantPage: FC = () => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,12 +23,19 @@ const PlantPage: FC = () => {
   }, [searchTerm]);
 
   return (
-    <div className="bg-stone-50 min-h-screen">
+    // UBAH: Wrapper utama untuk menampung iklan vertikal
+    <div className="bg-stone-50 min-h-screen relative">
+
+      {/* BARU: Iklan Vertikal */}
+      <VerticalAd position="left" />
+      <VerticalAd position="right" />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-12">
           <h2 className="text-4xl sm:text-5xl font-bold text-green-800 mb-4">{t('plantPage.title')}</h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">{t('plantPage.description')}</p>
         </div>
+        
         <div className="mb-12 flex justify-center">
           <div className="relative w-full max-w-lg">
             <input
@@ -37,8 +48,14 @@ const PlantPage: FC = () => {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           </div>
         </div>
+
+        {/* BARU: Iklan Horizontal */}
+        <div className="mb-12">
+            <HorizontalAd />
+        </div>
+
         {filteredPlants.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {filteredPlants.map(plant => <PlantCard key={plant.id} plant={plant} />)}
           </div>
         ) : (
