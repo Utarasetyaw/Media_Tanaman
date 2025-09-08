@@ -37,7 +37,7 @@ const CloseIcon: FC = () => (
 );
 
 const SearchIcon: FC = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
     </svg>
 );
@@ -45,7 +45,17 @@ const SearchIcon: FC = () => (
 const FlagIndonesia: FC = () => ( <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" className="w-8 h-auto rounded-md shadow-sm flex-shrink-0"><path fill="#fff" d="M0 0h640v480H0z"/><path fill="#ce1126" d="M0 0h640v240H0z"/></svg> );
 const FlagUSA: FC = () => ( <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 48" className="w-8 h-auto rounded-md shadow-sm flex-shrink-0"><path fill="#b22234" d="M0 0h72v48H0z"/><path fill="#fff" d="M0 8h72v8H0zm0 16h72v8H0zm0 16h72v8H0z"/><path fill="#3c3b6e" d="M0 0h36v24H0z"/>{[...Array(4)].map((_, r) => [...Array(5)].map((_, c) => ( <path key={`${r}-${c}`} fill="#fff" d={`m${c*7+3.5},${r*6+3} l2,0 -1.5,1.5 0.5,2 -1.5,-1.5 -1.5,1.5 0.5,-2 -1.5,-1.5 2,0`}/> )))}</svg> );
 
-// --- Komponen Language Switcher ---
+const TopBar: FC = () => (
+    <div className="bg-[#003938] text-white text-xs sm:text-sm py-2">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-4 text-center">
+            <span>
+                TechCrunch: Narapati Flora raises $30M from Menlo Ventures for its AI-powered platform.
+                <a href="#" className="font-bold underline ml-2 whitespace-nowrap hover:opacity-80 transition-opacity">Read Article ›</a>
+            </span>
+        </div>
+    </div>
+);
+
 const LanguageSwitcher: FC<LanguageSwitcherProps> = ({ displayType = 'dropdown', currentLang, changeLanguage }) => {
   if (displayType === 'inline') {
     return (
@@ -59,7 +69,7 @@ const LanguageSwitcher: FC<LanguageSwitcherProps> = ({ displayType = 'dropdown',
   return (
     <Menu as="div" className="relative inline-block text-left">
       <div>
-        <Menu.Button className="flex items-center p-1.5 rounded-full text-gray-600 transition-colors duration-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500">
+        <Menu.Button className="flex items-center p-1.5 rounded-full text-gray-300 transition-colors duration-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-lime-400">
           {currentLang === 'id' ? <FlagIndonesia /> : <FlagUSA />}
         </Menu.Button>
       </div>
@@ -83,10 +93,10 @@ const NavItem: FC<NavItemProps> = ({ to, text, end }) => (
       to={to}
       end={end}
       className={({ isActive }) =>
-        `whitespace-nowrap px-1 py-2 text-sm font-medium transition-colors duration-200 ease-in-out ${
+        `whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors duration-200 ease-in-out ${
           isActive
-            ? 'text-green-700'
-            : 'text-gray-600 hover:text-green-600'
+            ? 'bg-lime-400 text-lime-900'
+            : 'text-gray-200 hover:text-white'
         }`
       }
     >
@@ -104,8 +114,8 @@ const MobileNavItem: FC<MobileNavItemProps> = ({ to, text, end, onClick }) => (
       className={({ isActive }) =>
         `block w-full rounded-md py-2.5 px-4 text-left text-base font-medium transition-colors duration-200 ${
           isActive
-            ? 'bg-green-100 text-green-800'
-            : 'text-gray-700 hover:bg-gray-100'
+            ? 'bg-lime-400 text-lime-900'
+            : 'text-gray-200 hover:bg-white/10'
         }`
       }
     >
@@ -132,102 +142,105 @@ const Navbar: FC = () => {
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-white shadow-sm">
-      <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between gap-4">
-          {/* Grup Kiri: Logo & Pencarian */}
-          <div className="flex flex-1 items-center gap-6">
-            <Link to="/" className="flex-shrink-0 flex items-center gap-2 text-2xl font-bold">
-              <div className="bg-green-600 text-white rounded-md px-3 py-1 text-lg font-bold tracking-wide">
-                narapati flora
+    <>
+      <TopBar />
+      {/* PERUBAHAN: Menambahkan border-b-2 border-lime-400 */}
+      <header className="sticky top-0 z-50 bg-[#003938] border-b-2 border-lime-400">
+        <nav className="container mx-auto px-2 sm:px-2 lg:px-4">
+          <div className="flex h-16 items-center justify-between gap-4">
+            {/* Grup Kiri: Logo & Pencarian */}
+            <div className="flex flex-1 items-center gap-6">
+              <Link to="/" className="flex-shrink-0 flex items-center gap-2 text-xl font-bold text-white">
+                <span className="font-extrabold">Narapati</span>
+                <span className="font-light">Flora</span>
+              </Link>
+              {/* Pencarian Desktop */}
+              <div className="relative w-full hidden md:block">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <SearchIcon />
+                </div>
+                <input
+                  type="search"
+                  name="search"
+                  id="search"
+                  className="block w-full bg-white/20 border border-transparent rounded-full py-2 pl-10 pr-4 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:bg-white/25 sm:text-sm"
+                  placeholder="Cari tanaman..."
+                />
               </div>
-            </Link>
-            {/* Pencarian Desktop */}
-            <div className="relative w-full hidden md:block">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <SearchIcon />
-              </div>
-              <input
-                type="search"
-                name="search"
-                id="search"
-                className="block w-full bg-gray-100 border border-transparent rounded-full py-2 pl-10 pr-4 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white sm:text-sm"
-                placeholder="Cari tanaman..."
-              />
+            </div>
+
+            {/* Grup Kanan: Navigasi & Bahasa */}
+            <div className="hidden md:flex items-center gap-6">
+              <ul className="flex items-baseline space-x-2">
+                  {mainNavLinks.map((link) => (
+                    <NavItem key={link.to} to={link.to} text={t(link.textKey)} end={link.end} />
+                  ))}
+              </ul>
+              <LanguageSwitcher currentLang={currentLang} changeLanguage={setCurrentLang} />
+            </div>
+
+            {/* Tombol Menu Mobile */}
+            <div className="flex md:hidden">
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="inline-flex items-center justify-center rounded-md p-2 text-gray-300 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-lime-400"
+                aria-controls="mobile-menu"
+                aria-expanded={isMenuOpen}
+              >
+                <span className="sr-only">Open main menu</span>
+                {isMenuOpen ? <CloseIcon /> : <MenuIcon />}
+              </button>
             </div>
           </div>
+        </nav>
 
-          {/* Grup Kanan: Navigasi & Bahasa */}
-          <div className="hidden md:flex items-center gap-6">
-            <ul className="flex items-baseline space-x-6">
-                {mainNavLinks.map((link) => (
-                  <NavItem key={link.to} to={link.to} text={t(link.textKey)} end={link.end} />
-                ))}
+        {/* Panel Menu Mobile */}
+        <Transition
+          show={isMenuOpen}
+          as={Fragment}
+          enter="transition ease-out duration-200"
+          enterFrom="opacity-0 -translate-y-1"
+          enterTo="opacity-100 translate-y-0"
+          leave="transition ease-in duration-150"
+          leaveFrom="opacity-100 translate-y-0"
+          leaveTo="opacity-0 -translate-y-1"
+        >
+          {/* PERUBAHAN: Mengganti border-gray-800 menjadi border-lime-400 */}
+          <div className="md:hidden absolute top-full left-0 w-full bg-[#003938] border-b-2 border-lime-400 shadow-lg" id="mobile-menu">
+             {/* Pencarian Mobile */}
+            <div className="p-4 border-b border-white/20">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <SearchIcon />
+                </div>
+                <input
+                  type="search"
+                  name="search-mobile"
+                  id="search-mobile"
+                  className="block w-full bg-white/20 border border-transparent rounded-full py-2 pl-10 pr-4 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:bg-white/25 sm:text-sm"
+                  placeholder="Cari tanaman..."
+                />
+              </div>
+            </div>
+            <ul className="space-y-1 px-4 pt-2 pb-3">
+              {mainNavLinks.map((link) => (
+                <MobileNavItem
+                  key={link.to}
+                  to={link.to}
+                  text={t(link.textKey)}
+                  end={link.end}
+                  onClick={() => setIsMenuOpen(false)}
+                />
+              ))}
             </ul>
-            <LanguageSwitcher currentLang={currentLang} changeLanguage={setCurrentLang} />
-          </div>
-
-          {/* Tombol Menu Mobile */}
-          <div className="flex md:hidden">
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="inline-flex items-center justify-center rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-500"
-              aria-controls="mobile-menu"
-              aria-expanded={isMenuOpen}
-            >
-              <span className="sr-only">Open main menu</span>
-              {isMenuOpen ? <CloseIcon /> : <MenuIcon />}
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      {/* Panel Menu Mobile */}
-      <Transition
-        show={isMenuOpen}
-        as={Fragment}
-        enter="transition ease-out duration-200"
-        enterFrom="opacity-0 -translate-y-1"
-        enterTo="opacity-100 translate-y-0"
-        leave="transition ease-in duration-150"
-        leaveFrom="opacity-100 translate-y-0"
-        leaveTo="opacity-0 -translate-y-1"
-      >
-        <div className="md:hidden absolute top-full left-0 w-full bg-white shadow-lg" id="mobile-menu">
-           {/* Pencarian Mobile */}
-          <div className="p-4">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <SearchIcon />
-              </div>
-              <input
-                type="search"
-                name="search-mobile"
-                id="search-mobile"
-                className="block w-full bg-gray-100 border border-transparent rounded-full py-2 pl-10 pr-4 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white sm:text-sm"
-                placeholder="Cari tanaman..."
-              />
+            <div className="border-t border-white/20 py-3">
+                 <LanguageSwitcher displayType="inline" currentLang={currentLang} changeLanguage={setCurrentLang} />
             </div>
           </div>
-          <ul className="space-y-1 px-4 pb-2">
-            {mainNavLinks.map((link) => (
-              <MobileNavItem
-                key={link.to}
-                to={link.to}
-                text={t(link.textKey)}
-                end={link.end}
-                onClick={() => setIsMenuOpen(false)}
-              />
-            ))}
-          </ul>
-          <div className="border-t border-gray-200 py-2">
-               <LanguageSwitcher displayType="inline" currentLang={currentLang} changeLanguage={setCurrentLang} />
-          </div>
-        </div>
-      </Transition>
-    </header>
+        </Transition>
+      </header>
+    </>
   );
 };
 
 export default Navbar;
-

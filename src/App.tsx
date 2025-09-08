@@ -10,8 +10,8 @@ import { JournalistLayout } from './layouts/JournalistLayout';
 // --- Halaman Publik ---
 import Home from './pages/Home';
 import About from './pages/About';
-import ArticlePage from './pages/Article';
-import ArticleDetail from './pages/ArticleDetail';
+import ArticlePage from './pages/News';
+import ArticleDetail from './pages/NewsDetail';
 import EventPage from './pages/Event';
 import EventDetail from './pages/EventDetail';
 import PlantPage from './pages/Plant';
