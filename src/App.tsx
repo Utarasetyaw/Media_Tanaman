@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // --- Layouts ---
@@ -17,39 +17,42 @@ import EventDetail from './pages/EventDetail';
 import PlantPage from './pages/Plant';
 import PlantDetail from './pages/PlantDetail';
 
-// --- Halaman Admin & Login ---
-import { LoginPage } from './pages/admin/LoginPage';
+// --- Halaman Auth ---
+import { LoginPage } from './pages/auth/LoginPage';
+import { RegisterPage } from './pages/auth/RegisterPage'; // <-- Impor halaman baru
+
+// --- Halaman Admin ---
 import { DashboardPage } from './pages/admin/DashboardPage';
 import { ArticleManagementPage } from './pages/admin/ArticleManagementPage';
 import { CompanyManagementPage } from './pages/admin/CompanyManagementPage';
 import { JournalistManagementPage } from './pages/admin/JournalistManagementPage';
 import { PlantManagementPage } from './pages/admin/PlantManagementPage';
 import { EventManagementPage } from './pages/admin/EventManagementPage';
+import { ArticleEditorPage } from './pages/admin/ArticleEditorPage';
+import { ArticleSeoPage } from './pages/admin/ArticleSeoPage';
 
 // --- Halaman Jurnalis ---
 import { JournalistDashboardPage } from './pages/journalist/JournalistDashboardPage';
 import { JournalistArticleManagementPage } from './pages/journalist/JournalistArticleManagementPage';
+import { JournalistArticleEditorPage } from './pages/journalist/JournalistArticleEditorPage';
+import { JournalistArticleAnalyticsPage } from './pages/journalist/JournalistArticleAnalyticsPage';
 
-// --- Komponen Pelindung Rute (Route Guards) ---
 
-// Guard untuk Admin: Memastikan hanya admin yang bisa akses
-const AdminRouteGuard: React.FC<{ children: React.ReactElement }> = ({ children }) => {
-  const { user } = useAuth();
-  // Jika tidak ada user atau perannya bukan admin, alihkan ke login
-  if (!user || user.role !== 'admin') {
-    return <Navigate to="/admin/login" replace />;
+// --- REVISI: Komponen Pelindung Rute yang Fleksibel ---
+const ProtectedRoute: React.FC<{ allowedRoles: string[] }> = ({ allowedRoles }) => {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen bg-[#003938] text-white">Memeriksa sesi...</div>;
   }
-  return children;
-};
 
-// Guard untuk Jurnalis: Memastikan hanya jurnalis yang bisa akses
-const JournalistRouteGuard: React.FC<{ children: React.ReactElement }> = ({ children }) => {
-  const { user } = useAuth();
-  // Jika tidak ada user atau perannya bukan jurnalis, alihkan ke login
-  if (!user || user.role !== 'jurnalis') {
-    return <Navigate to="/admin/login" replace />;
+  if (!user || !allowedRoles.includes(user.role)) {
+    // Arahkan ke halaman login yang netral
+    return <Navigate to="/login" replace />;
   }
-  return children;
+
+  // Outlet akan merender rute anak (child routes) yang cocok
+  return <Outlet />;
 };
 
 
@@ -58,7 +61,7 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <Routes>
-        {/* === Rute Publik === */}
+        {/* === Rute Publik dengan Layout Utama === */}
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
           <Route path="about" element={<About />} />
@@ -70,47 +73,40 @@ const App: React.FC = () => {
           <Route path="plants/:id" element={<PlantDetail />} />
         </Route>
 
-        {/* === Halaman Login === */}
-        <Route path="/admin/login" element={<LoginPage />} />
+        {/* === Rute Autentikasi === */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
         {/* === Rute Terproteksi untuk Admin === */}
-        <Route 
-          path="/admin/*" 
-          element={
-            <AdminRouteGuard>
-              <Routes>
-                <Route path="/" element={<AdminLayout />}>
-                  <Route index element={<DashboardPage />} />
-                  <Route path="company" element={<CompanyManagementPage />} />
-                  <Route path="journalists" element={<JournalistManagementPage />} />
-                  <Route path="articles" element={<ArticleManagementPage />} />
-                  <Route path="plants" element={<PlantManagementPage />} />
-                  <Route path="events" element={<EventManagementPage />} />
-                </Route>
-              </Routes>
-            </AdminRouteGuard>
-          } 
-        />
+        <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="company" element={<CompanyManagementPage />} />
+            <Route path="journalists" element={<JournalistManagementPage />} />
+            <Route path="articles" element={<ArticleManagementPage />} />
+            <Route path="articles/new" element={<ArticleEditorPage />} />
+            <Route path="articles/edit/:id" element={<ArticleEditorPage />} />
+            <Route path="articles/seo/:id" element={<ArticleSeoPage />} />
+            <Route path="plants" element={<PlantManagementPage />} />
+            <Route path="events" element={<EventManagementPage />} />
+          </Route>
+        </Route>
 
         {/* === Rute Terproteksi untuk Jurnalis === */}
-        <Route 
-          path="/jurnalis/*" 
-          element={
-            <JournalistRouteGuard>
-              <Routes>
-                <Route path="/" element={<JournalistLayout />}>
-                  <Route index element={<JournalistDashboardPage />} />
-                  <Route path="articles" element={<JournalistArticleManagementPage />} />
-                  {/* Tambahkan rute untuk tulis artikel baru di sini jika sudah ada komponennya */}
-                  {/* <Route path="articles/new" element={<WriteArticlePage />} /> */}
-                </Route>
-              </Routes>
-            </JournalistRouteGuard>
-          } 
-        />
-
+        <Route element={<ProtectedRoute allowedRoles={['JOURNALIST']} />}>
+          <Route path="/jurnalis" element={<JournalistLayout />}>
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<JournalistDashboardPage />} />
+            <Route path="articles" element={<JournalistArticleManagementPage />} />
+            <Route path="articles/new" element={<JournalistArticleEditorPage />} />
+            <Route path="articles/edit/:id" element={<JournalistArticleEditorPage />} />
+            <Route path="articles/analytics/:id" element={<JournalistArticleAnalyticsPage />} />
+          </Route>
+        </Route>
+        
         {/* === Rute Halaman Tidak Ditemukan (404) === */}
-        <Route path="*" element={<div className="flex items-center justify-center h-screen">404 - Halaman Tidak Ditemukan</div>} />
+        <Route path="*" element={<div className="flex items-center justify-center h-screen bg-[#003938] text-white">404 - Halaman Tidak Ditemukan</div>} />
       </Routes>
     </AuthProvider>
   );
