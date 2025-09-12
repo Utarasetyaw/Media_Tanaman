@@ -26,3 +26,8 @@ export const getMyProfile = async () => {
 export const logoutUser = async () => {
     await api.post('/auth/logout');
 };
+
+export const getMySubmissionHistory = async () => {
+  const response = await api.get('/users/me/submissions');
+  return response.data;
+};

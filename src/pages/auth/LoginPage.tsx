@@ -1,5 +1,3 @@
-// src/pages/auth/LoginPage.tsx
-
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
@@ -19,7 +17,7 @@ const translations = {
     userHelperText: 'Belum punya akun?',
     userRegisterLink: 'Daftar sebagai peserta',
     loginFailedError: 'Login gagal. Periksa kembali email dan password Anda.',
-    backToHome: 'Kembali ke Beranda' // Teks untuk tombol kembali
+    backToHome: 'Kembali ke Beranda'
   },
   en: {
     welcome: 'Welcome',
@@ -34,19 +32,34 @@ const translations = {
     userHelperText: "Don't have an account?",
     userRegisterLink: 'Register as a participant',
     loginFailedError: 'Login failed. Please check your email and password again.',
-    backToHome: 'Back to Home' // Teks untuk tombol kembali
+    backToHome: 'Back to Home'
   }
 };
 
+type ActiveTab = 'admin' | 'journalist' | 'user';
+
 export const LoginPage: React.FC = () => {
   const { user, login } = useAuth();
-  const [email, setEmail] = useState('admin@narapati.com');
+  const [email, setEmail] = useState('admin@narapati.com'); // Default untuk tab admin
   const [password, setPassword] = useState('password123');
   const [error, setError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [activeTab, setActiveTab] = useState<'admin' | 'journalist' | 'user'>('admin');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('admin');
   const [language, setLanguage] = useState<'id' | 'en'>('id');
   const t = translations[language];
+
+  // Fungsi untuk menangani klik tab dan mengubah contoh email
+  const handleTabClick = (tab: ActiveTab) => {
+    setActiveTab(tab);
+    setError(null);
+    if (tab === 'admin') {
+      setEmail('admin@narapati.com');
+    } else if (tab === 'journalist') {
+      setEmail('jurnalis@narapati.com');
+    } else {
+      setEmail('user@narapati.com');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +78,7 @@ export const LoginPage: React.FC = () => {
     switch (user.role) {
       case 'ADMIN': return <Navigate to="/admin" replace />;
       case 'JOURNALIST': return <Navigate to="/jurnalis" replace />;
-      case 'USER': return <Navigate to="/" replace />;
+      case 'USER': return <Navigate to="/dashboard" replace />; // Arahkan ke dashboard user
       default: return <Navigate to="/" replace />;
     }
   }
@@ -85,9 +98,9 @@ export const LoginPage: React.FC = () => {
         </div>
 
         <div className="flex border-b-2 border-lime-400/50">
-          <button onClick={() => setActiveTab('admin')} className={`flex-1 py-2 text-sm font-medium transition-colors ${activeTab === 'admin' ? 'text-lime-300 border-b-2 border-lime-300' : 'text-gray-300 hover:text-white'}`}>{t.adminTab}</button>
-          <button onClick={() => setActiveTab('journalist')} className={`flex-1 py-2 text-sm font-medium transition-colors ${activeTab === 'journalist' ? 'text-lime-300 border-b-2 border-lime-300' : 'text-gray-300 hover:text-white'}`}>{t.journalistTab}</button>
-          <button onClick={() => setActiveTab('user')} className={`flex-1 py-2 text-sm font-medium transition-colors ${activeTab === 'user' ? 'text-lime-300 border-b-2 border-lime-300' : 'text-gray-300 hover:text-white'}`}>{t.userTab}</button>
+          <button onClick={() => handleTabClick('admin')} className={`flex-1 py-2 text-sm font-medium transition-colors ${activeTab === 'admin' ? 'text-lime-300 border-b-2 border-lime-300' : 'text-gray-300 hover:text-white'}`}>{t.adminTab}</button>
+          <button onClick={() => handleTabClick('journalist')} className={`flex-1 py-2 text-sm font-medium transition-colors ${activeTab === 'journalist' ? 'text-lime-300 border-b-2 border-lime-300' : 'text-gray-300 hover:text-white'}`}>{t.journalistTab}</button>
+          <button onClick={() => handleTabClick('user')} className={`flex-1 py-2 text-sm font-medium transition-colors ${activeTab === 'user' ? 'text-lime-300 border-b-2 border-lime-300' : 'text-gray-300 hover:text-white'}`}>{t.userTab}</button>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-6">

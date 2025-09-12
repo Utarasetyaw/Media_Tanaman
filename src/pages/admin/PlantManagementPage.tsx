@@ -1,82 +1,86 @@
-import React, { useState } from 'react';
-import { Plus, Edit, Trash2, X, Eye, EyeOff, PlusCircle, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit, Trash2, X, PlusCircle } from 'lucide-react'; // <-- Tambahkan PlusCircle untuk toko
+import * as api from '../../services/apiAdmin';
 
-// Tipe data untuk Toko dan Tanaman
-interface Store {
-    name: string;
-    url: string;
-}
-
+// --- Tipe Data ---
+interface Category { id: number; name: { id: string; en: string }; }
+interface PlantType { id: number; name: { id: string; en: string }; }
+interface Store { name: string; url: string; } // <-- Tipe data Store
 interface Plant {
-    id: number;
-    name: string;
-    scientificName: string;
-    family: string;
-    description: string;
-    imageUrls: string[]; // Mengganti imageUrl tunggal dengan array
-    careLevel: 'Mudah' | 'Sedang' | 'Sulit';
-    size: 'Kecil' | 'Sedang' | 'Besar';
-    stores: Store[];
-    isVisible: boolean;
+  id: number;
+  name: { id: string; en: string };
+  scientificName: string;
+  family: PlantType;
+  description: { id: string; en: string };
+  imageUrl: string;
+  careLevel: 'Mudah' | 'Sedang' | 'Sulit';
+  size: 'Kecil' | 'Sedang' | 'Besar';
+  stores: Store[]; // <-- Gunakan tipe data Store
+  category: Category;
+  categoryId: number;
+  familyId: number;
 }
 
-// Data awal sebagai contoh
-const initialPlants: Plant[] = [
-    {
-        id: 1,
-        name: "Lidah Mertua",
-        scientificName: "Sansevieria trifasciata",
-        family: "Asparagaceae",
-        description: "Tanaman sukulen yang sangat populer karena perawatannya yang mudah dan kemampuannya membersihkan udara. Tahan terhadap berbagai kondisi, menjadikannya pilihan ideal untuk pemula.",
-        imageUrls: ["https://placehold.co/600x400/a2e1a2/4a5568?text=Lidah+Mertua+1", "https://placehold.co/600x400/a2e1a2/4a5568?text=Lidah+Mertua+2"],
-        careLevel: 'Mudah',
-        size: 'Sedang',
-        stores: [
-          { name: 'Urban Gardening', url: 'https://gardening.id/' },
-          { name: 'Lucknow Nursery', url: 'https://lucknownursery.com/' },
-        ],
-        isVisible: true,
-    },
-    {
-        id: 2,
-        name: "Monstera Deliciosa",
-        scientificName: "Monstera deliciosa",
-        family: "Araceae",
-        description: "Dikenal juga sebagai tanaman keju Swiss, tanaman ini memiliki daun besar yang unik dan berlubang. Populer sebagai tanaman hias indoor yang memberikan nuansa tropis.",
-        imageUrls: ["https://placehold.co/600x400/a2e1a2/4a5568?text=Monstera"],
-        careLevel: 'Sedang',
-        size: 'Besar',
-        stores: [
-          { name: 'Toko Tanaman Hijau', url: 'https://example.com' },
-        ],
-        isVisible: false,
-    },
-];
+const initialFormData = {
+    name: { id: '', en: '' },
+    scientificName: '',
+    description: { id: '', en: '' },
+    imageUrl: '',
+    careLevel: 'Mudah',
+    size: 'Sedang',
+    stores: [{ name: '', url: '' }], // <-- Default store agar selalu ada 1 field
+    categoryId: 0,
+    familyId: 0,
+};
 
 export const PlantManagementPage: React.FC = () => {
-    const [plants, setPlants] = useState<Plant[]>(initialPlants);
+    // --- STATE MANAGEMENT ---
+    const [plants, setPlants] = useState<Plant[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [plantTypes, setPlantTypes] = useState<PlantType[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPlant, setEditingPlant] = useState<Plant | null>(null);
+    const [formData, setFormData] = useState<any>(initialFormData);
+    const [imageFile, setImageFile] = useState<File | null>(null);
     
-    // State untuk form di dalam modal
-    const [formData, setFormData] = useState<Omit<Plant, 'id'>>({
-        name: '', scientificName: '', family: '', description: '', imageUrls: [],
-        careLevel: 'Mudah', size: 'Sedang', stores: [{ name: '', url: '' }], isVisible: true
-    });
-    // State untuk file gambar yang baru diupload
-    const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
+    // --- DATA FETCHING ---
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const [plantsData, categoriesData, plantTypesData] = await Promise.all([
+                api.getPlants(),
+                api.getCategories(),
+                api.getPlantTypes()
+            ]);
+            setPlants(plantsData);
+            setCategories(categoriesData);
+            setPlantTypes(plantTypesData);
+        } catch (error) {
+            console.error("Failed to fetch data", error);
+            alert("Gagal memuat data.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    // --- MODAL & FORM HANDLERS ---
     const openModal = (plant: Plant | null = null) => {
-        setNewImageFiles([]); // Selalu reset file baru saat modal dibuka
+        setImageFile(null);
         if (plant) {
             setEditingPlant(plant);
-            setFormData(plant);
+            setFormData({
+              ...plant,
+              categoryId: plant.category.id,
+              familyId: plant.family.id,
+            });
         } else {
             setEditingPlant(null);
-            setFormData({
-                name: '', scientificName: '', family: '', description: '', imageUrls: [],
-                careLevel: 'Mudah', size: 'Sedang', stores: [{ name: '', url: '' }], isVisible: true
-            });
+            setFormData(initialFormData);
         }
         setIsModalOpen(true);
     };
@@ -85,123 +89,214 @@ export const PlantManagementPage: React.FC = () => {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData((prev: any) => ({ ...prev, [name]: value }));
+    };
+    
+    const handleJsonChange = (field: 'name' | 'description', lang: 'id' | 'en', value: string) => {
+        setFormData((prev: any) => ({
+            ...prev,
+            [field]: {
+                ...prev[field],
+                [lang]: value
+            }
+        }));
     };
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            setNewImageFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+        if (e.target.files && e.target.files[0]) {
+            setImageFile(e.target.files[0]);
         }
     };
 
-    const removeExistingImage = (urlToRemove: string) => {
-        setFormData(prev => ({ ...prev, imageUrls: prev.imageUrls.filter(url => url !== urlToRemove) }));
-    };
-
-    const removeNewImage = (fileToRemove: File) => {
-        setNewImageFiles(prev => prev.filter(file => file !== fileToRemove));
-    };
-
+    // --- STORE MANAGEMENT ---
     const handleStoreChange = (index: number, field: 'name' | 'url', value: string) => {
         const newStores = [...formData.stores];
-        newStores[index][field] = value;
-        setFormData(prev => ({ ...prev, stores: newStores }));
+        newStores[index] = { ...newStores[index], [field]: value };
+        setFormData((prev: any) => ({ ...prev, stores: newStores }));
     };
 
-    const addStoreField = () => setFormData(prev => ({ ...prev, stores: [...prev.stores, { name: '', url: '' }] }));
-    const removeStoreField = (index: number) => setFormData(prev => ({ ...prev, stores: prev.stores.filter((_, i) => i !== index) }));
+    const addStoreField = () => {
+        setFormData((prev: any) => ({
+            ...prev,
+            stores: [...prev.stores, { name: '', url: '' }]
+        }));
+    };
 
-    const handleSave = () => {
-        // Di aplikasi nyata, Anda akan mengunggah file ke server dan mendapatkan URL
-        // Untuk contoh ini, kita gunakan blob URL untuk pratinjau
-        const newImageUrls = newImageFiles.map(file => URL.createObjectURL(file));
-        const updatedFormData = { ...formData, imageUrls: [...formData.imageUrls, ...newImageUrls] };
+    const removeStoreField = (index: number) => {
+        setFormData((prev: any) => ({
+            ...prev,
+            stores: prev.stores.filter((_: any, i: number) => i !== index)
+        }));
+    };
+    // --- END STORE MANAGEMENT ---
 
-        if (editingPlant) {
-            setPlants(plants.map(p => p.id === editingPlant.id ? { ...updatedFormData, id: p.id } : p));
-        } else {
-            const newPlant: Plant = { ...updatedFormData, id: Date.now() };
-            setPlants([...plants, newPlant]);
+
+    const handleSave = async () => {
+        if (!formData.name.id || !formData.categoryId || !formData.familyId) {
+            alert("Nama (Indonesia), Kategori, dan Tipe Tanaman wajib diisi.");
+            return;
         }
-        closeModal();
+
+        let finalImageUrl = editingPlant?.imageUrl || '';
+        
+        try {
+            if (imageFile) {
+                const uploadRes = await api.uploadFile('plants', imageFile);
+                finalImageUrl = uploadRes.imageUrl;
+            }
+
+            if (!finalImageUrl && !editingPlant?.imageUrl) { // Jika tidak ada gambar dan bukan mode edit (atau edit tapi gambar lama dihapus)
+                alert("Gambar utama wajib diunggah.");
+                return;
+            }
+
+            const payload = {
+                ...formData,
+                imageUrl: finalImageUrl,
+                categoryId: parseInt(formData.categoryId, 10),
+                familyId: parseInt(formData.familyId, 10),
+                // Filter stores yang kosong sebelum dikirim ke backend
+                stores: formData.stores.filter((store: Store) => store.name || store.url),
+            };
+
+            if (editingPlant) {
+                await api.updatePlant(editingPlant.id, payload);
+            } else {
+                await api.createPlant(payload);
+            }
+
+            closeModal();
+            fetchData();
+        } catch (error) {
+            console.error("Failed to save plant", error);
+            alert("Gagal menyimpan data tanaman.");
+        }
     };
 
-    const handleDelete = (id: number) => {
+    const handleDelete = async (id: number) => {
         if (window.confirm('Yakin ingin menghapus tanaman ini?')) {
-            setPlants(plants.filter(p => p.id !== id));
+            try {
+                await api.deletePlant(id);
+                fetchData();
+            } catch (error) {
+                alert("Gagal menghapus tanaman.");
+            }
         }
     };
 
-    const toggleVisibility = (id: number) => {
-        setPlants(plants.map(p => p.id === id ? { ...p, isVisible: !p.isVisible } : p));
-    };
+    // --- RENDER ---
+    if (isLoading) return <div className="text-center text-gray-300 p-8">Memuat data tanaman...</div>;
 
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-3xl font-bold text-gray-800">Manajemen Tanaman</h2>
-                <button onClick={() => openModal()} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center gap-2">
+                <h2 className="text-3xl font-bold text-lime-200/90">Manajemen Tanaman</h2>
+                <button onClick={() => openModal()} className="bg-lime-400 text-gray-900 font-bold py-2 px-4 rounded-lg hover:bg-lime-500 flex items-center gap-2 transition-colors">
                     <Plus size={20} /> Tambah Tanaman
                 </button>
             </div>
 
-            {/* Grid Kartu Tanaman */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {plants.map(plant => (
-                    <div key={plant.id} className="bg-white shadow-md rounded-lg overflow-hidden relative">
-                        {!plant.isVisible && <div className="absolute inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center"><span className="text-white font-bold bg-black bg-opacity-60 px-3 py-1 rounded">Disembunyikan</span></div>}
-                        <img src={plant.imageUrls[0] || 'https://placehold.co/600x400/eeeeee/cccccc?text=No+Image'} alt={plant.name} className="w-full h-48 object-cover" />
-                        {plant.imageUrls.length > 1 && <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1"><ImageIcon size={12}/> {plant.imageUrls.length}</div>}
+                    <div key={plant.id} className="bg-[#0b5351]/30 border border-lime-400/30 shadow-md rounded-lg overflow-hidden relative">
+                        <img src={plant.imageUrl || 'https://placehold.co/600x400/eeeeee/cccccc?text=No+Image'} alt={plant.name.id} className="w-full h-48 object-cover" />
                         <div className="p-4">
-                            <h3 className="text-xl font-bold">{plant.name}</h3>
-                            <p className="text-sm text-gray-500 italic">{plant.scientificName}</p>
+                            <h3 className="text-xl font-bold text-gray-200">{plant.name.id || plant.name.en}</h3>
+                            <p className="text-sm text-gray-400 italic">{plant.scientificName}</p>
                             <div className="flex justify-end gap-2 mt-4">
-                                <button onClick={() => toggleVisibility(plant.id)} className="p-2 text-gray-500 hover:text-blue-600" title={plant.isVisible ? 'Sembunyikan' : 'Tampilkan'}>{plant.isVisible ? <Eye size={18} /> : <EyeOff size={18} />}</button>
-                                <button onClick={() => openModal(plant)} className="p-2 text-gray-500 hover:text-indigo-600" title="Edit"><Edit size={18} /></button>
-                                <button onClick={() => handleDelete(plant.id)} className="p-2 text-gray-500 hover:text-red-600" title="Hapus"><Trash2 size={18} /></button>
+                                <button onClick={() => openModal(plant)} className="p-2 text-gray-400 hover:text-blue-400 transition-colors" title="Edit"><Edit size={18} /></button>
+                                <button onClick={() => handleDelete(plant.id)} className="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Hapus"><Trash2 size={18} /></button>
                             </div>
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* Modal Tambah/Edit */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <div className="p-6 sticky top-0 bg-white border-b z-10"><button onClick={closeModal} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800"><X size={24} /></button><h3 className="text-2xl font-bold">{editingPlant ? 'Edit Tanaman' : 'Tambah Tanaman Baru'}</h3></div>
-                        <div className="p-6 space-y-4">
-                            <input type="text" name="name" value={formData.name} onChange={handleInputChange} placeholder="Nama Tanaman" className="w-full border p-2 rounded"/>
-                            <input type="text" name="scientificName" value={formData.scientificName} onChange={handleInputChange} placeholder="Nama Ilmiah" className="w-full border p-2 rounded"/>
-                            <input type="text" name="family" value={formData.family} onChange={handleInputChange} placeholder="Keluarga (Family)" className="w-full border p-2 rounded"/>
-                            <textarea name="description" value={formData.description} onChange={handleInputChange} placeholder="Deskripsi" className="w-full border p-2 rounded" rows={4}></textarea>
-                            
-                            <div>
-                                <h4 className="font-semibold mb-2">Gambar Tanaman</h4>
-                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 mb-2 p-2 border rounded-md min-h-[8rem]">
-                                    {formData.imageUrls.map((url, index) => (
-                                        <div key={index} className="relative"><img src={url} className="w-full h-24 object-cover rounded"/><button onClick={() => removeExistingImage(url)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5"><X size={12}/></button></div>
-                                    ))}
-                                    {newImageFiles.map((file, index) => (
-                                        <div key={index} className="relative"><img src={URL.createObjectURL(file)} className="w-full h-24 object-cover rounded"/><button onClick={() => removeNewImage(file)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5"><X size={12}/></button></div>
-                                    ))}
-                                </div>
-                                <input type="file" multiple accept="image/*" onChange={handleImageChange} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"/>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <select name="careLevel" value={formData.careLevel} onChange={handleInputChange} className="w-full border p-2 rounded"><option value="Mudah">Perawatan: Mudah</option><option value="Sedang">Perawatan: Sedang</option><option value="Sulit">Perawatan: Sulit</option></select>
-                                <select name="size" value={formData.size} onChange={handleInputChange} className="w-full border p-2 rounded"><option value="Kecil">Ukuran: Kecil</option><option value="Sedang">Ukuran: Sedang</option><option value="Besar">Ukuran: Besar</option></select>
-                            </div>
-                            <div>
-                                <h4 className="font-semibold mb-2">Toko Penjual</h4>
-                                {formData.stores.map((store, index) => (
-                                    <div key={index} className="flex items-center gap-2 mb-2"><input type="text" value={store.name} onChange={(e) => handleStoreChange(index, 'name', e.target.value)} placeholder="Nama Toko" className="w-1/2 border p-2 rounded"/><input type="text" value={store.url} onChange={(e) => handleStoreChange(index, 'url', e.target.value)} placeholder="URL Toko" className="w-1/2 border p-2 rounded"/><button onClick={() => removeStoreField(index)} className="text-red-500"><Trash2 size={18}/></button></div>
-                                ))}
-                                <button onClick={addStoreField} className="text-sm text-green-600 flex items-center gap-1"><PlusCircle size={16}/> Tambah Toko</button>
-                            </div>
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+                    <div className="bg-[#003938] border-2 border-lime-400/50 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+                        <div className="p-4 flex justify-between items-center border-b border-lime-400/30">
+                            <h3 className="text-2xl font-bold text-gray-200">{editingPlant ? 'Edit Tanaman' : 'Tambah Tanaman Baru'}</h3>
+                            <button onClick={closeModal} className="text-gray-400 hover:text-white"><X size={24} /></button>
                         </div>
-                        <div className="p-6 flex justify-end gap-3 sticky bottom-0 bg-white border-t"><button onClick={closeModal} className="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">Batal</button><button onClick={handleSave} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Simpan</button></div>
+                        <div className="p-6 space-y-4 overflow-y-auto">
+                            {/* Form Fields */}
+                            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                <input type="text" value={formData.name.id} onChange={(e) => handleJsonChange('name', 'id', e.target.value)} placeholder="Nama Tanaman (ID)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200" />
+                                <input type="text" value={formData.name.en} onChange={(e) => handleJsonChange('name', 'en', e.target.value)} placeholder="Nama Tanaman (EN)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200" />
+                                <input type="text" name="scientificName" value={formData.scientificName} onChange={handleInputChange} placeholder="Nama Ilmiah" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200" />
+                                {/* Deskripsi */}
+                                <div className='md:col-span-2'>
+                                    <textarea value={formData.description.id} onChange={(e) => handleJsonChange('description', 'id', e.target.value)} placeholder="Deskripsi (ID)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200" rows={3}></textarea>
+                                </div>
+                                <div className='md:col-span-2'>
+                                    <textarea value={formData.description.en} onChange={(e) => handleJsonChange('description', 'en', e.target.value)} placeholder="Deskripsi (EN)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200" rows={3}></textarea>
+                                </div>
+                                
+                                {/* Kategori & Tipe Tanaman */}
+                                <select name="categoryId" value={formData.categoryId} onChange={handleInputChange} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200">
+                                    <option value={0} disabled>Pilih Kategori</option>
+                                    {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name.id}</option>)}
+                                </select>
+                                <select name="familyId" value={formData.familyId} onChange={handleInputChange} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200">
+                                    <option value={0} disabled>Pilih Tipe Tanaman (Family)</option>
+                                    {plantTypes.map(pt => <option key={pt.id} value={pt.id}>{pt.name.id}</option>)}
+                                </select>
+                                
+                                {/* Care Level & Size */}
+                                <select name="careLevel" value={formData.careLevel} onChange={handleInputChange} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"><option value="Mudah">Perawatan: Mudah</option><option value="Sedang">Perawatan: Sedang</option><option value="Sulit">Perawatan: Sulit</option></select>
+                                <select name="size" value={formData.size} onChange={handleInputChange} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"><option value="Kecil">Ukuran: Kecil</option><option value="Sedang">Ukuran: Sedang</option><option value="Besar">Ukuran: Besar</option></select>
+                                
+                                {/* Gambar Utama */}
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-300 mb-1">Gambar Utama</label>
+                                    {(editingPlant?.imageUrl && !imageFile) && ( // Tampilkan gambar lama jika ada dan belum ada gambar baru di-upload
+                                        <div className="mb-2">
+                                            <img src={editingPlant.imageUrl} alt="Current Plant" className="w-32 h-32 object-cover rounded-md border border-lime-400/50 p-1" />
+                                        </div>
+                                    )}
+                                    {imageFile && ( // Tampilkan pratinjau gambar baru jika ada
+                                        <div className="mb-2">
+                                            <img src={URL.createObjectURL(imageFile)} alt="New Plant Preview" className="w-32 h-32 object-cover rounded-md border border-lime-400/50 p-1" />
+                                        </div>
+                                    )}
+                                    <input type="file" accept="image/*" onChange={handleImageChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-lime-200/20 file:text-lime-300 hover:file:bg-lime-200/30 cursor-pointer"/>
+                                </div>
+
+                                {/* Toko Penjual */}
+                                <div className="md:col-span-2">
+                                    <h4 className="text-lg font-semibold text-lime-300 border-b border-lime-400/30 pb-2 mb-3">Toko Penjual</h4>
+                                    {formData.stores.map((store: Store, index: number) => (
+                                        <div key={index} className="flex items-center gap-2 mb-2">
+                                            <input
+                                                type="text"
+                                                value={store.name}
+                                                onChange={(e) => handleStoreChange(index, 'name', e.target.value)}
+                                                placeholder="Nama Toko"
+                                                className="w-1/2 px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={store.url}
+                                                onChange={(e) => handleStoreChange(index, 'url', e.target.value)}
+                                                placeholder="URL Toko"
+                                                className="w-1/2 px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"
+                                            />
+                                            {formData.stores.length > 1 && ( // Hanya tampilkan tombol hapus jika ada lebih dari 1 toko
+                                                <button onClick={() => removeStoreField(index)} className="text-red-500 hover:text-red-400 p-1"><Trash2 size={18}/></button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    <button onClick={addStoreField} className="mt-2 flex items-center gap-2 text-sm font-semibold text-lime-300 hover:text-lime-200">
+                                        <PlusCircle size={16}/> Tambah Toko
+                                    </button>
+                                </div>
+                            </div> {/* End of grid */}
+                        </div>
+                        <div className="p-4 flex justify-end gap-3 border-t border-lime-400/30">
+                            <button onClick={closeModal} className="bg-gray-700 text-gray-200 font-bold py-2 px-4 rounded-lg hover:bg-gray-600">Batal</button>
+                            <button onClick={handleSave} className="bg-lime-400 text-gray-900 font-bold py-2 px-4 rounded-lg hover:bg-lime-500">Simpan</button>
+                        </div>
                     </div>
                 </div>
             )}

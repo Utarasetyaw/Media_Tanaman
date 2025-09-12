@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import MainLayout from './layouts/MainLayout';
 import AdminLayout from './layouts/AdminLayout';
 import { JournalistLayout } from './layouts/JournalistLayout';
+import UserLayout from './layouts/UserLayout'; // <-- Impor layout baru
 
 // --- Halaman Publik ---
 import Home from './pages/Home';
@@ -19,7 +20,7 @@ import PlantDetail from './pages/PlantDetail';
 
 // --- Halaman Auth ---
 import { LoginPage } from './pages/auth/LoginPage';
-import { RegisterPage } from './pages/auth/RegisterPage'; // <-- Impor halaman baru
+import { RegisterPage } from './pages/auth/RegisterPage';
 
 // --- Halaman Admin ---
 import { DashboardPage } from './pages/admin/DashboardPage';
@@ -28,8 +29,10 @@ import { CompanyManagementPage } from './pages/admin/CompanyManagementPage';
 import { JournalistManagementPage } from './pages/admin/JournalistManagementPage';
 import { PlantManagementPage } from './pages/admin/PlantManagementPage';
 import { EventManagementPage } from './pages/admin/EventManagementPage';
+import { EventDetailPage } from './pages/admin/EventDetailPage';
 import { ArticleEditorPage } from './pages/admin/ArticleEditorPage';
 import { ArticleSeoPage } from './pages/admin/ArticleSeoPage';
+import { ArticleAnalyticsPage } from './pages/admin/ArticleAnalyticsPage';
 
 // --- Halaman Jurnalis ---
 import { JournalistDashboardPage } from './pages/journalist/JournalistDashboardPage';
@@ -37,8 +40,11 @@ import { JournalistArticleManagementPage } from './pages/journalist/JournalistAr
 import { JournalistArticleEditorPage } from './pages/journalist/JournalistArticleEditorPage';
 import { JournalistArticleAnalyticsPage } from './pages/journalist/JournalistArticleAnalyticsPage';
 
+// --- Halaman User ---
+import { UserDashboardPage } from './pages/user/UserDashboardPage'; // <-- Impor halaman baru
 
-// --- REVISI: Komponen Pelindung Rute yang Fleksibel ---
+
+// --- Komponen Pelindung Rute yang Fleksibel ---
 const ProtectedRoute: React.FC<{ allowedRoles: string[] }> = ({ allowedRoles }) => {
   const { user, isLoading } = useAuth();
 
@@ -47,11 +53,9 @@ const ProtectedRoute: React.FC<{ allowedRoles: string[] }> = ({ allowedRoles }) 
   }
 
   if (!user || !allowedRoles.includes(user.role)) {
-    // Arahkan ke halaman login yang netral
     return <Navigate to="/login" replace />;
   }
 
-  // Outlet akan merender rute anak (child routes) yang cocok
   return <Outlet />;
 };
 
@@ -88,8 +92,10 @@ const App: React.FC = () => {
             <Route path="articles/new" element={<ArticleEditorPage />} />
             <Route path="articles/edit/:id" element={<ArticleEditorPage />} />
             <Route path="articles/seo/:id" element={<ArticleSeoPage />} />
+            <Route path="articles/analytics/:id" element={<ArticleAnalyticsPage />} />
             <Route path="plants" element={<PlantManagementPage />} />
             <Route path="events" element={<EventManagementPage />} />
+            <Route path="events/:id" element={<EventDetailPage />} />
           </Route>
         </Route>
 
@@ -105,6 +111,14 @@ const App: React.FC = () => {
           </Route>
         </Route>
         
+        {/* === Rute Terproteksi untuk User (Peserta) === */}
+        <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
+          <Route path="/dashboard" element={<UserLayout />}>
+             <Route index element={<UserDashboardPage />} />
+             {/* Anda bisa tambahkan rute lain untuk user di sini, misal /dashboard/profile */}
+          </Route>
+        </Route>
+
         {/* === Rute Halaman Tidak Ditemukan (404) === */}
         <Route path="*" element={<div className="flex items-center justify-center h-screen bg-[#003938] text-white">404 - Halaman Tidak Ditemukan</div>} />
       </Routes>

@@ -19,13 +19,15 @@ const StatCard: React.FC<{ icon: React.ElementType; title: string; value: number
     </div>
 );
 
-export const JournalistArticleAnalyticsPage: React.FC = () => {
+// Nama komponen diubah menjadi untuk Admin
+export const ArticleAnalyticsPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const articleId = Number(id);
 
+    // Query key diubah agar tidak bentrok dengan cache jurnalis
     const { data: article, isLoading, error } = useQuery<Article>({
-        queryKey: ['myArticleAnalytics', articleId],
-        queryFn: () => getArticleById(articleId),
+        queryKey: ['adminArticleAnalytics', articleId],
+        queryFn: () => getArticleById(articleId), // Fungsi API-nya tetap sama
         enabled: !!articleId,
     });
 
@@ -39,8 +41,9 @@ export const JournalistArticleAnalyticsPage: React.FC = () => {
                  <h2 className="text-2xl sm:text-3xl font-bold text-lime-200/90">
                     Analitik Artikel
                 </h2>
-                <Link to="/jurnalis/articles" className="text-lime-300 hover:text-lime-100 flex items-center gap-2 bg-black/20 px-4 py-2 rounded-lg border border-lime-400/50 transition-colors">
-                    <ArrowLeft size={16} /> Kembali ke Artikel Saya
+                {/* Link kembali diubah ke halaman manajemen artikel admin */}
+                <Link to="/admin/articles" className="text-lime-300 hover:text-lime-100 flex items-center gap-2 bg-black/20 px-4 py-2 rounded-lg border border-lime-400/50 transition-colors">
+                    <ArrowLeft size={16} /> Kembali ke Manajemen Artikel
                 </Link>
             </div>
 
@@ -48,11 +51,11 @@ export const JournalistArticleAnalyticsPage: React.FC = () => {
                 <div className="border-b-2 border-lime-400/30 pb-4 mb-6">
                     <p className="text-sm text-lime-300 font-semibold">{article.category.name.id}</p>
                     <h3 className="text-3xl font-bold text-white mt-1">{article.title.id}</h3>
+                    <p className="text-gray-400 text-sm mt-2">Ditulis oleh: {article.author.name}</p>
                 </div>
                 
                 <h4 className="text-xl font-bold text-lime-400 mb-4">Statistik Performa</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                    {/* Menggunakan nullish coalescing (??) sebagai pengaman jika data null */}
                     <StatCard icon={Eye} title="Total Pembaca" value={article.viewCount ?? 0} color="blue" />
                     <StatCard icon={Heart} title="Total Suka" value={article._count?.likes ?? 0} color="pink" />
                     <StatCard icon={BarChart2} title="Status" value={article.status.replace('_', ' ')} color="green" />

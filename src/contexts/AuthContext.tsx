@@ -1,14 +1,10 @@
-// src/contexts/AuthContext.tsx
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-// --- REVISI: Import dari file apiAuth.ts yang baru ---
 import { loginUser, getMyProfile, logoutUser } from '../services/apiAuth';
 
 interface User {
   id: number;
   name: string;
   email: string;
-  // --- REVISI: Tambahkan role 'USER' ---
   role: 'ADMIN' | 'JOURNALIST' | 'USER';
 }
 
@@ -21,6 +17,17 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+// Komponen untuk layar loading
+const SplashScreen: React.FC = () => (
+    <div className="flex items-center justify-center h-screen bg-[#003938] text-white">
+        <div className="text-center">
+            <h2 className="font-serif text-3xl font-bold">Narapati Flora</h2>
+            <p className="text-gray-300 animate-pulse">Memeriksa sesi...</p>
+        </div>
+    </div>
+);
+
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -62,8 +69,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
   
+  // --- REVISI: Gunakan SplashScreen ---
   if (isLoading) {
-      return <div>Loading session...</div>;
+      return <SplashScreen />;
   }
 
   return (
