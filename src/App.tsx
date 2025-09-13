@@ -11,8 +11,8 @@ import UserLayout from './layouts/UserLayout'; // <-- Impor layout baru
 // --- Halaman Publik ---
 import Home from './pages/Home';
 import About from './pages/About';
-import ArticlePage from './pages/News';
-import ArticleDetail from './pages/NewsDetail';
+import ArticlePage from './pages/Articles';
+import ArticleDetail from './pages/ArticlesDetail';
 import EventPage from './pages/Event';
 import EventDetail from './pages/EventDetail';
 import PlantPage from './pages/Plant';
@@ -69,8 +69,8 @@ const App: React.FC = () => {
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
           <Route path="about" element={<About />} />
-          <Route path="news" element={<ArticlePage />} />
-          <Route path="news/:id" element={<ArticleDetail />} />
+          <Route path="articles" element={<ArticlePage />} />
+          <Route path="articles/:id" element={<ArticleDetail />} />
           <Route path="events" element={<EventPage />} />
           <Route path="events/:id" element={<EventDetail />} />
           <Route path="plants" element={<PlantPage />} />

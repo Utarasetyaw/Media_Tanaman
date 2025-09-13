@@ -1,14 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Plus, Edit, Trash2, X, CheckCircle, MessageSquare, XCircle, Settings2, Newspaper, Edit3, Eye, Send } from 'lucide-react';
 import type { Article, ArticleStatus, AdminEditRequestStatus } from '../../types';
-import * as apiAdmin from '../../services/apiAdmin';
-
+import { useArticleManager } from '../../hooks/useArticleManager';
 
 type ArticleFilter = 'ALL' | ArticleStatus | 'NEEDS_REVISION_GROUP' | AdminEditRequestStatus | 'REJECTED_GROUP';
 
-// --- Komponen Tombol Aksi ---
 const ActionButton: React.FC<{
     onClick?: () => void;
     to?: string;
@@ -36,46 +33,20 @@ const ActionButton: React.FC<{
 };
 
 export const ArticleManagementPage: React.FC = () => {
-    const queryClient = useQueryClient();
+    const { 
+        articles, isLoading, isError, isMutating,
+        updateStatus, deleteArticle, requestEdit, 
+    } = useArticleManager();
+    
     const [activeFilter, setActiveFilter] = useState<ArticleFilter>('ALL');
     const [currentArticle, setCurrentArticle] = useState<Article | null>(null);
     const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
     const [feedbackText, setFeedbackText] = useState('');
 
-    const { data: articles = [], isLoading, error } = useQuery<Article[]>({
-        queryKey: ['allAdminArticles'],
-        queryFn: apiAdmin.getAllAdminArticles,
-    });
-    
     const articlesForDisplay = useMemo(() => {
         return articles.filter(article => !(article.status === 'DRAFT' && article.author.role === 'JOURNALIST'));
     }, [articles]);
 
-    const mutationOptions = {
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['allAdminArticles'] });
-        },
-        onError: (err: any) => {
-            alert(err.response?.data?.error || "Terjadi kesalahan.");
-        }
-    };
-
-    const statusUpdateMutation = useMutation({
-        mutationFn: apiAdmin.updateArticleStatus,
-        onSuccess: () => {
-            mutationOptions.onSuccess();
-            setIsFeedbackModalOpen(false);
-            setCurrentArticle(null);
-            setFeedbackText('');
-        },
-        onError: mutationOptions.onError
-    });
-    
-    const requestEditMutation = useMutation({ mutationFn: apiAdmin.requestAdminEditAccess, ...mutationOptions });
-    const cancelRequestMutation = useMutation({ mutationFn: apiAdmin.cancelAdminEditRequest, ...mutationOptions });
-    const revertApprovalMutation = useMutation({ mutationFn: apiAdmin.revertAdminEditApproval, ...mutationOptions });
-    const deleteMutation = useMutation({ mutationFn: apiAdmin.deleteAdminArticle, ...mutationOptions });
-    
     const articleCounts = useMemo(() => {
         const counts: { [key: string]: number } = {
             ALL: articlesForDisplay.length, PUBLISHED: 0, IN_REVIEW: 0, NEEDS_REVISION_GROUP: 0,
@@ -115,38 +86,35 @@ export const ArticleManagementPage: React.FC = () => {
             return article.status === activeFilter && (!article.adminEditRequest || article.adminEditRequest === 'NONE');
         });
     }, [articlesForDisplay, activeFilter]);
-
+    
     const openFeedbackModal = (article: Article) => {
         setCurrentArticle(article);
         setFeedbackText(article.feedback || '');
         setIsFeedbackModalOpen(true);
     };
-
     const handleSendFeedback = () => {
         if (!currentArticle || !feedbackText) return;
-        statusUpdateMutation.mutate({ articleId: currentArticle.id, status: 'NEEDS_REVISION', feedback: feedbackText });
+        updateStatus({ 
+            articleId: currentArticle.id, 
+            status: 'NEEDS_REVISION', 
+            feedback: feedbackText 
+        }, {
+            onSuccess: () => {
+                setIsFeedbackModalOpen(false);
+                setCurrentArticle(null);
+                setFeedbackText('');
+            }
+        });
     };
-
     const handleDelete = (id: number) => {
         if (window.confirm('Yakin ingin menghapus artikel ini?')) {
-            deleteMutation.mutate(id);
+            deleteArticle(id);
         }
     };
-    
-    const handleCancelRequest = (id: number) => {
-        if (window.confirm('Yakin ingin membatalkan permintaan edit?')) {
-            cancelRequestMutation.mutate(id);
-        }
-    };
-
-    const handleRevertApproval = (id: number) => {
-        if (window.confirm('Yakin ingin membatalkan izin edit dan mengembalikan ke jurnalis?')) {
-            revertApprovalMutation.mutate(id);
-        }
-    };
+    // Removed unused handleCancelRequest function
     
     if (isLoading) return <div className="text-white p-8 text-center">Memuat artikel...</div>;
-    if (error) return <div className="text-red-400 p-8 text-center">Gagal memuat data.</div>;
+    if (isError) return <div className="text-red-400 p-8 text-center">Gagal memuat data.</div>;
 
     const FilterButton: React.FC<{ filter: ArticleFilter; label: string; count: number }> = ({ filter, label, count }) => (
         <button
@@ -156,7 +124,6 @@ export const ArticleManagementPage: React.FC = () => {
             <span className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ${ activeFilter === filter ? 'bg-white text-lime-900' : 'bg-gray-800/80 text-gray-200'}`}>{count || 0}</span>
         </button>
     );
-
     const getStatusChip = (article: Article) => {
         const displayStatus = (article.adminEditRequest && article.adminEditRequest !== 'NONE') ? article.adminEditRequest : article.status;
         const statusText = displayStatus.replace(/_/g, ' ');
@@ -174,19 +141,16 @@ export const ArticleManagementPage: React.FC = () => {
         const status = article.status;
         const requestStatus = article.adminEditRequest;
 
-        // Prioritaskan penanganan status permintaan edit dari admin
         if (requestStatus === 'PENDING') {
-            return <>
-                <ActionButton to={`/admin/articles/analytics/${article.id}`} color="gray" icon={<Eye size={12}/>}>Lihat</ActionButton>
-                <ActionButton onClick={() => handleCancelRequest(article.id)} color="red" icon={<XCircle size={12}/>}>Decline</ActionButton>
-            </>;
+            return <ActionButton to={`/admin/articles/analytics/${article.id}`} color="gray" icon={<Eye size={12}/>}>Lihat</ActionButton>;
         }
 
+        // --- REVISI DI SINI ---
         if (requestStatus === 'APPROVED') {
              return <>
                 <ActionButton to={`/admin/articles/edit/${article.id}`} color="blue" icon={<Edit3 size={12}/>}>Edit</ActionButton>
-                <ActionButton onClick={() => handleRevertApproval(article.id)} color="red" icon={<XCircle size={12}/>}>Decline</ActionButton>
-                <ActionButton onClick={() => statusUpdateMutation.mutate({ articleId: article.id, status: 'PUBLISHED'})} color="green" icon={<CheckCircle size={12}/>}>Publish</ActionButton>
+                {/* Tombol Decline dihapus */}
+                <ActionButton onClick={() => updateStatus({ articleId: article.id, status: 'PUBLISHED'})} color="green" icon={<CheckCircle size={12}/>}>Publish</ActionButton>
             </>;
         }
 
@@ -194,14 +158,13 @@ export const ArticleManagementPage: React.FC = () => {
             return <ActionButton onClick={() => handleDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>;
         }
         
-        // Jika tidak ada permintaan edit dari admin, gunakan status artikel
         if (status === 'IN_REVIEW') {
              return <>
-                <ActionButton onClick={() => statusUpdateMutation.mutate({ articleId: article.id, status: 'PUBLISHED'})} color="green" icon={<CheckCircle size={12}/>}>Approve</ActionButton>
-                <ActionButton onClick={() => statusUpdateMutation.mutate({ articleId: article.id, status: 'REJECTED'})} color="red" icon={<XCircle size={12}/>}>Decline</ActionButton>
+                <ActionButton onClick={() => updateStatus({ articleId: article.id, status: 'PUBLISHED'})} color="green" icon={<CheckCircle size={12}/>}>Approve</ActionButton>
+                <ActionButton onClick={() => updateStatus({ articleId: article.id, status: 'REJECTED'})} color="red" icon={<XCircle size={12}/>}>Decline</ActionButton>
                 <ActionButton onClick={() => openFeedbackModal(article)} color="yellow" icon={<MessageSquare size={12}/>}>Revisi</ActionButton>
                 <ActionButton to={`/admin/articles/analytics/${article.id}`} color="gray" icon={<Eye size={12}/>}>Lihat</ActionButton>
-                <ActionButton onClick={() => requestEditMutation.mutate(article.id)} color="purple" icon={<Edit3 size={12}/>}>Request Edit</ActionButton>
+                <ActionButton onClick={() => requestEdit(article.id)} color="purple" icon={<Edit3 size={12}/>}>Request Edit</ActionButton>
             </>;
         }
         
@@ -212,9 +175,9 @@ export const ArticleManagementPage: React.FC = () => {
         if (status === 'REVISED') {
              return <>
                 <ActionButton to={`/admin/articles/analytics/${article.id}`} color="gray" icon={<Eye size={12}/>}>Lihat</ActionButton>
-                <ActionButton onClick={() => statusUpdateMutation.mutate({ articleId: article.id, status: 'PUBLISHED'})} color="green" icon={<CheckCircle size={12}/>}>Approve</ActionButton>
-                <ActionButton onClick={() => statusUpdateMutation.mutate({ articleId: article.id, status: 'REJECTED'})} color="red" icon={<XCircle size={12}/>}>Reject</ActionButton>
-                <ActionButton onClick={() => requestEditMutation.mutate(article.id)} color="purple" icon={<Edit3 size={12}/>}>Minta Akses</ActionButton>
+                <ActionButton onClick={() => updateStatus({ articleId: article.id, status: 'PUBLISHED'})} color="green" icon={<CheckCircle size={12}/>}>Approve</ActionButton>
+                <ActionButton onClick={() => updateStatus({ articleId: article.id, status: 'REJECTED'})} color="red" icon={<XCircle size={12}/>}>Reject</ActionButton>
+                <ActionButton onClick={() => requestEdit(article.id)} color="purple" icon={<Edit3 size={12}/>}>Minta Akses</ActionButton>
                 <ActionButton onClick={() => openFeedbackModal(article)} color="yellow" icon={<MessageSquare size={12}/>}>Revisi</ActionButton>
             </>;
         }
@@ -234,7 +197,7 @@ export const ArticleManagementPage: React.FC = () => {
 
         if (status === 'DRAFT' && article.author.role === 'ADMIN') {
              return <>
-                <ActionButton onClick={() => statusUpdateMutation.mutate({ articleId: article.id, status: 'PUBLISHED'})} color="green" icon={<CheckCircle size={12}/>}>Publish</ActionButton>
+                <ActionButton onClick={() => updateStatus({ articleId: article.id, status: 'PUBLISHED'})} color="green" icon={<CheckCircle size={12}/>}>Publish</ActionButton>
                 <ActionButton to={`/admin/articles/edit/${article.id}`} color="blue" icon={<Edit3 size={12}/>}>Edit</ActionButton>
                 <ActionButton onClick={() => handleDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>
             </>;
@@ -311,8 +274,8 @@ export const ArticleManagementPage: React.FC = () => {
                         <textarea value={feedbackText} onChange={(e) => setFeedbackText(e.target.value)} placeholder="Tulis catatan revisi untuk jurnalis di sini..." className="w-full h-32 bg-white/10 border-2 border-lime-400/50 rounded-md p-2 text-white focus:ring-lime-300 focus:border-lime-300"/>
                         <div className="mt-6 flex justify-end gap-3">
                             <button onClick={() => setIsFeedbackModalOpen(false)} className="bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Batal</button>
-                            <button onClick={handleSendFeedback} disabled={statusUpdateMutation.isPending || !feedbackText} className="bg-yellow-500 text-gray-900 font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 disabled:bg-yellow-700 disabled:cursor-not-allowed flex items-center gap-2">
-                                {statusUpdateMutation.isPending ? 'Mengirim...' : <><Send size={16}/> Kirim Feedback</>}
+                            <button onClick={handleSendFeedback} disabled={isMutating || !feedbackText} className="bg-yellow-500 text-gray-900 font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 disabled:bg-yellow-700 disabled:cursor-not-allowed flex items-center gap-2">
+                                {isMutating ? 'Mengirim...' : <><Send size={16}/> Kirim Feedback</>}
                             </button>
                         </div>
                     </div>
@@ -321,6 +284,3 @@ export const ArticleManagementPage: React.FC = () => {
         </div>
     );
 };
-
-export default ArticleManagementPage;
-

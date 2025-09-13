@@ -1,9 +1,7 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useParams, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ArrowLeft, Eye, Heart, BarChart2 } from 'lucide-react';
-import type { Article } from '../../types';
-import { getArticleById } from '../../services/apiArticles';
+import { useArticleAnalytics } from '../../hooks/useArticleAnalytics'; // <-- Impor hook baru
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -19,17 +17,9 @@ const StatCard: React.FC<{ icon: React.ElementType; title: string; value: number
     </div>
 );
 
-// Nama komponen diubah menjadi untuk Admin
 export const ArticleAnalyticsPage: React.FC = () => {
-    const { id } = useParams<{ id: string }>();
-    const articleId = Number(id);
-
-    // Query key diubah agar tidak bentrok dengan cache jurnalis
-    const { data: article, isLoading, error } = useQuery<Article>({
-        queryKey: ['adminArticleAnalytics', articleId],
-        queryFn: () => getArticleById(articleId), // Fungsi API-nya tetap sama
-        enabled: !!articleId,
-    });
+    // REVISI: Semua logika data sekarang berasal dari satu hook
+    const { article, isLoading, error } = useArticleAnalytics();
 
     if (isLoading) return <div className="p-8 text-center text-white">Memuat analitik artikel...</div>;
     if (error) return <div className="p-8 text-center text-red-400">Gagal memuat data: {(error as Error).message}</div>;
@@ -41,7 +31,6 @@ export const ArticleAnalyticsPage: React.FC = () => {
                  <h2 className="text-2xl sm:text-3xl font-bold text-lime-200/90">
                     Analitik Artikel
                 </h2>
-                {/* Link kembali diubah ke halaman manajemen artikel admin */}
                 <Link to="/admin/articles" className="text-lime-300 hover:text-lime-100 flex items-center gap-2 bg-black/20 px-4 py-2 rounded-lg border border-lime-400/50 transition-colors">
                     <ArrowLeft size={16} /> Kembali ke Manajemen Artikel
                 </Link>

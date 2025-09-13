@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
-import { Newspaper, Calendar, Eye, CheckCircle, TrendingUp, Flame, Star } from 'lucide-react';
+import React from 'react';
+// REVISI: Impor tipe data dan hook
+import { useDashboard } from '../../hooks/useDashboard';
+import type { AdminDashboardData, JournalistDashboardData } from '../../hooks/useDashboard';
+// REVISI: Tambahkan 'CheckCircle' ke dalam impor
+import { Calendar, Eye, CheckCircle, Edit, Heart, TrendingUp, BarChart } from 'lucide-react';
 
-// Komponen Card Statistik
+// Komponen Card Statistik (tidak berubah)
 const StatCard: React.FC<{ icon: React.ElementType; title: string; value: string; color: string; }> = ({ icon: Icon, title, value, color }) => (
   <div className="bg-white p-6 rounded-lg shadow-md flex items-center">
     <div className={`p-3 rounded-full bg-${color}-100`}>
@@ -14,117 +18,114 @@ const StatCard: React.FC<{ icon: React.ElementType; title: string; value: string
   </div>
 );
 
+// REVISI: Beri tipe data yang spesifik pada props komponen view
+const AdminView: React.FC<{ data: AdminDashboardData }> = ({ data }) => (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <StatCard 
+          icon={CheckCircle} // Ikon diganti agar lebih sesuai
+          title="Artikel Terbit" 
+          value={data.stats.publishedArticles.toString()}
+          color="green"
+        />
+        <StatCard 
+          icon={Calendar} 
+          title="Event Berjalan" 
+          value={data.stats.runningEvents.toString()}
+          color="blue"
+        />
+        <StatCard 
+          icon={Edit} 
+          title="Request Jurnalis" 
+          value={data.stats.journalistRequests.toString()}
+          color="yellow"
+        />
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10">
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2"><BarChart /> Performa Situs</h3>
+           <p className="text-gray-600">Total Pembaca: {data.performanceChart.totalViews.toLocaleString('id-ID')}</p>
+           <p className="text-gray-600">Total Suka: {data.performanceChart.totalLikes.toLocaleString('id-ID')}</p>
+           <p className="text-center text-gray-400 mt-8 italic">(Komponen grafik akan ditampilkan di sini)</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2"><TrendingUp /> Top 5 Artikel</h3>
+          <div className="space-y-2">
+            {data.topArticles.map((article, index) => (
+              <div key={article.id} className="p-3 rounded-lg flex items-center justify-between transition-colors hover:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg font-bold text-gray-400 w-5 text-center">{index + 1}.</span>
+                  <span className="text-gray-700 font-medium">{article.title.id}</span>
+                </div>
+                <span className="text-sm font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                  {article.viewCount.toLocaleString('id-ID')} views
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+);
+
+// REVISI: Beri tipe data yang spesifik pada props komponen view
+const JournalistView: React.FC<{ data: JournalistDashboardData }> = ({ data }) => (
+     <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard icon={CheckCircle} title="Artikel Terbit" value={data.stats.published.toString()} color="green" />
+        <StatCard icon={Edit} title="Perlu Revisi" value={data.stats.needsRevision.toString()} color="yellow" />
+        <StatCard icon={Eye} title="Total Dilihat" value={data.stats.totalViews.toLocaleString('id-ID')} color="blue" />
+        <StatCard icon={Heart} title="Total Suka" value={data.stats.totalLikes.toLocaleString('id-ID')} color="pink" />
+      </div>
+
+       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10">
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2"><BarChart /> Performa Artikel Anda</h3>
+           <p className="text-gray-600">Total Pembaca: {data.performanceChart.totalViews.toLocaleString('id-ID')}</p>
+           <p className="text-gray-600">Total Suka: {data.performanceChart.totalLikes.toLocaleString('id-ID')}</p>
+           <p className="text-center text-gray-400 mt-8 italic">(Komponen grafik akan ditampilkan di sini)</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2"><TrendingUp /> Top 5 Artikel Anda</h3>
+          <div className="space-y-2">
+            {data.topArticles.map((article, index) => (
+               <div key={article.id} className="p-3 rounded-lg flex items-center justify-between transition-colors hover:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg font-bold text-gray-400 w-5 text-center">{index + 1}.</span>
+                  <span className="text-gray-700 font-medium">{article.title.id}</span>
+                </div>
+                <span className="text-sm font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                  {article.viewCount.toLocaleString('id-ID')} views
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+     </>
+);
+
 // Halaman Dashboard Utama
 export const DashboardPage: React.FC = () => {
-  // Data statis sebagai contoh
-  const stats = {
-    pendingArticles: 5,
-    ongoingEvents: 2,
-    dailyVisitors: 1482,
-  };
+  const { data, isLoading, isError, isAdmin } = useDashboard();
 
-  // Data statis untuk berita trending
-  const trendingArticles = [
-    { id: 1, title: 'Tips Jitu Merawat Kaktus di Musim Hujan', views: 12500 },
-    { id: 2, title: 'Mengenal 5 Jenis Aglonema Paling Populer', views: 9800 },
-    { id: 3, title: 'Rahasia Membuat Bonsai Beringin Tampak Tua', views: 7600 },
-    { id: 4, title: 'Cara Stek Batang Mawar agar Cepat Tumbuh', views: 6540 },
-  ];
-  
-  // State untuk menyimpan ID artikel yang menjadi "hot"
-  const [hotArticleId, setHotArticleId] = useState<number>(1); // Default artikel pertama jadi hot
-
-  const handleSetHotArticle = (id: number) => {
-    setHotArticleId(id);
-    // Di aplikasi nyata, Anda akan mengirim pembaruan ini ke server
-    console.log(`Artikel ID ${id} telah dijadikan hot news.`);
-  };
-
+  if (isLoading) {
+    return <div className="text-center text-gray-600 p-8">Memuat data dashboard...</div>;
+  }
+  if (isError || !data) {
+    return <div className="text-center text-red-500 p-8">Gagal memuat data dashboard.</div>;
+  }
 
   return (
     <div>
       <h2 className="text-3xl font-bold text-gray-800 mb-6">Dashboard</h2>
-      
-      {/* Grid untuk Kartu Statistik */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <StatCard 
-          icon={Newspaper} 
-          title="Berita Perlu Persetujuan" 
-          value={stats.pendingArticles.toString()}
-          color="yellow"
-        />
-        <StatCard 
-          icon={Calendar} 
-          title="Event Sedang Berjalan" 
-          value={stats.ongoingEvents.toString()}
-          color="blue"
-        />
-        <StatCard 
-          icon={Eye} 
-          title="Pengunjung Hari Ini" 
-          value={stats.dailyVisitors.toLocaleString('id-ID')}
-          color="green"
-        />
-      </div>
-
-      {/* Grid untuk konten utama (Aktivitas & Trending) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10">
-        {/* Bagian Aktivitas Terbaru */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Aktivitas Terbaru</h3>
-          <ul>
-            <li className="flex items-center gap-4 py-3 border-b">
-              <CheckCircle className="text-green-500" size={20} />
-              <div>
-                <p className="font-semibold">Artikel "Cara Merawat Anggrek" telah disetujui.</p>
-                <p className="text-sm text-gray-500">2 jam yang lalu</p>
-              </div>
-            </li>
-            <li className="flex items-center gap-4 py-3">
-              <Newspaper className="text-yellow-500" size={20} />
-              <div>
-                <p className="font-semibold">Jurnalis Budi Santoso mengirim artikel baru.</p>
-                <p className="text-sm text-gray-500">5 jam yang lalu</p>
-              </div>
-            </li>
-          </ul>
-        </div>
-
-        {/* Bagian Berita Paling Trending */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <TrendingUp className="text-blue-600" />
-            Berita Paling Trending
-          </h3>
-          <div className="space-y-2">
-            {trendingArticles.map((article) => {
-              const isHot = article.id === hotArticleId;
-              return (
-                <div key={article.id} className={`p-3 rounded-lg flex items-center justify-between transition-colors ${isHot ? 'bg-orange-100' : 'bg-transparent'}`}>
-                  <div className="flex items-center gap-3">
-                    {isHot ? <Flame className="text-orange-500" size={20} /> : <span className="text-lg font-bold text-gray-400 w-5 text-center">{trendingArticles.indexOf(article) + 1}.</span>}
-                    <span className="text-gray-700 font-medium">{article.title}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                      {article.views.toLocaleString('id-ID')} views
-                    </span>
-                    {!isHot && (
-                      <button 
-                        onClick={() => handleSetHotArticle(article.id)}
-                        className="text-xs font-bold text-orange-600 bg-orange-200 hover:bg-orange-300 px-3 py-1 rounded-full transition-colors"
-                        title="Jadikan Hot News"
-                      >
-                        <Star size={14} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      {/* REVISI: Gunakan 'casting' (as) untuk memberi tahu TypeScript tipe data yang benar */}
+      {isAdmin 
+        ? <AdminView data={data as AdminDashboardData} /> 
+        : <JournalistView data={data as JournalistDashboardData} />}
     </div>
   );
 };

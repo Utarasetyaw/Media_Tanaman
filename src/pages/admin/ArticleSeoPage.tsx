@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Settings2, ArrowLeft, Save, PlusCircle, Trash2 } from 'lucide-react';
-import type { Article, SEO, Backlink } from '../../types';
-import * as apiArticles from '../../services/apiArticles';
+import type { SEO, Backlink } from '../../types';
+import { useArticleSeo } from '../../hooks/useArticleSeo';
 
 const initialSeoData: Partial<SEO> = {
     metaTitle: { id: '', en: '' },
@@ -21,18 +20,9 @@ const initialSeoData: Partial<SEO> = {
 };
 
 export const ArticleSeoPage: React.FC = () => {
-    const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
-    const queryClient = useQueryClient();
-    const articleId = Number(id);
+    const { articleData, isLoading, isSaving, saveSeo } = useArticleSeo();
 
     const [seoData, setSeoData] = useState<Partial<SEO>>(initialSeoData);
-
-    const { data: articleData, isLoading } = useQuery<Article>({
-        queryKey: ['articleSeo', articleId],
-        queryFn: () => apiArticles.getArticleById(articleId),
-        enabled: !!articleId,
-    });
 
     useEffect(() => {
         if (articleData?.seo) {
@@ -48,28 +38,15 @@ export const ArticleSeoPage: React.FC = () => {
                 ogDescription: articleData.seo.ogDescription || { id: '', en: '' },
                 ogImageUrl: articleData.seo.ogImageUrl || '',
                 twitterHandle: articleData.seo.twitterHandle || '',
-                // --- PERBAIKAN DI SINI ---
                 backlinks: articleData.seo.backlinks?.map((b: any, i: number) => ({ ...b, id: i })) || [],
             });
         }
     }, [articleData]);
     
-    const mutation = useMutation({
-        mutationFn: (updatedSeoData: Partial<SEO>) => apiArticles.updateArticle({ id: articleId, seo: updatedSeoData }),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['allAdminArticles'] });
-            queryClient.invalidateQueries({ queryKey: ['articleSeo', articleId] });
-            alert('Pengaturan SEO berhasil disimpan!');
-            navigate('/admin/articles');
-        },
-        onError: (error: any) => {
-            alert(`Gagal menyimpan SEO: ${error.response?.data?.error || error.message}`);
-        }
-    });
-
     const handleSeoChange = (field: keyof Omit<SEO, 'backlinks'>, lang: 'id' | 'en', value: string) => {
         setSeoData(prev => ({ ...prev, [field]: { ...(prev[field] as object), [lang]: value } }));
     };
+
     const handleSimpleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setSeoData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
@@ -96,10 +73,9 @@ export const ArticleSeoPage: React.FC = () => {
         e.preventDefault();
         const finalSeoData = {
             ...seoData,
-            // Pass backlinks as-is, including 'id'
             backlinks: seoData.backlinks
         };
-        mutation.mutate(finalSeoData);
+        saveSeo(finalSeoData);
     };
 
     if (isLoading) { return <div className="text-white p-8 text-center">Memuat data SEO...</div>; }
@@ -177,8 +153,8 @@ export const ArticleSeoPage: React.FC = () => {
                 </div>
 
                 <div className="flex justify-end pt-4 border-t border-lime-400/30">
-                    <button type="submit" disabled={mutation.isPending} className="bg-lime-400 text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-lime-500 flex items-center gap-2 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
-                        <Save size={18} /> {mutation.isPending ? 'Menyimpan...' : 'Simpan SEO'}
+                    <button type="submit" disabled={isSaving} className="bg-lime-400 text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-lime-500 flex items-center gap-2 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
+                        <Save size={18} /> {isSaving ? 'Menyimpan...' : 'Simpan SEO'}
                     </button>
                 </div>
             </form>

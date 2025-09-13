@@ -1,43 +1,58 @@
 import React, { useState } from 'react';
 import { TaxonomyManager } from './components/TaxonomyManager';
-import { GeneralSettingsComponent } from './components/GeneralSettingsComponent'; // <-- Impor komponen baru
-import * as api from '../../services/apiAdmin';
+import { GeneralSettingsComponent } from './components/GeneralSettingsComponent';
+// REVISI: Impor 'api' dari service utama, bukan dari 'apiAdmin' yang tidak ada
+import api from '../../services/apiService'; 
+
+// --- Tipe Data Lokal untuk API ---
+// Ini harus cocok dengan tipe 'TaxonomyPayload' di dalam hook
+type TaxonomyPayload = { name: { id: string; en: string } };
+
+// REVISI: Definisikan fungsi-fungsi API untuk Kategori di sini
+const categoryApi = {
+  getAll: () => api.get('/categories').then(res => res.data),
+  create: (data: TaxonomyPayload) => api.post('/categories', data).then(res => res.data),
+  update: (id: number, data: Partial<TaxonomyPayload>) => api.put(`/categories/${id}`, data).then(res => res.data),
+  delete: (id: number) => api.delete(`/categories/${id}`).then(res => res.data),
+};
+
+// REVISI: Definisikan fungsi-fungsi API untuk Tipe Tanaman di sini
+const plantTypeApi = {
+  getAll: () => api.get('/plant-types').then(res => res.data),
+  create: (data: TaxonomyPayload) => api.post('/plant-types', data).then(res => res.data),
+  update: (id: number, data: Partial<TaxonomyPayload>) => api.put(`/plant-types/${id}`, data).then(res => res.data),
+  delete: (id: number) => api.delete(`/plant-types/${id}`).then(res => res.data),
+};
 
 type ActiveTab = 'categories' | 'plantTypes' | 'general';
 
 export const CompanyManagementPage: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<ActiveTab>('general'); // Default ke Pengaturan Umum
+    const [activeTab, setActiveTab] = useState<ActiveTab>('general');
 
     const renderContent = () => {
         switch (activeTab) {
             case 'categories':
                 return (
                     <TaxonomyManager
+                        queryKey="adminCategories" 
                         title="Manajemen Kategori"
                         itemName="Kategori"
-                        api={{
-                            getAll: api.getCategories,
-                            create: api.createCategory,
-                            update: api.updateCategory,
-                            delete: api.deleteCategory,
-                        }}
+                        // REVISI: Berikan objek API yang sudah kita definisikan di atas
+                        api={categoryApi}
                     />
                 );
             case 'plantTypes':
                 return (
                     <TaxonomyManager
+                        queryKey="adminPlantTypes"
                         title="Manajemen Tipe Tanaman"
                         itemName="Tipe Tanaman"
-                        api={{
-                            getAll: api.getPlantTypes,
-                            create: api.createPlantType,
-                            update: api.updatePlantType,
-                            delete: api.deletePlantType,
-                        }}
+                        // REVISI: Berikan objek API yang sudah kita definisikan di atas
+                        api={plantTypeApi}
                     />
                 );
             case 'general':
-                return <GeneralSettingsComponent />; // <-- Gunakan komponen baru di sini
+                return <GeneralSettingsComponent />;
             default:
                 return null;
         }

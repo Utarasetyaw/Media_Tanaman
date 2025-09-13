@@ -1,9 +1,7 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useParams, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ArrowLeft, Eye, Heart, BarChart2 } from 'lucide-react';
-import type { Article } from '../../types';
-import { getArticleById } from '../../services/apiArticles';
+import { useJournalistArticleAnalytics } from '../../hooks/useJournalistArticleAnalytics'; // <-- Impor hook baru
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -20,14 +18,8 @@ const StatCard: React.FC<{ icon: React.ElementType; title: string; value: number
 );
 
 export const JournalistArticleAnalyticsPage: React.FC = () => {
-    const { id } = useParams<{ id: string }>();
-    const articleId = Number(id);
-
-    const { data: article, isLoading, error } = useQuery<Article>({
-        queryKey: ['myArticleAnalytics', articleId],
-        queryFn: () => getArticleById(articleId),
-        enabled: !!articleId,
-    });
+    // REVISI: Semua logika data sekarang berasal dari satu hook
+    const { article, isLoading, error } = useJournalistArticleAnalytics();
 
     if (isLoading) return <div className="p-8 text-center text-white">Memuat analitik artikel...</div>;
     if (error) return <div className="p-8 text-center text-red-400">Gagal memuat data: {(error as Error).message}</div>;
@@ -52,7 +44,6 @@ export const JournalistArticleAnalyticsPage: React.FC = () => {
                 
                 <h4 className="text-xl font-bold text-lime-400 mb-4">Statistik Performa</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                    {/* Menggunakan nullish coalescing (??) sebagai pengaman jika data null */}
                     <StatCard icon={Eye} title="Total Pembaca" value={article.viewCount ?? 0} color="blue" />
                     <StatCard icon={Heart} title="Total Suka" value={article._count?.likes ?? 0} color="pink" />
                     <StatCard icon={BarChart2} title="Status" value={article.status.replace('_', ' ')} color="green" />

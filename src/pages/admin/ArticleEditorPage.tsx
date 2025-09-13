@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Newspaper, ArrowLeft, Save } from 'lucide-react';
-import type { Article, Category, PlantType } from '../../types';
-import * as apiAdmin from '../../services/apiAdmin';
-import * as apiArticles from '../../services/apiArticles';
-import { MarkdownEditor } from './components/MarkdownEditor'; // <-- Impor komponen editor baru
+import { useParams, Link } from 'react-router-dom';
+import { Newspaper, ArrowLeft, Save, Send } from 'lucide-react';
+import { useArticleEditor } from '../../hooks/useArticleEditor';
+import { MarkdownEditor } from './components/MarkdownEditor';
+import { useAuth } from '../../contexts/AuthContext'; // Asumsi path ke auth context Anda
 
 const initialFormData = {
     title: { id: '', en: '' },
@@ -18,30 +16,15 @@ const initialFormData = {
 
 export const ArticleEditorPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
-    const queryClient = useQueryClient();
     const isEditMode = Boolean(id);
+    const { user } = useAuth(); // Ambil info user dari context
 
-    // --- STATE MANAGEMENT ---
+    // Gunakan satu hook untuk semua logika data
+    const { articleData, categories, plantTypes, isLoading, isSaving, handleSaveAction } = useArticleEditor(id);
+
+    // State UI tetap di komponen
     const [formData, setFormData] = useState<any>(initialFormData);
     const [imageFile, setImageFile] = useState<File | null>(null);
-
-    // --- DATA FETCHING MENGGUNAKAN REACT QUERY ---
-    const { data: articleData, isLoading: isLoadingArticle } = useQuery<Article>({
-        queryKey: ['adminArticle', id],
-        queryFn: () => apiArticles.getArticleById(Number(id!)),
-        enabled: isEditMode,
-    });
-
-    const { data: categories = [] } = useQuery<Category[]>({
-        queryKey: ['allCategories'],
-        queryFn: apiAdmin.getCategories,
-    });
-
-    const { data: plantTypes = [] } = useQuery<PlantType[]>({
-        queryKey: ['allPlantTypes'],
-        queryFn: apiAdmin.getPlantTypes,
-    });
 
     // Efek untuk mengisi form saat data artikel (dalam mode edit) selesai dimuat
     useEffect(() => {
@@ -57,21 +40,6 @@ export const ArticleEditorPage: React.FC = () => {
         }
     }, [articleData, isEditMode]);
     
-    // --- MUTATIONS (CREATE/UPDATE) ---
-    const mutation = useMutation({
-        mutationFn: (payload: any) => isEditMode 
-            ? apiArticles.updateArticle({ id: Number(id), ...payload }) 
-            : apiArticles.createArticle(payload),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['allAdminArticles'] });
-            queryClient.invalidateQueries({ queryKey: ['myArticles'] }); // Juga invalidate untuk jurnalis
-            navigate(window.location.pathname.includes('/admin') ? '/admin/articles' : '/jurnalis/articles');
-        },
-        onError: (error: any) => {
-            alert(`Gagal menyimpan: ${error.response?.data?.error || error.message}`);
-        }
-    });
-
     // --- HANDLERS ---
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -88,40 +56,17 @@ export const ArticleEditorPage: React.FC = () => {
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    // Handler sekarang menerima tipe aksi ('save' atau 'publish')
+    const handleAction = (action: 'save' | 'publish') => {
         if (!formData.title.id || !formData.categoryId) {
             alert('Judul (Indonesia) dan Kategori wajib diisi.');
             return;
         }
-
-        let finalImageUrl = formData.imageUrl;
-
-        try {
-            if (imageFile) {
-                const uploadRes = await apiAdmin.uploadFile('artikel', imageFile);
-                finalImageUrl = uploadRes.imageUrl;
-            }
-
-            if (!finalImageUrl) {
-                alert('Gambar utama wajib diunggah.');
-                return;
-            }
-
-            const payload = {
-                ...formData,
-                imageUrl: finalImageUrl,
-            };
-            
-            mutation.mutate(payload);
-
-        } catch (error) {
-            console.error("Failed to upload image or save article", error);
-            alert("Terjadi kesalahan saat menyimpan.");
-        }
+        // Panggil fungsi dari hook dengan membawa state UI dan aksi yang dipilih
+        handleSaveAction({ formData, imageFile, action });
     };
 
-    if (isEditMode && isLoadingArticle) {
+    if (isLoading) {
         return <div className="text-white p-8 text-center">Memuat data artikel...</div>;
     }
 
@@ -135,7 +80,7 @@ export const ArticleEditorPage: React.FC = () => {
                 <Newspaper /> {isEditMode ? 'Edit Artikel' : 'Buat Artikel Baru'}
             </h2>
             
-            <form onSubmit={handleSubmit} className="bg-[#004A49]/60 border-2 border-lime-400/50 shadow-lg rounded-lg p-6 space-y-6">
+            <form onSubmit={(e) => e.preventDefault()} className="bg-[#004A49]/60 border-2 border-lime-400/50 shadow-lg rounded-lg p-6 space-y-6">
                 <div className="grid md:grid-cols-2 gap-4">
                     <div><label className="block text-sm font-medium text-gray-300 mb-1">Judul (Indonesia)</label><input value={formData.title.id} onChange={(e) => handleJsonChange('title', 'id', e.target.value)} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200" required/></div>
                     <div><label className="block text-sm font-medium text-gray-300 mb-1">Judul (English)</label><input value={formData.title.en} onChange={(e) => handleJsonChange('title', 'en', e.target.value)} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/></div>
@@ -188,10 +133,27 @@ export const ArticleEditorPage: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex justify-end pt-6 border-t border-lime-400/30">
-                    <button type="submit" disabled={mutation.isPending} className="bg-lime-400 text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-lime-500 flex items-center gap-2 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
-                        <Save size={18} /> {mutation.isPending ? 'Menyimpan...' : 'Simpan Artikel'}
-                    </button>
+                <div className="flex justify-end pt-6 border-t border-lime-400/30 gap-4">
+                    {isEditMode && (
+                         <button type="button" onClick={() => handleAction('save')} disabled={isSaving} className="bg-lime-400 text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-lime-500 flex items-center gap-2 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
+                            <Save size={18} /> {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
+                        </button>
+                    )}
+                    {!isEditMode && user?.role === 'ADMIN' && (
+                        <>
+                            <button type="button" onClick={() => handleAction('save')} disabled={isSaving} className="bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600 flex items-center gap-2 transition-colors disabled:bg-gray-700 disabled:opacity-60">
+                                <Save size={18} /> {isSaving ? 'Menyimpan...' : 'Simpan Draf'}
+                            </button>
+                             <button type="button" onClick={() => handleAction('publish')} disabled={isSaving} className="bg-lime-400 text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-lime-500 flex items-center gap-2 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
+                                <Send size={18} /> {isSaving ? 'Mempublikasi...' : 'Publish'}
+                            </button>
+                        </>
+                    )}
+                    {!isEditMode && user?.role === 'JOURNALIST' && (
+                         <button type="button" onClick={() => handleAction('save')} disabled={isSaving} className="bg-lime-400 text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-lime-500 flex items-center gap-2 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
+                            <Save size={18} /> {isSaving ? 'Menyimpan...' : 'Simpan Artikel'}
+                        </button>
+                    )}
                 </div>
             </form>
         </div>

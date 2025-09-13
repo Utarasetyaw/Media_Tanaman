@@ -1,50 +1,8 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
 import { CheckCircle, Clock, Edit, ShieldAlert, XCircle, FileText, MessageSquare } from 'lucide-react';
 import type { Article, ArticleStatus, AdminEditRequestStatus } from '../../types';
-
-
-// --- Konfigurasi API Service (diintegrasikan langsung) ---
-const api = axios.create({
-  baseURL: 'http://localhost:5000/api', 
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-// --- Akhir dari Konfigurasi API ---
-
-interface DashboardStats {
-    published: number;
-    inReview: number;
-    needsRevision: number;
-    adminRequest: number;
-    rejected: number;
-}
-
-interface DashboardData {
-    stats: DashboardStats;
-    recentArticles: Article[];
-}
-
-// --- API Function ---
-const fetchDashboardData = async (): Promise<DashboardData> => {
-    const { data } = await api.get('/articles/my-dashboard-stats');
-    return data;
-};
+// REVISI: Impor hook baru
+import { useJournalistDashboard } from '../../hooks/useJournalistDashboard';
 
 // --- Sub-Komponen ---
 
@@ -62,9 +20,9 @@ const StatCard: React.FC<{ icon: React.ElementType; title: string; value: number
 
 const getStatusChip = (article: Article) => {
     const displayStatus = article.adminEditRequest === 'PENDING' ? article.adminEditRequest : article.status;
-    const statusText = displayStatus.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const statusText = displayStatus.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     
-    const styles: Record<ArticleStatus | AdminEditRequestStatus, string> = {
+    const styles: Record<ArticleStatus | AdminEditRequestStatus | 'NONE', string> = {
         PUBLISHED: 'bg-green-500/20 text-green-300',
         IN_REVIEW: 'bg-blue-500/20 text-blue-300',
         NEEDS_REVISION: 'bg-yellow-500/20 text-yellow-300',
@@ -83,10 +41,8 @@ const getStatusChip = (article: Article) => {
 
 // --- Komponen Utama ---
 export const JournalistDashboardPage: React.FC = () => {
-    const { data, isLoading, error } = useQuery<DashboardData>({
-        queryKey: ['journalistDashboard'],
-        queryFn: fetchDashboardData,
-    });
+    // REVISI: Panggil hook untuk mendapatkan data
+    const { data, isLoading, error } = useJournalistDashboard();
 
     if (isLoading) return <div className="p-8 text-center text-white">Memuat dashboard...</div>;
     if (error) return <div className="p-8 text-center text-red-400">Gagal memuat data: {(error as Error).message}</div>;
@@ -136,4 +92,3 @@ export const JournalistDashboardPage: React.FC = () => {
         </div>
     );
 };
-

@@ -2,6 +2,8 @@ import { useState, Fragment } from 'react';
 import type { FC } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
+import { useLayoutData } from '../hooks/useLayoutData';
+import GlobalSearch from './GlobalSearch';
 
 // --- Interface & Tipe Data ---
 interface NavItemProps {
@@ -34,12 +36,6 @@ const CloseIcon: FC = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
   </svg>
-);
-
-const SearchIcon: FC = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-    </svg>
 );
 
 const FlagIndonesia: FC = () => ( <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" className="w-8 h-auto rounded-md shadow-sm flex-shrink-0"><path fill="#fff" d="M0 0h640v480H0z"/><path fill="#ce1126" d="M0 0h640v240H0z"/></svg> );
@@ -85,7 +81,6 @@ const LanguageSwitcher: FC<LanguageSwitcherProps> = ({ displayType = 'dropdown',
   );
 };
 
-
 // --- Komponen Navigasi ---
 const NavItem: FC<NavItemProps> = ({ to, text, end }) => (
   <li>
@@ -126,6 +121,7 @@ const MobileNavItem: FC<MobileNavItemProps> = ({ to, text, end, onClick }) => (
 
 // --- Komponen Utama Navbar ---
 const Navbar: FC = () => {
+  const { data: layoutData, isLoading } = useLayoutData();
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [currentLang, setCurrentLang] = useState<'id' | 'en'>('id');
   
@@ -136,7 +132,7 @@ const Navbar: FC = () => {
   const mainNavLinks: NavLinkItem[] = [
     { to: "/", textKey: 'home', end: true },
     { to: "/plants", textKey: 'plant' },
-    { to: "/news", textKey: 'news' },
+    { to: "/articles", textKey: 'article' },
     { to: "/events", textKey: 'event' },
     { to: "/about", textKey: 'about' },
   ];
@@ -144,32 +140,28 @@ const Navbar: FC = () => {
   return (
     <>
       <TopBar />
-      {/* PERUBAHAN: Menambahkan border-b-2 border-lime-400 */}
       <header className="sticky top-0 z-50 bg-[#003938] border-b-2 border-lime-400">
         <nav className="container mx-auto px-2 sm:px-2 lg:px-4">
           <div className="flex h-16 items-center justify-between gap-4">
-            {/* Grup Kiri: Logo & Pencarian */}
             <div className="flex flex-1 items-center gap-6">
               <Link to="/" className="flex-shrink-0 flex items-center gap-2 text-xl font-bold text-white">
-                <span className="font-extrabold">Narapati</span>
-                <span className="font-light">Flora</span>
+                {isLoading ? (
+                  <span className="h-8 w-32 bg-gray-700 rounded animate-pulse"></span>
+                ) : (
+                  <>
+                    {layoutData?.settings.logoUrl ? (
+                      <img src={layoutData.settings.logoUrl} alt={layoutData.settings.name} className="h-8 w-auto" />
+                    ) : (
+                       <span className="font-extrabold">{layoutData?.settings.name || 'Narapati Flora'}</span>
+                    )}
+                  </>
+                )}
               </Link>
-              {/* Pencarian Desktop */}
-              <div className="relative w-full hidden md:block">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <SearchIcon />
-                </div>
-                <input
-                  type="search"
-                  name="search"
-                  id="search"
-                  className="block w-full bg-white/20 border border-transparent rounded-full py-2 pl-10 pr-4 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:bg-white/25 sm:text-sm"
-                  placeholder="Cari tanaman..."
-                />
+              <div className="w-full hidden md:block">
+                <GlobalSearch />
               </div>
             </div>
 
-            {/* Grup Kanan: Navigasi & Bahasa */}
             <div className="hidden md:flex items-center gap-6">
               <ul className="flex items-baseline space-x-2">
                   {mainNavLinks.map((link) => (
@@ -178,15 +170,9 @@ const Navbar: FC = () => {
               </ul>
               <LanguageSwitcher currentLang={currentLang} changeLanguage={setCurrentLang} />
             </div>
-
-            {/* Tombol Menu Mobile */}
+            
             <div className="flex md:hidden">
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="inline-flex items-center justify-center rounded-md p-2 text-gray-300 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-lime-400"
-                aria-controls="mobile-menu"
-                aria-expanded={isMenuOpen}
-              >
+              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="inline-flex items-center justify-center rounded-md p-2 text-gray-300 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-lime-400" >
                 <span className="sr-only">Open main menu</span>
                 {isMenuOpen ? <CloseIcon /> : <MenuIcon />}
               </button>
@@ -194,43 +180,14 @@ const Navbar: FC = () => {
           </div>
         </nav>
 
-        {/* Panel Menu Mobile */}
-        <Transition
-          show={isMenuOpen}
-          as={Fragment}
-          enter="transition ease-out duration-200"
-          enterFrom="opacity-0 -translate-y-1"
-          enterTo="opacity-100 translate-y-0"
-          leave="transition ease-in duration-150"
-          leaveFrom="opacity-100 translate-y-0"
-          leaveTo="opacity-0 -translate-y-1"
-        >
-          {/* PERUBAHAN: Mengganti border-gray-800 menjadi border-lime-400 */}
+        <Transition show={isMenuOpen} as={Fragment} enter="transition ease-out duration-200" enterFrom="opacity-0 -translate-y-1" enterTo="opacity-100 translate-y-0" leave="transition ease-in duration-150" leaveFrom="opacity-100 translate-y-0" leaveTo="opacity-0 -translate-y-1" >
           <div className="md:hidden absolute top-full left-0 w-full bg-[#003938] border-b-2 border-lime-400 shadow-lg" id="mobile-menu">
-             {/* Pencarian Mobile */}
             <div className="p-4 border-b border-white/20">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <SearchIcon />
-                </div>
-                <input
-                  type="search"
-                  name="search-mobile"
-                  id="search-mobile"
-                  className="block w-full bg-white/20 border border-transparent rounded-full py-2 pl-10 pr-4 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:bg-white/25 sm:text-sm"
-                  placeholder="Cari tanaman..."
-                />
-              </div>
+              <GlobalSearch />
             </div>
             <ul className="space-y-1 px-4 pt-2 pb-3">
               {mainNavLinks.map((link) => (
-                <MobileNavItem
-                  key={link.to}
-                  to={link.to}
-                  text={t(link.textKey)}
-                  end={link.end}
-                  onClick={() => setIsMenuOpen(false)}
-                />
+                <MobileNavItem key={link.to} to={link.to} text={t(link.textKey)} end={link.end} onClick={() => setIsMenuOpen(false)} />
               ))}
             </ul>
             <div className="border-t border-white/20 py-3">

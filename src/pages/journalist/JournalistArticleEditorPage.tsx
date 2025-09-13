@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Save, Send, Loader2, AlertTriangle } from 'lucide-react';
-import type { Article, Category, PlantType } from '../../types';
-import * as apiAdmin from '../../services/apiAdmin';
-import * as apiArticles from '../../services/apiArticles';
-import * as apiJournalist from '../../services/apiJournalist'; // Kita akan buat ini
-import { MarkdownEditor } from '../admin/components/MarkdownEditor'; // Gunakan ulang editor dari admin
+import { useParams, Link } from 'react-router-dom';
+import { ArrowLeft, Save, Send, Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
+import { useJournalistArticleEditor } from '../../hooks/useJournalistArticleEditor';
+import { MarkdownEditor } from '../admin/components/MarkdownEditor';
+import { useAuth } from '../../contexts/AuthContext';
 
 const initialFormData = {
     title: { id: '', en: '' },
@@ -19,22 +16,21 @@ const initialFormData = {
 
 export const JournalistArticleEditorPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
-    const queryClient = useQueryClient();
     const isEditMode = Boolean(id);
-    const articleId = Number(id);
+    useAuth();
+
+    const { 
+        articleData, 
+        categories, 
+        plantTypes, 
+        isLoading, 
+        isSaving, 
+        saveArticleAsync, 
+        finishRevision 
+    } = useJournalistArticleEditor();
 
     const [formData, setFormData] = useState<any>(initialFormData);
     const [imageFile, setImageFile] = useState<File | null>(null);
-
-    const { data: articleData, isLoading: isLoadingArticle } = useQuery<Article>({
-        queryKey: ['journalistArticle', articleId],
-        queryFn: () => apiArticles.getArticleById(articleId), // getArticleById bisa dipakai jurnalis & admin
-        enabled: isEditMode,
-    });
-
-    const { data: categories = [] } = useQuery<Category[]>({ queryKey: ['allCategories'], queryFn: apiAdmin.getCategories });
-    const { data: plantTypes = [] } = useQuery<PlantType[]>({ queryKey: ['allPlantTypes'], queryFn: apiAdmin.getPlantTypes });
 
     useEffect(() => {
         if (isEditMode && articleData) {
@@ -49,30 +45,6 @@ export const JournalistArticleEditorPage: React.FC = () => {
         }
     }, [articleData, isEditMode]);
     
-    const mutation = useMutation({
-        mutationFn: (payload: any) => isEditMode 
-            ? apiArticles.updateArticle({ id: articleId, ...payload }) 
-            : apiArticles.createArticle(payload),
-        onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: ['myArticles'] });
-            // Jika ini artikel baru, arahkan ke mode edit agar bisa langsung submit
-            if (!isEditMode) {
-                navigate(`/jurnalis/articles/edit/${data.data.id}`);
-            }
-        },
-        onError: (error: any) => alert(`Gagal menyimpan: ${error.response?.data?.error || error.message}`),
-    });
-
-    const submitMutation = useMutation({
-        mutationFn: (idToSubmit: number) => apiJournalist.submitArticleForReview(idToSubmit),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['myArticles'] });
-            alert('Artikel berhasil dikirim untuk ditinjau!');
-            navigate('/jurnalis/articles');
-        },
-        onError: (error: any) => alert(`Gagal mengirim: ${error.response?.data?.error || error.message}`),
-    });
-
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData((prev: any) => ({ ...prev, [name]: value }));
@@ -88,47 +60,40 @@ export const JournalistArticleEditorPage: React.FC = () => {
         }
     };
 
-    const handleAction = async (action: 'save' | 'submit') => {
+    const handleSaveDraft = () => {
         if (!formData.title.id || !formData.categoryId) {
             alert('Judul (Indonesia) dan Kategori wajib diisi.');
             return;
         }
+        saveArticleAsync({ formData, imageFile, action: 'save' });
+    };
 
-        let finalImageUrl = formData.imageUrl;
+    const handleSubmitForReview = () => {
+        if (!formData.title.id || !formData.categoryId) {
+            alert('Judul (Indonesia) dan Kategori wajib diisi.');
+            return;
+        }
+        saveArticleAsync({ formData, imageFile, action: 'submit' });
+    };
+
+    const handleFinishRevision = async () => {
+        if (!window.confirm('Yakin ingin mengirim hasil revisi ini kembali ke admin?')) return;
+        if (!formData.title.id || !formData.categoryId) {
+            alert('Judul (Indonesia) dan Kategori wajib diisi.');
+            return;
+        }
         try {
-            if (imageFile) {
-                const uploadRes = await apiAdmin.uploadFile('artikel', imageFile);
-                finalImageUrl = uploadRes.imageUrl;
-            }
-
-            if (!finalImageUrl && action === 'submit') {
-                alert('Gambar utama wajib diunggah sebelum mengirim untuk ditinjau.');
-                return;
-            }
-
-            const payload = { ...formData, imageUrl: finalImageUrl };
-            
-            // Simpan dulu (baik create atau update)
-            const savedArticle = await mutation.mutateAsync(payload);
-            
-            // Jika aksinya adalah submit, panggil submitMutation setelah berhasil menyimpan
-            if (action === 'submit') {
-                const idToSubmit = isEditMode ? articleId : savedArticle.data.id;
-                submitMutation.mutate(idToSubmit);
-            } else {
-                alert('Draf berhasil disimpan!');
+            const savedArticle = await saveArticleAsync({ formData, imageFile, action: 'save' });
+            if (savedArticle) {
+                finishRevision(savedArticle.id);
             }
         } catch (error) {
-            console.error("Save/Submit error:", error);
-            // Error sudah ditangani di `onError` masing-masing mutation
+            console.log("Gagal menyimpan sebelum menyelesaikan revisi.", error);
         }
     };
 
-    const isLoading = mutation.isPending || submitMutation.isPending;
-    if (isLoadingArticle) return <div className="text-white p-8 text-center">Memuat editor...</div>;
+    if (isLoading) return <div className="text-white p-8 text-center">Memuat editor...</div>;
 
-    // Tentukan apakah tombol submit bisa ditampilkan
-    const canSubmit = !isEditMode || (articleData && ['DRAFT', 'NEEDS_REVISION'].includes(articleData.status));
     const displayImageUrl = imageFile ? URL.createObjectURL(imageFile) : formData.imageUrl;
 
     return (
@@ -137,14 +102,19 @@ export const JournalistArticleEditorPage: React.FC = () => {
                 <ArrowLeft size={20} /> Kembali ke Artikel Saya
             </Link>
 
-            {articleData?.feedback && articleData.status === 'NEEDS_REVISION' && (
+            {articleData?.feedback && ['NEEDS_REVISION', 'JOURNALIST_REVISING'].includes(articleData.status) && (
                 <div className="bg-yellow-500/20 border-l-4 border-yellow-400 text-yellow-300 p-4 mb-6 rounded-r-lg">
-                    <div className="flex items-start"><AlertTriangle className="h-5 w-5 mr-3 mt-1"/><div><p className="font-bold">Feedback dari Admin:</p><p className="text-sm italic">"{articleData.feedback}"</p></div></div>
+                    <div className="flex items-start">
+                        <AlertTriangle className="h-5 w-5 mr-3 mt-1"/>
+                        <div>
+                            <p className="font-bold">Feedback dari Admin:</p>
+                            <p className="text-sm italic">"{articleData.feedback}"</p>
+                        </div>
+                    </div>
                 </div>
             )}
 
             <form onSubmit={(e) => e.preventDefault()} className="bg-[#004A49]/60 border-2 border-lime-400/50 shadow-lg rounded-lg p-6 space-y-6">
-                {/* Input Judul & Excerpt */}
                 <div className="grid md:grid-cols-2 gap-4">
                     <input value={formData.title.id} onChange={(e) => handleJsonChange('title', 'id', e.target.value)} placeholder="Judul (Indonesia)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200" required/>
                     <input value={formData.title.en} onChange={(e) => handleJsonChange('title', 'en', e.target.value)} placeholder="Title (English)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
@@ -152,11 +122,9 @@ export const JournalistArticleEditorPage: React.FC = () => {
                     <textarea value={formData.excerpt.en} onChange={(e) => handleJsonChange('excerpt', 'en', e.target.value)} rows={3} placeholder="Excerpt (English)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
                 </div>
                 
-                {/* Editor Konten */}
                 <div><label className="block text-sm font-medium text-gray-300 mb-2">Konten (Indonesia)</label><MarkdownEditor value={formData.content.id} onChange={(value) => handleJsonChange('content', 'id', value)} /></div>
                 <div><label className="block text-sm font-medium text-gray-300 mb-2">Konten (English)</label><MarkdownEditor value={formData.content.en} onChange={(value) => handleJsonChange('content', 'en', value)} /></div>
 
-                {/* Metadata & Gambar */}
                 <div className="grid md:grid-cols-2 gap-6 border-t border-lime-400/30 pt-6">
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-1">Gambar Utama</label>
@@ -181,15 +149,28 @@ export const JournalistArticleEditorPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Tombol Aksi */}
+                {/* --- REVISI UTAMA PADA BAGIAN TOMBOL --- */}
                 <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t border-lime-400/30">
-                    <button type="button" onClick={() => handleAction('save')} disabled={isLoading} className="w-full sm:w-auto bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600 disabled:bg-gray-700 disabled:opacity-60 flex items-center justify-center gap-2">
-                        {isLoading ? <Loader2 className="animate-spin" size={20}/> : <Save size={16} />} Simpan Draf
-                    </button>
-                    {canSubmit && (
-                         <button type="button" onClick={() => handleAction('submit')} disabled={isLoading} className="w-full sm:w-auto bg-lime-400 text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-lime-500 disabled:bg-lime-700 disabled:opacity-60 flex items-center justify-center gap-2">
-                             {isLoading ? <Loader2 className="animate-spin" size={20}/> : <Send size={16} />} Kirim untuk Tinjauan
-                        </button>
+                    {isEditMode && ['NEEDS_REVISION', 'JOURNALIST_REVISING'].includes(articleData?.status || '') ? (
+                        // KONDISI 1: Jurnalis sedang merevisi
+                        <>
+                            <button type="button" onClick={handleSaveDraft} disabled={isSaving} className="w-full sm:w-auto bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600 disabled:bg-gray-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                                {isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={16} />} Simpan Perubahan
+                            </button>
+                            <button type="button" onClick={handleFinishRevision} disabled={isSaving} className="w-full sm:w-auto bg-green-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-600 disabled:bg-green-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                                {isSaving ? <Loader2 className="animate-spin" size={20}/> : <CheckCircle size={16} />} Revisi Selesai
+                            </button>
+                        </>
+                    ) : (
+                        // KONDISI 2: Selain merevisi (misal membuat draf baru)
+                        <>
+                            <button type="button" onClick={handleSaveDraft} disabled={isSaving} className="w-full sm:w-auto bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600 disabled:bg-gray-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                                {isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={16} />} Simpan Draf
+                            </button>
+                            <button type="button" onClick={handleSubmitForReview} disabled={isSaving} className="w-full sm:w-auto bg-lime-400 text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-lime-500 disabled:bg-lime-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                                {isSaving ? <Loader2 className="animate-spin" size={20}/> : <Send size={16} />} Kirim untuk Tinjauan
+                            </button>
+                        </>
                     )}
                 </div>
             </form>

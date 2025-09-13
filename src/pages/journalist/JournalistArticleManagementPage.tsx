@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Plus, Edit, Trash2, X, CheckCircle, MessageSquare, Send, Eye, ShieldCheck, ShieldX, PlayCircle, BarChart2 } from 'lucide-react';
+import { Plus, Edit, Trash2, X, CheckCircle, MessageSquare, Send, ShieldCheck, ShieldX, PlayCircle, BarChart2 } from 'lucide-react';
 import type { Article } from '../../types';
-import * as apiJournalist from '../../services/apiJournalist';
+import { useJournalistArticleManager } from '../../hooks/useJournalistArticleManager';
 
 type JournalistArticleFilter = 'ALL' | 'DRAFT' | 'IN_REVIEW' | 'NEEDS_REVISION' | 'PUBLISHED' | 'REJECTED' | 'PENDING';
 
@@ -33,36 +32,22 @@ const ActionButton: React.FC<{
 };
 
 export const JournalistArticleManagementPage: React.FC = () => {
-    const queryClient = useQueryClient();
+    const {
+        articles,
+        isLoading,
+        isError,
+        isMutating,
+        deleteArticle,
+        submitArticle,
+        startRevision,
+        finishRevision,
+        respondToRequest,
+    } = useJournalistArticleManager();
+
     const [activeFilter, setActiveFilter] = useState<JournalistArticleFilter>('ALL');
     const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
     const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
     const [currentArticle, setCurrentArticle] = useState<Article | null>(null);
-
-    const { data: articles = [], isLoading, error } = useQuery<Article[]>({
-        queryKey: ['myArticles'],
-        queryFn: apiJournalist.getMyArticles,
-    });
-
-    const mutationOptions = {
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['myArticles'] }),
-        onError: (err: any) => alert(err.response?.data?.error || 'Terjadi kesalahan.'),
-    };
-    
-    const deleteMutation = useMutation({ mutationFn: apiJournalist.deleteMyArticle, ...mutationOptions });
-    const submitMutation = useMutation({ mutationFn: apiJournalist.submitArticleForReview, ...mutationOptions });
-    const startRevisionMutation = useMutation({ mutationFn: apiJournalist.startRevision, ...mutationOptions });
-    const finishRevisionMutation = useMutation({ mutationFn: apiJournalist.finishRevision, ...mutationOptions });
-    
-    const respondRequestMutation = useMutation({
-        mutationFn: (variables: { articleId: number; response: "APPROVED" | "DENIED" }) => 
-            apiJournalist.respondToEditRequest(variables.articleId, variables.response),
-        onSuccess: () => {
-            mutationOptions.onSuccess();
-            setIsRequestModalOpen(false);
-        },
-        onError: mutationOptions.onError,
-    });
 
     const { filteredArticles, articleCounts } = useMemo(() => {
         const counts: Record<JournalistArticleFilter, number> = {
@@ -71,10 +56,12 @@ export const JournalistArticleManagementPage: React.FC = () => {
         articles.forEach(article => {
             if (article.adminEditRequest === 'PENDING') {
                 counts.PENDING++;
+            } else if (['IN_REVIEW', 'REVISED'].includes(article.status) || article.adminEditRequest === 'APPROVED') {
+                if (article.adminEditRequest !== 'DENIED') {
+                    counts.IN_REVIEW++;
+                }
             } else if (article.status === 'DRAFT') {
                 counts.DRAFT++;
-            } else if (['IN_REVIEW', 'REVISED'].includes(article.status)) {
-                counts.IN_REVIEW++;
             } else if (['NEEDS_REVISION', 'JOURNALIST_REVISING'].includes(article.status)) {
                 counts.NEEDS_REVISION++;
             } else if (article.status === 'PUBLISHED') {
@@ -91,19 +78,21 @@ export const JournalistArticleManagementPage: React.FC = () => {
             
             switch (activeFilter) {
                 case 'DRAFT': return article.status === 'DRAFT';
-                case 'IN_REVIEW': return ['IN_REVIEW', 'REVISED'].includes(article.status);
+                case 'IN_REVIEW': 
+                    const isInReviewStatus = ['IN_REVIEW', 'REVISED'].includes(article.status) || article.adminEditRequest === 'APPROVED';
+                    return isInReviewStatus && article.adminEditRequest !== 'DENIED';
                 case 'NEEDS_REVISION': return ['NEEDS_REVISION', 'JOURNALIST_REVISING'].includes(article.status);
                 case 'PUBLISHED': return article.status === 'PUBLISHED';
                 case 'REJECTED': return article.status === 'REJECTED' || article.adminEditRequest === 'DENIED';
+                default: return false;
             }
-            return false;
         };
         return { filteredArticles: articles.filter(filterLogic), articleCounts: counts };
     }, [articles, activeFilter]);
 
     const handleDelete = (id: number) => {
         if (window.confirm('Yakin ingin menghapus artikel ini?')) {
-            deleteMutation.mutate(id);
+            deleteArticle(id);
         }
     };
     
@@ -117,8 +106,15 @@ export const JournalistArticleManagementPage: React.FC = () => {
         setIsFeedbackModalOpen(true);
     };
 
+    const handleRespondToRequest = (response: "APPROVED" | "DENIED") => {
+        if (!currentArticle) return;
+        respondToRequest({ articleId: currentArticle.id, response }, {
+            onSuccess: () => setIsRequestModalOpen(false)
+        });
+    };
+
     if (isLoading) return <div className="p-8 text-center text-white">Memuat artikel Anda...</div>;
-    if (error) return <div className="p-8 text-center text-red-400">Gagal memuat data: {(error as Error).message}</div>;
+    if (isError) return <div className="p-8 text-center text-red-400">Gagal memuat data.</div>;
 
     const FilterButton: React.FC<{ filter: JournalistArticleFilter; label: string; count: number }> = ({ filter, label, count }) => (
         <button
@@ -136,18 +132,25 @@ export const JournalistArticleManagementPage: React.FC = () => {
     );
 
     const getStatusChip = (article: Article) => {
-        const displayStatus = article.adminEditRequest === 'PENDING' ? 'Permintaan Edit' : article.status.replace('_', ' ');
+        let displayStatus = article.status.replace(/_/g, ' ');
+        if (article.adminEditRequest === 'PENDING') displayStatus = 'Permintaan Edit';
+        if (article.adminEditRequest === 'APPROVED') displayStatus = 'Izin Diberikan';
+        if (article.adminEditRequest === 'DENIED') displayStatus = 'Izin Ditolak';
+
         const styles: Record<string, string> = {
             PUBLISHED: 'bg-green-500/20 text-green-300', IN_REVIEW: 'bg-blue-500/20 text-blue-300',
-            NEEDS_REVISION: 'bg-yellow-500/20 text-yellow-300', JOURNALIST_REVISING: 'bg-yellow-600/20 text-yellow-200 animate-pulse',
+            NEEDS_REVISION: 'bg-yellow-500/20 text-yellow-300', 'JOURNALIST REVISING': 'bg-yellow-600/20 text-yellow-200 animate-pulse',
             REVISED: 'bg-indigo-500/20 text-indigo-300', REJECTED: 'bg-red-500/20 text-red-300',
             DRAFT: 'bg-gray-500/20 text-gray-300', 'Permintaan Edit': 'bg-purple-500/20 text-purple-300',
-            DENIED: 'bg-pink-500/20 text-pink-300',
+            'Izin Diberikan': 'bg-teal-500/20 text-teal-300', 'Izin Ditolak': 'bg-pink-500/20 text-pink-300',
         };
         return <span className={`capitalize px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${styles[displayStatus] || 'bg-gray-600'}`}>{displayStatus}</span>;
     };
     
     const ActionButtons: React.FC<{ article: Article }> = ({ article }) => {
+        if (article.adminEditRequest === 'APPROVED') {
+            return <ActionButton to={`/jurnalis/articles/analytics/${article.id}`} color="gray" icon={<BarChart2 size={12}/>}>Lihat</ActionButton>;
+        }
         if (article.adminEditRequest === 'PENDING') {
             return <ActionButton onClick={() => openRequestModal(article)} color="purple" icon={<ShieldCheck size={12}/>}>Respon</ActionButton>;
         }
@@ -158,7 +161,7 @@ export const JournalistArticleManagementPage: React.FC = () => {
             case 'DRAFT':
                 return <>
                     <ActionButton to={`/jurnalis/articles/edit/${article.id}`} color="blue" icon={<Edit size={12}/>}>Edit</ActionButton>
-                    <ActionButton onClick={() => submitMutation.mutate(article.id)} color="green" icon={<Send size={12}/>}>Kirim</ActionButton>
+                    <ActionButton onClick={() => submitArticle(article.id)} color="green" icon={<Send size={12}/>}>Kirim</ActionButton>
                     <ActionButton onClick={() => handleDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>
                 </>;
             case 'IN_REVIEW':
@@ -167,17 +170,16 @@ export const JournalistArticleManagementPage: React.FC = () => {
                 return <>
                     <ActionButton onClick={() => openFeedbackModal(article)} color="yellow" icon={<MessageSquare size={12}/>}>Lihat Feedback</ActionButton>
                     <ActionButton onClick={() => handleDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>
-                    <ActionButton onClick={() => startRevisionMutation.mutate(article.id)} color="blue" icon={<PlayCircle size={14}/>}>Mulai Revisi</ActionButton>
+                    <ActionButton onClick={() => startRevision(article.id)} color="blue" icon={<PlayCircle size={14}/>}>Mulai Revisi</ActionButton>
                 </>;
             case 'JOURNALIST_REVISING':
                 return <>
                     <ActionButton to={`/jurnalis/articles/edit/${article.id}`} color="blue" icon={<Edit size={12}/>}>Edit</ActionButton>
                     <ActionButton onClick={() => openFeedbackModal(article)} color="yellow" icon={<MessageSquare size={12}/>}>Lihat Feedback</ActionButton>
-                    <ActionButton onClick={() => finishRevisionMutation.mutate(article.id)} color="green" icon={<CheckCircle size={12}/>}>Revisi Selesai</ActionButton>
-                    <ActionButton onClick={() => handleDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>
+                    <ActionButton onClick={() => finishRevision(article.id)} color="green" icon={<CheckCircle size={12}/>}>Revisi Selesai</ActionButton>
                 </>;
             case 'REVISED':
-                 return <ActionButton onClick={() => submitMutation.mutate(article.id)} color="indigo" icon={<Send size={14}/>}>Kirim ke Admin</ActionButton>;
+                 return <ActionButton to={`/jurnalis/articles/analytics/${article.id}`} color="gray" icon={<BarChart2 size={12}/>}>Lihat</ActionButton>;
             case 'PUBLISHED':
                 return <>
                     <ActionButton to={`/jurnalis/articles/analytics/${article.id}`} color="gray" icon={<BarChart2 size={12}/>}>Lihat</ActionButton>
@@ -252,10 +254,10 @@ export const JournalistArticleManagementPage: React.FC = () => {
                          <h3 className="text-xl font-bold mb-2 text-lime-400">Permintaan Edit dari Admin</h3>
                          <p className="mb-4 text-gray-300">Admin meminta izin untuk mengedit artikel Anda: <span className="font-semibold text-white">"{currentArticle.title.id}"</span>.</p>
                          <div className="flex justify-end gap-3 mt-6">
-                            <button onClick={() => respondRequestMutation.mutate({ articleId: currentArticle.id, response: 'DENIED' })} disabled={respondRequestMutation.isPending} className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 hover:bg-red-700 disabled:bg-red-400">
+                            <button onClick={() => handleRespondToRequest('DENIED')} disabled={isMutating} className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 hover:bg-red-700 disabled:bg-red-400">
                                 <ShieldX size={16}/> Tolak
                             </button>
-                            <button onClick={() => respondRequestMutation.mutate({ articleId: currentArticle.id, response: 'APPROVED' })} disabled={respondRequestMutation.isPending} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 hover:bg-green-700 disabled:bg-green-400">
+                            <button onClick={() => handleRespondToRequest('APPROVED')} disabled={isMutating} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 hover:bg-green-700 disabled:bg-green-400">
                                 <ShieldCheck size={16}/> Izinkan
                             </button>
                          </div>

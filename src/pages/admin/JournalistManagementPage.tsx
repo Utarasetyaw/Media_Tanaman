@@ -1,149 +1,30 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '../../services/apiService';
+import type { FC } from 'react';
+import { useJournalistManager } from '../../hooks/useJournalistManager'; // Sesuaikan path jika perlu
 import { Plus, Edit, Trash2, X, Eye, Users } from 'lucide-react';
 
-// PERBAIKAN 1: Definisikan tipe untuk status artikel
-type ArticleStatus = 'DRAFT' | 'IN_REVIEW' | 'NEEDS_REVISION' | 'PUBLISHED' | 'REJECTED';
+export const JournalistManagementPage: FC = () => {
+    // Panggil hook untuk mendapatkan semua state dan logika
+    const {
+        journalists,
+        isLoading,
+        error,
+        viewingJournalist,
+        isLoadingDetail,
+        isModalOpen,
+        isArticleModalOpen,
+        selectedJournalistId,
+        formData,
+        openModal,
+        closeModal,
+        openArticleModal,
+        closeArticleModal,
+        handleInputChange,
+        handleSave,
+        handleDelete,
+        handleStatusChange,
+        isMutating
+    } = useJournalistManager();
 
-// PERBAIKAN 1: Tambahkan properti 'status' dan lainnya ke tipe Artikel
-interface Article {
-    id: number;
-    title: string;
-    status: ArticleStatus;
-}
-
-interface ArticleStats {
-    published: number;
-    needsRevision: number;
-    rejected: number;
-    inReview: number;
-    draft: number;
-}
-
-interface Journalist {
-    id: number;
-    name: string;
-    email: string;
-    role: 'JOURNALIST' | 'ADMIN';
-    articleStats: ArticleStats;
-    articles?: Article[];
-}
-
-// --- API Functions ---
-const fetchJournalists = async (): Promise<Journalist[]> => {
-    const { data } = await api.get('/users');
-    return data.filter((user: any) => user.role === 'JOURNALIST');
-};
-
-const fetchJournalistDetail = async (id: number): Promise<Journalist> => {
-    const { data } = await api.get(`/users/${id}`);
-    return data;
-};
-
-const createJournalist = (data: Partial<Journalist>) => api.post('/users', data);
-const updateJournalist = ({ id, ...data }: Partial<Journalist>) => api.put(`/users/${id}`, data);
-const deleteJournalist = (id: number) => api.delete(`/users/${id}`);
-const updateArticleStatus = ({ articleId, status, feedback }: { articleId: number; status: ArticleStatus; feedback?: string }) => 
-    api.put(`/articles/management/${articleId}/status`, { status, feedback });
-
-// --- Komponen Utama ---
-export const JournalistManagementPage: React.FC = () => {
-    const queryClient = useQueryClient();
-
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isArticleModalOpen, setIsArticleModalOpen] = useState(false);
-    const [selectedJournalistId, setSelectedJournalistId] = useState<number | null>(null);
-    const [formData, setFormData] = useState({ name: '', email: '', password: '' });
-
-    const { data: journalists, isLoading, error } = useQuery<Journalist[]>({
-        queryKey: ['journalists'],
-        queryFn: fetchJournalists,
-    });
-    
-    const { data: viewingJournalist, isLoading: isLoadingDetail } = useQuery<Journalist>({
-        queryKey: ['journalistDetail', selectedJournalistId],
-        queryFn: () => fetchJournalistDetail(selectedJournalistId!),
-        enabled: !!selectedJournalistId && isArticleModalOpen,
-    });
-
-    const createMutation = useMutation({
-        mutationFn: createJournalist,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['journalists'] });
-            closeModal();
-        },
-    });
-
-    const updateMutation = useMutation({
-        mutationFn: updateJournalist,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['journalists'] });
-            queryClient.invalidateQueries({ queryKey: ['journalistDetail', selectedJournalistId] });
-            closeModal();
-        },
-    });
-
-    const deleteMutation = useMutation({
-        mutationFn: deleteJournalist,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['journalists'] });
-        },
-    });
-
-    const statusUpdateMutation = useMutation({
-        mutationFn: updateArticleStatus,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['journalistDetail', selectedJournalistId] });
-            queryClient.invalidateQueries({ queryKey: ['journalists'] });
-        }
-    });
-    
-    const openModal = (journalist: Journalist | null = null) => {
-        setSelectedJournalistId(journalist ? journalist.id : null);
-        setFormData({ name: journalist?.name || '', email: journalist?.email || '', password: '' });
-        setIsModalOpen(true);
-    };
-
-    const closeModal = () => setIsModalOpen(false);
-    
-    const openArticleModal = (id: number) => {
-        setSelectedJournalistId(id);
-        setIsArticleModalOpen(true);
-    };
-
-    const closeArticleModal = () => setIsArticleModalOpen(false);
-    
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleSave = () => {
-        const dataToSave: any = { ...formData };
-        if (!dataToSave.password) delete dataToSave.password;
-
-        if (selectedJournalistId) {
-            updateMutation.mutate({ id: selectedJournalistId, ...dataToSave });
-        } else {
-            createMutation.mutate({ ...dataToSave, role: 'JOURNALIST' });
-        }
-    };
-    
-    const handleDelete = (id: number) => {
-        if (window.confirm('Apakah Anda yakin ingin menghapus jurnalis ini? Semua artikelnya juga akan terhapus.')) {
-            deleteMutation.mutate(id);
-        }
-    };
-
-    const handleStatusChange = (articleId: number, newStatus: ArticleStatus) => {
-        let feedback = '';
-        if (newStatus === 'NEEDS_REVISION' || newStatus === 'REJECTED') {
-            feedback = prompt(`Berikan feedback untuk status '${newStatus}':`) || 'Tidak ada feedback.';
-        }
-        statusUpdateMutation.mutate({ articleId, status: newStatus, feedback });
-    };
-    
     if (isLoading) return <div className="text-white p-8">Loading data jurnalis...</div>;
     if (error) return <div className="text-red-400 p-8">Error: {(error as Error).message}</div>;
 
@@ -179,11 +60,15 @@ export const JournalistManagementPage: React.FC = () => {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-gray-300">
                                     <div className="flex flex-wrap items-start gap-x-3 gap-y-1 text-xs">
-                                        <span className="bg-green-500/20 text-green-300 px-2 py-0.5 rounded-full">Published: {j.articleStats.published}</span>
-                                        <span className="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full">In Review: {j.articleStats.inReview}</span>
-                                        <span className="bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full">Revision: {j.articleStats.needsRevision}</span>
-                                        <span className="bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full">Rejected: {j.articleStats.rejected}</span>
-                                        <span className="bg-gray-500/20 text-gray-300 px-2 py-0.5 rounded-full">Draft: {j.articleStats.draft}</span>
+                                        {j.articleStats && (
+                                            <>
+                                                <span className="bg-green-500/20 text-green-300 px-2 py-0.5 rounded-full">Published: {j.articleStats.published}</span>
+                                                <span className="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full">In Review: {j.articleStats.inReview}</span>
+                                                <span className="bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full">Revision: {j.articleStats.needsRevision}</span>
+                                                <span className="bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full">Rejected: {j.articleStats.rejected}</span>
+                                                <span className="bg-gray-500/20 text-gray-300 px-2 py-0.5 rounded-full">Draft: {j.articleStats.draft}</span>
+                                            </>
+                                        )}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -208,24 +93,22 @@ export const JournalistManagementPage: React.FC = () => {
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-300">Nama Lengkap</label>
-                                {/* PERBAIKAN 2: Menambahkan onChange */}
                                 <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="mt-1 block w-full bg-white/10 border-2 border-lime-400/50 rounded-md text-white shadow-sm py-2 px-3 focus:ring-lime-400 focus:border-lime-400"/>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-300">Alamat Email</label>
-                                {/* PERBAIKAN 2: Menambahkan onChange */}
                                 <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="mt-1 block w-full bg-white/10 border-2 border-lime-400/50 rounded-md text-white shadow-sm py-2 px-3 focus:ring-lime-400 focus:border-lime-400"/>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-300">Password Baru</label>
-                                {/* PERBAIKAN 2: Menambahkan onChange */}
                                 <input type="password" name="password" value={formData.password} onChange={handleInputChange} className="mt-1 block w-full bg-white/10 border-2 border-lime-400/50 rounded-md text-white shadow-sm py-2 px-3 focus:ring-lime-400 focus:border-lime-400" placeholder={selectedJournalistId ? 'Kosongkan jika tidak diubah' : ''} />
                             </div>
                         </div>
                         <div className="mt-6 flex justify-end gap-3">
                             <button onClick={closeModal} className="bg-gray-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-700">Batal</button>
-                            {/* PERBAIKAN 2: Menambahkan onClick */}
-                            <button onClick={handleSave} className="bg-lime-300 text-lime-900 font-bold py-2 px-4 rounded-lg hover:bg-lime-400">Simpan</button>
+                            <button onClick={handleSave} disabled={isMutating} className="bg-lime-300 text-lime-900 font-bold py-2 px-4 rounded-lg hover:bg-lime-400 disabled:bg-gray-500 disabled:cursor-wait">
+                                {isMutating ? 'Menyimpan...' : 'Simpan'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -250,7 +133,7 @@ export const JournalistManagementPage: React.FC = () => {
                                             {viewingJournalist.articles.map(article => (
                                                 <li key={article.id} className="block sm:flex items-center justify-between p-3 bg-[#004A49]/80 rounded-md gap-4">
                                                     <div>
-                                                        <span className="text-gray-200">{article.title}</span>
+                                                        <span className="text-gray-200">{article.title.id}</span>
                                                         <span className={`block sm:inline-block ml-0 sm:ml-2 mt-1 sm:mt-0 px-2 text-xs font-semibold rounded-full bg-opacity-20 ${
                                                             article.status === 'PUBLISHED' ? 'bg-green-400 text-green-300' :
                                                             article.status === 'IN_REVIEW' ? 'bg-blue-400 text-blue-300' :
