@@ -50,8 +50,8 @@ export const useHomePage = () => {
   useEffect(() => {
     const getLimitForScreen = () => {
       const screenWidth = window.innerWidth;
-      if (screenWidth >= 1024) return 16; // Desktop
-      if (screenWidth >= 768) return 12; // Tablet
+      if (screenWidth >= 1024) return 12; // Desktop
+      if (screenWidth >= 768) return 8; // Tablet
       return 4; // Mobile
     };
 
