@@ -7,9 +7,17 @@ import api from '../services/apiService';
 import type { LocalizedString } from '../types/article';
 import { navTranslations } from '../assets/nav.i18n';
 
-// --- Tipe Data ---
+// --- Tipe Data (REVISI DI SINI) ---
 interface SearchResultItem { id: number; title: LocalizedString; imageUrl: string; }
-interface SearchResult { articles: SearchResultItem[]; plants: SearchResultItem[]; events: SearchResultItem[]; }
+// Tipe baru untuk tanaman yang menggunakan properti "name"
+interface PlantSearchResultItem { id: number; name: LocalizedString; imageUrl: string; }
+
+interface SearchResult {
+  articles: SearchResultItem[];
+  // Menggunakan tipe baru untuk tanaman
+  plants: PlantSearchResultItem[];
+  events: SearchResultItem[];
+}
 interface ResultItemProps { to: string; imageUrl: string; title: string; icon: React.ReactNode; onClick: () => void; }
 interface GlobalSearchProps {
   lang: 'id' | 'en';
@@ -63,7 +71,6 @@ const GlobalSearch: FC<GlobalSearchProps> = ({ lang, t }) => {
       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-5 w-5 text-gray-400" /></div>
       <input
         type="search"
-        // REVISI: diubah dari rounded-full menjadi rounded-lg agar sama dengan dropdown
         className="block w-full bg-white/10 border-2 border-transparent rounded-lg py-2 pl-10 pr-4 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:bg-white/20 sm:text-sm"
         placeholder={t('search_placeholder')}
         value={searchTerm}
@@ -83,8 +90,13 @@ const GlobalSearch: FC<GlobalSearchProps> = ({ lang, t }) => {
             {!isLoading && data && (
               <div className="space-y-3">
                 {data.articles.length === 0 && data.plants.length === 0 && data.events.length === 0 && (<p className="text-gray-400 text-center py-4">{t('no_results')}</p>)}
+                
                 {data.articles.length > 0 && (<div><h4 className="font-bold text-lime-400 text-sm mb-1 px-2">{t('articles_section')}</h4>{data.articles.map(item => <ResultItem key={`article-${item.id}`} to={`/news/${item.id}`} imageUrl={item.imageUrl} title={item.title[lang]} icon={<Book size={16}/>} onClick={closeResults} />)}</div>)}
-                {data.plants.length > 0 && (<div><h4 className="font-bold text-lime-400 text-sm mb-1 px-2">{t('plants_section')}</h4>{data.plants.map(item => <ResultItem key={`plant-${item.id}`} to={`/plants/${item.id}`} imageUrl={item.imageUrl} title={item.title[lang]} icon={<Leaf size={16}/>} onClick={closeResults} />)}</div>)}
+                
+                {/* --- BAGIAN RENDER TANAMAN DIPERBAIKI DI SINI --- */}
+                {/* Menggunakan "item.name" bukan "item.title" */}
+                {data.plants.length > 0 && (<div><h4 className="font-bold text-lime-400 text-sm mb-1 px-2">{t('plants_section')}</h4>{data.plants.map(item => <ResultItem key={`plant-${item.id}`} to={`/plants/${item.id}`} imageUrl={item.imageUrl} title={item.name[lang]} icon={<Leaf size={16}/>} onClick={closeResults} />)}</div>)}
+                
                 {data.events.length > 0 && (<div><h4 className="font-bold text-lime-400 text-sm mb-1 px-2">{t('events_section')}</h4>{data.events.map(item => <ResultItem key={`event-${item.id}`} to={`/events/${item.id}`} imageUrl={item.imageUrl} title={item.title[lang]} icon={<Calendar size={16}/>} onClick={closeResults} />)}</div>)}
               </div>
             )}
