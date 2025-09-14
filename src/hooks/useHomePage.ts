@@ -52,7 +52,7 @@ export const useHomePage = () => {
       const screenWidth = window.innerWidth;
       if (screenWidth >= 1024) return 16; // Desktop
       if (screenWidth >= 768) return 12; // Tablet
-      return 8; // Mobile
+      return 4; // Mobile
     };
 
     const handleResize = () => {
