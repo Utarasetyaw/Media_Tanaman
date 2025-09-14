@@ -33,10 +33,13 @@ const EventDetail: FC = () => {
   const buttonClassName = "mt-6 w-full text-center inline-block bg-lime-300 text-lime-900 font-bold py-3 px-6 rounded-lg hover:bg-lime-400 transition-colors duration-300";
 
   return (
-    <div className="bg-[#003938] min-h-screen">
+    <div className="relative w-full bg-[#003938] min-h-screen">
        <VerticalAd position="left" />
        <VerticalAd position="right" />
-      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+       
+      {/* --- BAGIAN INI YANG DIPERBAIKI --- */}
+      {/* Menambahkan padding "2xl:px-60" untuk konsistensi layout */}
+      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 2xl:px-60 py-12 sm:py-16">
 
         <Link to="/events" className="inline-flex items-center gap-2 text-lime-400 font-semibold hover:underline mb-8">
           <ArrowLeft size={20} />{t('back_link')}
@@ -45,7 +48,6 @@ const EventDetail: FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-12">
           
           <div className="lg:col-span-2">
-            {/* REVISI: Ubah rasio aspek menjadi video (16:9) untuk konsistensi */}
             <div className="aspect-video lg:hidden mb-6 bg-black/20 rounded-2xl overflow-hidden">
               <img src={event.imageUrl} alt={event.title[currentLang]} className="w-full h-full object-cover shadow-lg border-2 border-lime-400" />
             </div>
@@ -58,7 +60,6 @@ const EventDetail: FC = () => {
 
           <div className="lg:col-span-1 mt-12 lg:mt-0">
             <div className="lg:sticky lg:top-24">
-              {/* REVISI: Ubah rasio aspek menjadi video (16:9) untuk konsistensi */}
               <div className="aspect-video hidden lg:block mb-6 bg-black/20 rounded-2xl overflow-hidden">
                  <img src={event.imageUrl} alt={event.title[currentLang]} className="w-full h-full object-cover shadow-lg border-2 border-lime-400" />
               </div>

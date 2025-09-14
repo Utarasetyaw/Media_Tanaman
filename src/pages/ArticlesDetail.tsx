@@ -36,17 +36,18 @@ const ArticleDetail: FC = () => {
   }
 
   return (
-    <div className="bg-[#003938] text-white min-h-screen relative">
+    <div className="relative w-full bg-[#003938] text-white min-h-screen">
       <VerticalAd position="left" />
       <VerticalAd position="right" />
 
-      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+      {/* --- BAGIAN INI YANG DIPERBAIKI --- */}
+      {/* Menambahkan padding "2xl:px-60" agar layout konsisten dengan halaman lainnya */}
+      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 2xl:px-60 py-12 sm:py-16">
         <Link to="/articles" className="inline-flex items-center gap-2 text-lime-400 font-semibold hover:underline mb-8">
           <ArrowLeft size={20} />
           {t('back_link')}
         </Link>
         
-        {/* REVISI: Kelas `max-w-4xl mx-auto` dihapus dari tag <article> agar lebarnya penuh */}
         <article>
           <span className="inline-block bg-lime-200 text-lime-800 text-sm font-semibold px-3 py-1 rounded-full mb-4">
             {article.category.name[currentLang]}

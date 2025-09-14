@@ -89,17 +89,18 @@ const ArticlePage: FC = () => {
   };
 
   return (
-    <div className="bg-[#003938] min-h-screen relative">
+    <div className="relative w-full bg-[#003938] min-h-screen">
       <VerticalAd position="left" />
       <VerticalAd position="right" />
 
-      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+      {/* --- BAGIAN INI YANG DIPERBAIKI --- */}
+      {/* Menambahkan padding "2xl:px-60" untuk konsistensi layout */}
+      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 2xl:px-60 py-12 sm:py-16">
         <div className="text-center mb-12">
           <h2 className="font-serif text-4xl sm:text-5xl font-bold text-lime-400 mb-4">{t('title')}</h2>
           <p className="text-lg text-gray-300 max-w-2xl mx-auto">{t('description')}</p>
         </div>
         
-        {/* REVISI: Tampilan filter diubah menjadi dropdown */}
         <div className="mb-12 p-4 bg-[#004A49]/60 border-2 border-lime-400/50 rounded-lg flex flex-col sm:flex-row items-center gap-4">
           <SlidersHorizontal className="text-lime-400 hidden sm:block flex-shrink-0" size={24} />
           <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4">

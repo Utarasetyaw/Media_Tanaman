@@ -1,8 +1,8 @@
 import type { FC } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { ArrowLeft, Zap, Maximize, Sprout, ExternalLink } from 'lucide-react';
-import { usePlantDetail } from '../hooks/usePlantDetail'; // Hook baru
-import { plantDetailTranslations } from '../assets/plantDetail.i18n'; // Translasi baru
+import { usePlantDetail } from '../hooks/usePlantDetail';
+import { plantDetailTranslations } from '../assets/plantDetail.i18n';
 import VerticalAd from '../components/VerticalAd';
 import HorizontalAd from '../components/HorizontalAd';
 
@@ -25,11 +25,13 @@ const PlantDetail: FC = () => {
   }
 
   return (
-    <div className="bg-[#003938] min-h-screen relative">
+    <div className="relative w-full bg-[#003938] min-h-screen">
       <VerticalAd position="left" />
       <VerticalAd position="right" />
 
-      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+      {/* --- BAGIAN INI YANG DIPERBAIKI --- */}
+      {/* Ditambahkan padding "2xl:px-60" agar konsisten dengan halaman lain */}
+      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 2xl:px-60 py-12 sm:py-16">
         <Link to="/plants" className="inline-flex items-center gap-2 text-lime-400 font-semibold hover:underline mb-8">
           <ArrowLeft size={20} />{t('back_link')}
         </Link>

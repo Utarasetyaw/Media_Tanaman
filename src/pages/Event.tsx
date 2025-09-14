@@ -65,7 +65,6 @@ const EventCard: FC<{ event: Event; isPast?: boolean; lang: 'id' | 'en' }> = ({ 
     <Link to={`/events/${event.id}`} className="block group">
       <div className={`bg-[#004A49]/60 border-2 border-lime-400/50 rounded-lg shadow-lg overflow-hidden h-full flex flex-col transition-all duration-300 group-hover:shadow-lime-400/20 group-hover:-translate-y-1 ${isPast ? 'opacity-70' : ''}`}>
         <div className="relative">
-            {/* REVISI: Rasio aspek diubah menjadi video (16:9) */}
             <div className="aspect-video bg-black/20">
               <img 
                 src={event.imageUrl} 
@@ -108,11 +107,13 @@ const EventPage: FC = () => {
   if (isError) return <div className="bg-[#003938] min-h-screen text-center py-16 text-red-400">{t('error')}</div>;
   
   return (
-    <div className="bg-[#003938] min-h-screen relative">
+    <div className="relative w-full bg-[#003938] min-h-screen">
       <VerticalAd position="left" />
       <VerticalAd position="right" />
 
-      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+      {/* --- BAGIAN INI YANG DIPERBAIKI --- */}
+      {/* Menambahkan padding "2xl:px-60" untuk konsistensi layout */}
+      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 2xl:px-60 py-12 sm:py-16">
         <div className="text-center mb-12">
           <h2 className="font-serif text-4xl sm:text-5xl font-bold text-lime-400 mb-4">{t('title')}</h2>
           <p className="text-lg text-gray-300 max-w-2xl mx-auto">{t('description')}</p>
@@ -135,7 +136,6 @@ const EventPage: FC = () => {
                 {featuredEvent && (
                   <section>
                     <div className="bg-[#004A49]/60 border-2 border-lime-400 rounded-lg shadow-lg overflow-hidden flex flex-col md:flex-row md:items-stretch">
-                      {/* REVISI: Rasio aspek diubah menjadi video (16:9) */}
                       <div className="w-full md:w-1/2 aspect-video bg-black/20">
                         <img src={featuredEvent.imageUrl} alt={featuredEvent.title[currentLang]} className="w-full h-full object-cover" />
                       </div>
