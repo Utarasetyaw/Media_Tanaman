@@ -91,7 +91,7 @@ const GlobalSearch: FC<GlobalSearchProps> = ({ lang, t }) => {
               <div className="space-y-3">
                 {data.articles.length === 0 && data.plants.length === 0 && data.events.length === 0 && (<p className="text-gray-400 text-center py-4">{t('no_results')}</p>)}
                 
-                {data.articles.length > 0 && (<div><h4 className="font-bold text-lime-400 text-sm mb-1 px-2">{t('articles_section')}</h4>{data.articles.map(item => <ResultItem key={`article-${item.id}`} to={`/news/${item.id}`} imageUrl={item.imageUrl} title={item.title[lang]} icon={<Book size={16}/>} onClick={closeResults} />)}</div>)}
+                {data.articles.length > 0 && (<div><h4 className="font-bold text-lime-400 text-sm mb-1 px-2">{t('articles_section')}</h4>{data.articles.map(item => <ResultItem key={`article-${item.id}`} to={`/articles/${item.id}`} imageUrl={item.imageUrl} title={item.title[lang]} icon={<Book size={16}/>} onClick={closeResults} />)}</div>)}
                 
                 {/* --- BAGIAN RENDER TANAMAN DIPERBAIKI DI SINI --- */}
                 {/* Menggunakan "item.name" bukan "item.title" */}
