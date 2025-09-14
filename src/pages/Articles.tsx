@@ -92,8 +92,8 @@ const ArticlePage: FC = () => {
     <div className="bg-[#003938] min-h-screen relative">
       <VerticalAd position="left" />
       <VerticalAd position="right" />
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+
+      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         <div className="text-center mb-12">
           <h2 className="font-serif text-4xl sm:text-5xl font-bold text-lime-400 mb-4">{t('title')}</h2>
           <p className="text-lg text-gray-300 max-w-2xl mx-auto">{t('description')}</p>

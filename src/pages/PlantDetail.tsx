@@ -29,7 +29,7 @@ const PlantDetail: FC = () => {
       <VerticalAd position="left" />
       <VerticalAd position="right" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         <Link to="/plants" className="inline-flex items-center gap-2 text-lime-400 font-semibold hover:underline mb-8">
           <ArrowLeft size={20} />{t('back_link')}
         </Link>
