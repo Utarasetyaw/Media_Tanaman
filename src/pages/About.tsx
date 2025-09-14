@@ -2,7 +2,6 @@ import React, { Fragment } from 'react';
 import type { FC } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Disclosure, Transition } from '@headlessui/react';
-// DIUBAH: Memastikan ikon 'Music' diimpor
 import { BookOpen, Users, Lightbulb, ChevronUp, Mail, Phone, MapPin, Instagram, Facebook, Music } from 'lucide-react';
 import { useAboutData } from '../hooks/useAboutData';
 import type { CompanyValue } from '../hooks/useAboutData';
@@ -27,6 +26,18 @@ const ValueCard: FC<ValueCardProps> = ({ value, icon, lang }) => (
     <p className="text-gray-300 leading-relaxed">{value.description[lang]}</p>
   </div>
 );
+
+// --- FUNGSI BARU UNTUK FORMAT NOMOR WHATSAPP ---
+const formatWhatsAppNumber = (phone: string): string => {
+  // Menghapus semua karakter selain angka
+  let cleaned = phone.replace(/\D/g, '');
+  // Jika nomor diawali dengan '0', ganti dengan '62'
+  if (cleaned.startsWith('0')) {
+    cleaned = '62' + cleaned.substring(1);
+  }
+  return cleaned;
+};
+
 
 // ============================================================================
 // KOMPONEN UTAMA (HALAMAN TENTANG KAMI)
@@ -116,12 +127,24 @@ const About: FC = () => {
               <a href={`mailto:${contactInfo.email}`} className="mt-2 block text-lime-400 hover:text-lime-300 transition-colors">{contactInfo.email}</a>
             </div>
           )}
+          
+          {/* --- BAGIAN INI YANG DIPERBAIKI --- */}
           {contactInfo?.phone && (
             <div>
               <h4 className="font-semibold text-white flex items-center justify-center gap-2"><Phone size={16}/> {t('phone')}</h4>
-              <span className="mt-2 block text-gray-300">{contactInfo.phone}</span>
+              {/* Diubah dari <span> menjadi <a> dengan link ke WhatsApp */}
+              <a 
+                href={`https://wa.me/${formatWhatsAppNumber(contactInfo.phone)}`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="mt-2 block text-lime-400 hover:text-lime-300 transition-colors"
+              >
+                {contactInfo.phone}
+              </a>
             </div>
           )}
+          {/* --- AKHIR DARI BAGIAN PERBAIKAN --- */}
+
           {contactInfo?.address && (
             <div>
               <h4 className="font-semibold text-white flex items-center justify-center gap-2"><MapPin size={16}/> {t('address')}</h4>
@@ -132,11 +155,6 @@ const About: FC = () => {
         <div className="flex justify-center space-x-6">
           {contactInfo?.socialMedia?.instagram && <SocialLink href={contactInfo.socialMedia.instagram} label="Instagram" icon={<Instagram size={24} />} />}
           {contactInfo?.socialMedia?.facebook && <SocialLink href={contactInfo.socialMedia.facebook} label="Facebook" icon={<Facebook size={24} />} />}
-          {/* DIUBAH:
-            - Data yang diambil tetap `contactInfo.socialMedia.tiktok`.
-            - `label` tetap "TikTok" untuk aksesibilitas.
-            - `icon` diubah menjadi `<Music size={24} />`.
-          */}
           {contactInfo?.socialMedia?.tiktok && <SocialLink href={contactInfo.socialMedia.tiktok} label="TikTok" icon={<Music size={24} />} />}
         </div>
       </SectionWrapper>
