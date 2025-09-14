@@ -19,20 +19,14 @@ const SidebarLink: FC<{ article: { id: number; title: LocalizedString }, lang: '
     </Link>
 );
 
-// REVISI: Komponen HeroBanner sekarang menampilkan slider otomatis
 const HeroBanner: FC<{ banners: BannerImage[] }> = ({ banners }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
 
     useEffect(() => {
-        // Jangan jalankan interval jika hanya ada satu atau tidak ada banner
         if (!banners || banners.length <= 1) return;
-
-        // Atur interval untuk mengubah banner setiap 5 detik
         const timer = setInterval(() => {
             setCurrentIndex((prevIndex) => (prevIndex + 1) % banners.length);
         }, 5000);
-
-        // Bersihkan interval saat komponen tidak lagi ditampilkan
         return () => clearInterval(timer);
     }, [banners]);
 
@@ -99,7 +93,8 @@ const EventCard: FC<{ event: Event, lang: 'id' | 'en', t: (key: keyof typeof hom
 const UpcomingEvent: FC<{ event: Event, lang: 'id' | 'en', t: (key: keyof typeof homeTranslations.id) => string }> = ({ event, lang, t }) => (<section className="py-12"><h2 className="font-serif text-2xl sm:text-3xl font-bold text-lime-400 text-center mb-8">{t('community_event')}</h2><div className="max-w-4xl mx-auto"><EventCard event={event} lang={lang} t={t} /></div></section>);
 const FeaturedPlant: FC<{ plant: Plant, lang: 'id' | 'en', t: (key: keyof typeof homeTranslations.id) => string }> = ({ plant, lang, t }) => (<section className="py-12"><div className="max-w-4xl mx-auto bg-[#004A49]/60 p-4 sm:p-6 md:p-8 rounded-lg border-2 border-lime-400/80 grid md:grid-cols-2 gap-8 items-center"><div className="w-full aspect-[4/5] md:aspect-square rounded-lg overflow-hidden bg-black/20"><img src={plant.imageUrl} alt={plant.name[lang]} className="w-full h-full object-cover" /></div><div className="flex flex-col justify-center"><h3 className="font-sans text-lime-400 font-bold uppercase text-sm tracking-wider">{t('plant_of_the_week')}</h3><h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-100 my-2">{plant.name[lang]}</h2><p className="font-sans text-gray-300 leading-relaxed line-clamp-4">{plant.description[lang]}</p><div className="mt-6"><Link to={`/plants/${plant.id}`} className="font-sans inline-block bg-lime-300 text-gray-900 font-bold px-6 py-3 rounded-lg hover:bg-lime-400 transition-colors">{t('view_plant_detail_button')}</Link></div></div></div></section>);
 
-// REVISI: Komponen Filter sekarang responsif
+
+// --- INI BAGIAN YANG DI REVISI DENGAN 3 TAMPILAN BERBEDA ---
 const CategoryFilters: FC<{ categories: Category[]; plantTypes: Category[]; onFilterChange: (newFilters: Partial<{ categoryId?: number | string; plantTypeId?: number | string; }>) => void; lang: 'id' | 'en'; t: (key: keyof typeof homeTranslations.id) => string; filters: { categoryId?: number | string; plantTypeId?: number | string; }; }> = ({ categories, plantTypes, onFilterChange, lang, t, filters }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
     const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -145,9 +140,10 @@ const CategoryFilters: FC<{ categories: Category[]; plantTypes: Category[]; onFi
     };
 
     return (
-        <div className="my-8 flex flex-col md:flex-row items-center gap-4 rounded-lg bg-[#004A49]/60 border-2 border-lime-400/50 p-3">
+        // Layout berubah di breakpoint md (tablet) dan xl (desktop besar)
+        <div className="my-8 flex flex-col md:grid md:grid-cols-2 xl:flex xl:flex-row items-center gap-4 rounded-lg bg-[#004A49]/60 border-2 border-lime-400/50 p-3">
             {/* Dropdown Kategori (Selalu tampil) */}
-            <div className="w-full md:w-auto md:min-w-[200px] flex-shrink-0">
+            <div className="w-full xl:w-auto xl:min-w-[200px] xl:flex-shrink-0">
                 <CustomDropdown
                     placeholder={t('all_categories')}
                     selectedValue={filters.categoryId || 'all'}
@@ -157,8 +153,8 @@ const CategoryFilters: FC<{ categories: Category[]; plantTypes: Category[]; onFi
                 />
             </div>
 
-            {/* Dropdown Tipe Tanaman (HANYA TAMPIL DI HP/TABLET) */}
-            <div className="w-full md:hidden">
+            {/* Dropdown Tipe Tanaman (Tampil di mobile, tablet & laptop, TAPI HILANG di desktop besar) */}
+            <div className="w-full xl:hidden">
                 <CustomDropdown
                     placeholder={t('all_plant_types')}
                     selectedValue={filters.plantTypeId || 'all'}
@@ -168,11 +164,11 @@ const CategoryFilters: FC<{ categories: Category[]; plantTypes: Category[]; onFi
                 />
             </div>
 
-            {/* Pemisah (HANYA TAMPIL DI DESKTOP) */}
-            <div className="hidden md:block w-px h-8 bg-lime-400/50"></div>
+            {/* Pemisah (HANYA TAMPIL DI DESKTOP BESAR) */}
+            <div className="hidden xl:block w-px h-8 bg-lime-400/50"></div>
             
-            {/* Tombol/Slider Tipe Tanaman (HANYA TAMPIL DI DESKTOP) */}
-            <div className="w-full md:flex-1 relative hidden md:block">
+            {/* Tombol/Slider Tipe Tanaman "CARD MODE" (HANYA TAMPIL DI DESKTOP BESAR) */}
+            <div className="w-full xl:flex-1 relative hidden xl:block">
                 {itemCount <= 5 && (
                     <div className={`grid ${gridClass} gap-2 w-full`}>
                         {plantTypesForFilter.map(pt => (
