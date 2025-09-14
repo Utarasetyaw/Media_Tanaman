@@ -1,7 +1,7 @@
 import type { FC } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { ArrowLeft, Calendar, Clock, MapPin, User } from 'lucide-react';
-import { useEventDetail } from '../hooks/useEventDetail'; // Impor hook
+import { useEventDetail } from '../hooks/useEventDetail';
 import VerticalAd from '../components/VerticalAd';
 import HorizontalAd from '../components/HorizontalAd';
 import { eventDetailTranslations } from '../assets/eventDetail.i18n';
@@ -12,7 +12,6 @@ const EventDetail: FC = () => {
       return eventDetailTranslations[currentLang]?.[key] || key;
   };
 
-  // REVISI: Ambil juga fungsi `handleExternalLinkClick` dari hook
   const { event, isLoading, isError, handleExternalLinkClick } = useEventDetail();
 
   if (isLoading) {
@@ -46,8 +45,9 @@ const EventDetail: FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-12">
           
           <div className="lg:col-span-2">
-            <div className="aspect-[4/5] sm:aspect-video lg:hidden mb-6 bg-black/20">
-              <img src={event.imageUrl} alt={event.title[currentLang]} className="w-full h-full object-cover rounded-2xl shadow-lg border-2 border-lime-400" />
+            {/* REVISI: Ubah rasio aspek menjadi video (16:9) untuk konsistensi */}
+            <div className="aspect-video lg:hidden mb-6 bg-black/20 rounded-2xl overflow-hidden">
+              <img src={event.imageUrl} alt={event.title[currentLang]} className="w-full h-full object-cover shadow-lg border-2 border-lime-400" />
             </div>
             <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-8">{event.title[currentLang]}</h1>
             <h2 className="font-serif text-2xl font-bold text-lime-400 mb-4 border-b-2 border-lime-400/50 pb-4">{t('description_title')}</h2>
@@ -58,8 +58,9 @@ const EventDetail: FC = () => {
 
           <div className="lg:col-span-1 mt-12 lg:mt-0">
             <div className="lg:sticky lg:top-24">
-              <div className="aspect-[4/5] hidden lg:block mb-6 bg-black/20">
-                 <img src={event.imageUrl} alt={event.title[currentLang]} className="w-full h-full object-cover rounded-2xl shadow-lg border-2 border-lime-400" />
+              {/* REVISI: Ubah rasio aspek menjadi video (16:9) untuk konsistensi */}
+              <div className="aspect-video hidden lg:block mb-6 bg-black/20 rounded-2xl overflow-hidden">
+                 <img src={event.imageUrl} alt={event.title[currentLang]} className="w-full h-full object-cover shadow-lg border-2 border-lime-400" />
               </div>
               <div className="bg-[#004A49]/60 border-2 border-lime-400/80 p-6 rounded-2xl shadow-lg">
                 <div className="space-y-4">
@@ -69,7 +70,6 @@ const EventDetail: FC = () => {
                   <div className="flex items-start gap-3 border-t border-lime-400/30 pt-4"><User className="text-lime-400 mt-1 flex-shrink-0" size={20} /><div><h3 className="font-bold text-gray-200">{t('organizer_label')}</h3><p className="text-gray-300">{event.organizer}</p></div></div>
                 </div>
                 
-                {/* REVISI: Logika tombol pendaftaran */}
                 {event.eventType === 'EXTERNAL' && (
                   <button onClick={handleExternalLinkClick} className={buttonClassName}>
                     {t('register_button')}

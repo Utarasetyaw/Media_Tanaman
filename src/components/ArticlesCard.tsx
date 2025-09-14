@@ -4,7 +4,7 @@ import type { Article } from '../types/article';
 // Impor file translasi yang baru
 import { cardTranslations } from '../assets/card.i18n';
 
-// REVISI 1: Definisikan props untuk menerima bahasa
+// Definisikan props untuk menerima bahasa
 interface ArticleCardProps {
   article: Article;
   layout?: 'default' | 'horizontal';
@@ -12,13 +12,11 @@ interface ArticleCardProps {
 }
 
 const ArticleCard: FC<ArticleCardProps> = ({ article, layout = 'default', lang }) => {
-  // REVISI 2: Hapus `const lang` yang hardcoded
-
   // Fungsi translasi lokal
   const t = (key: keyof typeof cardTranslations.id): string => {
     return cardTranslations[lang]?.[key] || key;
   };
-  
+   
   // Mengambil data dari objek artikel berdasarkan bahasa dari props
   const categoryName = article.category?.name[lang] || 'Uncategorized';
   const titleText = article.title[lang];
@@ -28,15 +26,15 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, layout = 'default', lang }
   if (layout === 'horizontal') {
     return (
       <div className="bg-[#004A49]/60 border-2 border-lime-400/50 rounded-lg shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-xl md:flex">
-        <div className="md:w-1/3 flex-shrink-0">
+        <div className="md:w-2/5 flex-shrink-0">
           <Link to={`/articles/${article.id}`}>
-            {/* REVISI 3: Gambar menggunakan rasio aspek 4:5 */}
-            <div className="aspect-[4/5] bg-black/20">
+            {/* REVISI: Gambar menggunakan rasio aspek video (16:9) */}
+            <div className="aspect-video h-full bg-black/20">
                 <img src={article.imageUrl} alt={titleText} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
             </div>
           </Link>
         </div>
-        <div className="p-4 sm:p-6 md:w-2/3 flex flex-col">
+        <div className="p-4 sm:p-6 md:w-3/5 flex flex-col">
           <div className="flex-grow">
             <span className="inline-block bg-lime-200 text-lime-800 text-xs font-semibold px-2 py-1 rounded-full mb-2">{categoryName}</span>
             <Link to={`/articles/${article.id}`}>
@@ -58,8 +56,8 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, layout = 'default', lang }
   return (
     <div className="bg-[#004A49]/60 border-2 border-lime-400/50 rounded-lg shadow-lg overflow-hidden group transition-all duration-300 hover:shadow-lime-400/20 hover:-translate-y-1 flex flex-col h-full">
       <Link to={`/articles/${article.id}`}>
-        {/* REVISI 3: Gambar menggunakan rasio aspek 4:5 */}
-        <div className="aspect-[4/5] bg-black/20">
+        {/* REVISI: Gambar menggunakan rasio aspek video (16:9) */}
+        <div className="aspect-video bg-black/20">
             <img src={article.imageUrl} alt={titleText} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
         </div>
       </Link>

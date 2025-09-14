@@ -65,7 +65,8 @@ const EventCard: FC<{ event: Event; isPast?: boolean; lang: 'id' | 'en' }> = ({ 
     <Link to={`/events/${event.id}`} className="block group">
       <div className={`bg-[#004A49]/60 border-2 border-lime-400/50 rounded-lg shadow-lg overflow-hidden h-full flex flex-col transition-all duration-300 group-hover:shadow-lime-400/20 group-hover:-translate-y-1 ${isPast ? 'opacity-70' : ''}`}>
         <div className="relative">
-            <div className="aspect-[4/5] bg-black/20">
+            {/* REVISI: Rasio aspek diubah menjadi video (16:9) */}
+            <div className="aspect-video bg-black/20">
               <img 
                 src={event.imageUrl} 
                 alt={event.title[lang]} 
@@ -134,7 +135,8 @@ const EventPage: FC = () => {
                 {featuredEvent && (
                   <section>
                     <div className="bg-[#004A49]/60 border-2 border-lime-400 rounded-lg shadow-lg overflow-hidden flex flex-col md:flex-row md:items-stretch">
-                      <div className="w-full md:w-1/2 aspect-[4/5] bg-black/20">
+                      {/* REVISI: Rasio aspek diubah menjadi video (16:9) */}
+                      <div className="w-full md:w-1/2 aspect-video bg-black/20">
                         <img src={featuredEvent.imageUrl} alt={featuredEvent.title[currentLang]} className="w-full h-full object-cover" />
                       </div>
                       <div className="w-full md:w-1/2 p-6 sm:p-8 flex flex-col justify-center">

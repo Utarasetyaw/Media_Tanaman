@@ -4,15 +4,13 @@ import type { Plant } from '../types/plant';
 // Impor file translasi
 import { cardTranslations } from '../assets/card.i18n';
 
-// REVISI 1: Definisikan props untuk menerima bahasa
+// Definisikan props untuk menerima bahasa
 interface PlantCardProps {
   plant: Plant;
   lang: 'id' | 'en';
 }
 
 const PlantCard: FC<PlantCardProps> = ({ plant, lang }) => {
-  // REVISI 2: Hapus `const lang` yang hardcoded
-
   // Fungsi translasi lokal
   const t = (key: keyof typeof cardTranslations.id): string => {
     return cardTranslations[lang]?.[key] || key;
@@ -21,8 +19,8 @@ const PlantCard: FC<PlantCardProps> = ({ plant, lang }) => {
   return (
     <div className="border-2 border-lime-400/50 bg-[#004A49]/60 rounded-lg shadow-sm overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-lg hover:shadow-lime-400/20 hover:-translate-y-1">
       <Link to={`/plants/${plant.id}`} className="block group overflow-hidden">
-        {/* REVISI 3: Ubah rasio aspek menjadi 4:5 agar konsisten */}
-        <div className="aspect-[4/5] bg-black/20">
+        {/* REVISI: Rasio aspek diubah menjadi video (16:9) agar konsisten */}
+        <div className="aspect-video bg-black/20">
             <img
             src={plant.imageUrl}
             alt={plant.name[lang]}
@@ -46,7 +44,6 @@ const PlantCard: FC<PlantCardProps> = ({ plant, lang }) => {
             to={`/plants/${plant.id}`}
             className="font-sans inline-block w-full text-center bg-lime-300 text-gray-900 font-bold px-4 py-2 rounded-lg hover:bg-lime-400 transition-colors text-sm"
           >
-            {/* REVISI 4: Gunakan teks dari translasi */}
             {t('view_detail')}
           </Link>
         </div>

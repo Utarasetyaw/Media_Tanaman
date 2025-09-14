@@ -12,12 +12,12 @@ export interface FaqItem {
   answer: LocalizedString;
 }
 
+// REVISI: Menyesuaikan tipe CompanyValue agar cocok dengan data API (title & description)
 export interface CompanyValue {
-  question: LocalizedString;
-  answer: LocalizedString;
+  title: LocalizedString;
+  description: LocalizedString;
 }
 
-// REVISI: Tambahkan socialMedia ke dalam tipe ContactInfo
 export interface ContactInfo {
     email?: string;
     phone?: string;

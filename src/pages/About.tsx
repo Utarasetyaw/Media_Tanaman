@@ -11,8 +11,8 @@ interface ValueCardProps { value: CompanyValue; icon: React.ReactNode; lang: 'id
 const ValueCard: FC<ValueCardProps> = ({ value, icon, lang }) => (
   <div className="p-6 text-center bg-[#004A49]/60 rounded-lg border-2 border-lime-400/80">
     <div className="flex justify-center items-center mb-4"><div className="bg-lime-300/20 p-4 rounded-full">{icon}</div></div>
-    <h3 className="text-xl font-bold text-white mb-2">{value.question[lang]}</h3>
-    <p className="text-gray-300 leading-relaxed">{value.answer[lang]}</p>
+    <h3 className="text-xl font-bold text-white mb-2">{value.title[lang]}</h3>
+    <p className="text-gray-300 leading-relaxed">{value.description[lang]}</p>
   </div>
 );
 

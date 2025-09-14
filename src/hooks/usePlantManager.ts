@@ -30,11 +30,9 @@ const deletePlant = async (id: number): Promise<void> => {
     await api.delete(`/plants/management/${id}`);
 };
 
-// REVISI 1: Perbaiki URL upload agar dinamis
 const uploadFile = async (folder: string, file: File): Promise<{ imageUrl: string }> => {
     const formData = new FormData();
     formData.append('image', file);
-    // URL dinamis, contoh: /upload/plants
     const { data } = await api.post(`/upload/${folder}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
     });
@@ -109,8 +107,14 @@ export const usePlantManager = () => {
         setImageFile(null);
         if (plant) {
             setEditingPlant(plant);
+            // REVISI: Pastikan 'stores' selalu dalam format array untuk menghindari error .map()
+            const storesAsArray = Array.isArray(plant.stores)
+                ? plant.stores
+                : [{ name: '', url: '' }]; // Default jika data stores tidak valid atau kosong
+
             setFormData({
               ...plant,
+              stores: storesAsArray, // Gunakan array yang sudah divalidasi
               categoryId: plant.category?.id || 0,
               familyId: plant.family?.id || 0,
             });
@@ -152,13 +156,10 @@ export const usePlantManager = () => {
         setFormData(prev => ({ ...prev, stores: [...(prev.stores || []), { name: '', url: '' }] }));
     };
 
-
-
     const removeStoreField = (index: number) => {
         setFormData(prev => ({ ...prev, stores: (prev.stores || []).filter((_, i) => i !== index) }));
     };
 
-    // REVISI 2: Bersihkan payload sebelum dikirim ke backend
     const handleSave = async () => {
         if (!formData.name?.id || !formData.categoryId || !formData.familyId) {
             alert("Nama (Indonesia), Kategori, dan Tipe Tanaman wajib diisi.");
@@ -167,7 +168,6 @@ export const usePlantManager = () => {
         let finalImageUrl = editingPlant?.imageUrl || formData.imageUrl;
         try {
             if (imageFile) {
-                // Memanggil fungsi uploadFile yang sudah diperbaiki
                 const uploadRes = await uploadFile('plants', imageFile);
                 finalImageUrl = uploadRes.imageUrl;
             }
@@ -181,7 +181,6 @@ export const usePlantManager = () => {
                 stores: (formData.stores || []).filter((store: Store) => store.name && store.url),
             };
 
-            // Hapus properti objek relasi yang tidak dibutuhkan backend untuk update
             delete payload.id;
             delete payload.category;
             delete payload.family;

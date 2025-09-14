@@ -45,6 +45,8 @@ const VerticalAd: FC<VerticalAdProps> = ({ position }) => {
   if (isLoading) {
     return (
       <div className={`hidden 2xl:flex flex-col gap-4 fixed top-36 z-10 ${position === 'left' ? 'left-10' : 'right-10'}`}>
+        {/* REVISI: Tampilkan dua placeholder loading */}
+        <div className="w-40 h-[400px] bg-gray-700/50 rounded shadow animate-pulse" />
         <div className="w-40 h-[400px] bg-gray-700/50 rounded shadow animate-pulse" />
       </div>
     );
@@ -54,6 +56,10 @@ const VerticalAd: FC<VerticalAdProps> = ({ position }) => {
   if (isError || !googleAdsId || !verticalAds || verticalAds.length === 0) {
     return (
         <div className={`hidden 2xl:flex flex-col gap-4 fixed top-36 z-10 ${position === 'left' ? 'left-10' : 'right-10'}`}>
+            {/* REVISI: Tampilkan dua placeholder 'tidak ada iklan' */}
+            <div className="w-40 h-[400px] border-2 border-dashed border-lime-400/50 rounded-lg flex items-center justify-center p-4">
+                <p className="text-gray-400 text-xs text-center">{t('no_ad_available')}</p>
+            </div>
             <div className="w-40 h-[400px] border-2 border-dashed border-lime-400/50 rounded-lg flex items-center justify-center p-4">
                 <p className="text-gray-400 text-xs text-center">{t('no_ad_available')}</p>
             </div>
@@ -64,7 +70,6 @@ const VerticalAd: FC<VerticalAdProps> = ({ position }) => {
   // Tampilkan iklan jika valid
   return (
     <div className={`hidden 2xl:flex flex-col gap-4 fixed top-36 z-10 ${position === 'left' ? 'left-10' : 'right-10'}`}>
-      {/* REVISI: Selalu tampilkan dua blok iklan */}
       <AdBlock ads={verticalAds} t={t} />
       <AdBlock ads={verticalAds} t={t} />
     </div>

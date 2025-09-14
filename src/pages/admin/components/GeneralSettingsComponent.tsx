@@ -6,7 +6,8 @@ import type { BannerImage, FaqItem, CompanyValue, SiteSettings } from '../../../
 // Tipe Data Lokal
 type ArrayField = 'faqs' | 'companyValues';
 type FaqSubField = keyof FaqItem;
-type CompanyValueSubField = keyof CompanyValue;
+// REVISI: Tentukan field secara eksplisit agar sesuai dengan penggunaan di komponen dan memperbaiki error TipeScript
+type CompanyValueSubField = 'title' | 'description';
 
 // Komponen UI Kecil (Reusable & Themed)
 const InputField: React.FC<{ label: string; name: string; value: string; onChange: React.ChangeEventHandler<HTMLInputElement>; placeholder?: string, type?: string }> = 
@@ -205,6 +206,23 @@ export const GeneralSettingsComponent: React.FC = () => {
             </div>
 
             <div className="space-y-4">
+                 <h4 className='text-lg font-semibold text-lime-300 border-b border-lime-400/30 pb-2'>Nilai Perusahaan</h4>
+                {formData.companyValues?.map((value: CompanyValue, index: number) => (
+                    <div key={index} className="p-4 border border-lime-400/20 rounded-lg space-y-2 relative bg-gray-900/20">
+                        <button onClick={() => removeArrayItem('companyValues', index)} className="absolute top-2 right-2 text-red-500 hover:text-red-400"><Trash2 size={18}/></button>
+                        <InputField label={`Judul Nilai ${index + 1} (ID)`} name={`value_t_id_${index}`} value={value.title?.id || ''} onChange={(e) => handleArrayItemChange('companyValues', index, 'title', 'id', e.target.value)}/>
+                        <InputField label={`Judul Nilai ${index + 1} (EN)`} name={`value_t_en_${index}`} value={value.title?.en || ''} onChange={(e) => handleArrayItemChange('companyValues', index, 'title', 'en', e.target.value)}/>
+                        {/* REVISI: Gunakan type assertion (as any) untuk mengakses 'description' karena tipe impor tidak sesuai */}
+                        <TextareaField label={`Deskripsi ${index + 1} (ID)`} name={`value_d_id_${index}`} value={(value as any).description?.id || ''} onChange={(e) => handleArrayItemChange('companyValues', index, 'description', 'id', e.target.value)}/>
+                        <TextareaField label={`Deskripsi ${index + 1} (EN)`} name={`value_d_en_${index}`} value={(value as any).description?.en || ''} onChange={(e) => handleArrayItemChange('companyValues', index, 'description', 'en', e.target.value)}/>
+                    </div>
+                ))}
+                 <button onClick={() => addArrayItem('companyValues', { title: { id: '', en: '' }, description: { id: '', en: '' } })} className="mt-2 flex items-center gap-2 text-sm font-semibold text-lime-300 hover:text-lime-200">
+                    <PlusCircle size={18}/> Tambah Nilai Perusahaan
+                </button>
+            </div>
+
+            <div className="space-y-4">
                  <h4 className='text-lg font-semibold text-lime-300 border-b border-lime-400/30 pb-2'>Tanya Jawab (FAQ)</h4>
                 {formData.faqs?.map((faq: FaqItem, index: number) => (
                     <div key={index} className="p-4 border border-lime-400/20 rounded-lg space-y-2 relative bg-gray-900/20">
@@ -220,6 +238,11 @@ export const GeneralSettingsComponent: React.FC = () => {
                 </button>
             </div>
             
+            <SectionCard title="Kebijakan Privasi" className='md:grid-cols-1'>
+                <TextareaField label="Isi Kebijakan Privasi (Indonesia)" name="privacyPolicy_id" value={formData.privacyPolicy?.id || ''} onChange={(e) => handleNestedChange('privacyPolicy', 'id', e.target.value)} rows={8} />
+                <TextareaField label="Isi Kebijakan Privasi (Bahasa Inggris)" name="privacyPolicy_en" value={formData.privacyPolicy?.en || ''} onChange={(e) => handleNestedChange('privacyPolicy', 'en', e.target.value)} rows={8} />
+            </SectionCard>
+
             <div className='pt-6 mt-6 border-t border-lime-400/30'>
                 <button onClick={handleSave} disabled={isSaving} className="w-full bg-lime-400 text-gray-900 font-bold py-3 px-6 rounded-lg hover:bg-lime-500 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
                     {isSaving ? 'Menyimpan...' : 'Simpan Semua Perubahan'}
@@ -228,3 +251,4 @@ export const GeneralSettingsComponent: React.FC = () => {
         </div>
     );
 };
+
