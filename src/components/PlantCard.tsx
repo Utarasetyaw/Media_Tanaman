@@ -19,7 +19,6 @@ const PlantCard: FC<PlantCardProps> = ({ plant, lang }) => {
   return (
     <div className="border-2 border-lime-400/50 bg-[#004A49]/60 rounded-lg shadow-sm overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-lg hover:shadow-lime-400/20 hover:-translate-y-1">
       <Link to={`/plants/${plant.id}`} className="block group overflow-hidden">
-        {/* REVISI: Rasio aspek diubah menjadi video (16:9) agar konsisten */}
         <div className="aspect-video bg-black/20">
             <img
             src={plant.imageUrl}
@@ -30,7 +29,8 @@ const PlantCard: FC<PlantCardProps> = ({ plant, lang }) => {
       </Link>
       <div className="p-3 sm:p-4 flex flex-col flex-grow">
         <div className="flex-grow">
-          <h3 className="font-serif font-bold text-base sm:text-lg text-gray-100 truncate">
+          {/* REVISI: Mengganti 'truncate' dengan 'line-clamp-2' dan menambahkan tinggi minimum untuk konsistensi */}
+          <h3 className="font-serif font-bold text-base sm:text-lg text-gray-100 line-clamp-2 min-h-[3rem] sm:min-h-[3.5rem]">
             <Link to={`/plants/${plant.id}`} className="hover:text-lime-400 transition-colors">
               {plant.name[lang]}
             </Link>

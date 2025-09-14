@@ -1,7 +1,8 @@
 import type { FC } from 'react';
 import { Fragment } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { SlidersHorizontal, ChevronDown } from 'lucide-react';
+// REVISI: Import ListFilter dihapus karena tidak lagi digunakan
+import { Sprout, ChevronDown } from 'lucide-react';
 import { Menu, Transition } from '@headlessui/react';
 import { useLayoutData } from '../hooks/useLayoutData';
 import { usePlantsPage } from '../hooks/usePlantsPage';
@@ -10,23 +11,33 @@ import PlantCard from '../components/PlantCard';
 import VerticalAd from '../components/VerticalAd';
 import HorizontalAd from '../components/HorizontalAd';
 
-// Komponen Dropdown Custom
+// Komponen Dropdown Custom (dengan dukungan ikon)
 interface CustomDropdownProps {
     options: { value: string | number; label: string }[];
     selectedValue: string | number;
     onSelect: (value: string) => void;
     placeholder: string;
+    icon?: React.ReactNode; 
 }
-const CustomDropdown: FC<CustomDropdownProps> = ({ options, selectedValue, onSelect, placeholder }) => {
+const CustomDropdown: FC<CustomDropdownProps> = ({ options, selectedValue, onSelect, placeholder, icon }) => {
     const selectedLabel = options.find(opt => opt.value.toString() === selectedValue.toString())?.label || placeholder;
     return (
         <Menu as="div" className="relative inline-block text-left w-full">
-            <Menu.Button className="inline-flex w-full justify-between items-center rounded-lg bg-[#003938] border border-lime-500 px-4 py-2 text-sm font-medium text-white hover:bg-opacity-80 focus:outline-none">
-                {selectedLabel}
-                <ChevronDown className="ml-2 -mr-1 h-5 w-5" />
+            <Menu.Button className="inline-flex w-full justify-between items-center rounded-lg bg-[#003938] border border-lime-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-opacity-80 focus:outline-none focus:ring-2 focus:ring-lime-400">
+                <div className="flex items-center overflow-hidden">
+                    {icon && <span className="mr-2 opacity-80 flex-shrink-0">{icon}</span>}
+                    <span className="truncate">{selectedLabel}</span>
+                </div>
+                <ChevronDown className="ml-2 -mr-1 h-5 w-5 flex-shrink-0" />
             </Menu.Button>
             <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-                <Menu.Items className="absolute left-0 mt-2 w-full origin-top-right rounded-md bg-[#003938] border-2 border-lime-400/50 shadow-lg ring-1 ring-black/5 focus:outline-none z-10"><div className="px-1 py-1 max-h-60 overflow-y-auto"><Menu.Item>{({ active }) => (<button type="button" onClick={() => onSelect('all')} className={`${active ? 'bg-[#004A49] text-white' : 'text-gray-300'} group flex w-full items-center rounded-md px-3 py-2 text-sm`}>{placeholder}</button>)}</Menu.Item>{options.map((option) => (<Menu.Item key={option.value}>{({ active }) => (<button type="button" onClick={() => onSelect(String(option.value))} className={`${active ? 'bg-[#004A49] text-white' : 'text-gray-300'} group flex w-full items-center rounded-md px-3 py-2 text-sm`}>{option.label}</button>)}</Menu.Item>))}</div></Menu.Items></Transition>
+                <Menu.Items className="absolute left-0 mt-2 w-full origin-top-right rounded-md bg-[#003938] border-2 border-lime-400/50 shadow-lg ring-1 ring-black/5 focus:outline-none z-10">
+                    <div className="px-1 py-1 max-h-60 overflow-y-auto">
+                        <Menu.Item>{({ active }) => (<button type="button" onClick={() => onSelect('all')} className={`${active ? 'bg-[#004A49] text-white' : 'text-gray-300'} group flex w-full items-center rounded-md px-3 py-2 text-sm`}>{placeholder}</button>)}</Menu.Item>
+                        {options.map((option) => (<Menu.Item key={option.value}>{({ active }) => (<button type="button" onClick={() => onSelect(String(option.value))} className={`${active ? 'bg-[#004A49] text-white' : 'text-gray-300'} group flex w-full items-center rounded-md px-3 py-2 text-sm`}>{option.label}</button>)}</Menu.Item>))}
+                    </div>
+                </Menu.Items>
+            </Transition>
         </Menu>
     );
 };
@@ -72,18 +83,15 @@ const PlantPage: FC = () => {
           <p className="text-lg text-gray-300 max-w-2xl mx-auto">{t('description')}</p>
         </div>
         
-        <div className="mb-12 p-4 bg-[#004A49]/60 border-2 border-lime-400/50 rounded-lg flex flex-col sm:flex-row items-center gap-4">
-          <SlidersHorizontal className="text-lime-400 hidden sm:block flex-shrink-0" size={24} />
-          {/* --- BAGIAN INI YANG DIPERBAIKI --- */}
-          {/* Kelas sm:max-w-xs dan sm:mx-auto dihapus agar dropdown menjadi panjang */}
-          <div className="w-full">
-            <CustomDropdown 
-              placeholder={t('all_families')} 
-              selectedValue={filters.familyId} 
-              onSelect={(val) => handleFilterChange('familyId', val)} 
-              options={layoutData?.plantTypes.map(pt => ({ value: pt.id, label: pt.name[currentLang] })) || []} 
-            />
-          </div>
+        {/* REVISI: Filter Kategori dihapus dan layout disesuaikan */}
+        <div className="mb-12 p-3 bg-[#004A49]/60 border-2 border-lime-400/50 rounded-lg">
+          <CustomDropdown 
+            placeholder={t('all_families')} 
+            selectedValue={filters.familyId} 
+            onSelect={(val) => handleFilterChange('familyId', val)} 
+            options={layoutData?.plantTypes.map(pt => ({ value: pt.id, label: pt.name[currentLang] })) || []}
+            icon={<Sprout size={16} />} 
+          />
         </div>
 
         <div className="mb-12"><HorizontalAd /></div>

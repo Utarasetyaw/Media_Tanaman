@@ -17,7 +17,7 @@ type EventTranslation = {
 export const eventsTranslations: { [key in 'id' | 'en']: EventTranslation } = {
     id: {
         title: "Event & Lomba",
-        description: "Ikuti berbagai event seru dan lomba menarik yang kami adakan. Tunjukkan karyamu dan menangkan hadiahnya!",
+        description: "Ikuti beragam event dan lomba seru, hasil kolaborasi dengan berbagai pihak. Tunjukkan karyamu dan raih hadiahnya!",
         all_plants: "Semua Tipe Tanaman",
         all_categories: "Semua Kategori",
         no_events_title: "Tidak Ada Event",
@@ -32,7 +32,7 @@ export const eventsTranslations: { [key in 'id' | 'en']: EventTranslation } = {
     },
     en: {
         title: "Events & Competitions",
-        description: "Join our exciting events and interesting competitions. Show off your work and win prizes!",
+        description: "Participate in various art events and competitions, in collaboration with various parties. Showcase your work and win prizes!",
         all_plants: "All Plant Types",
         all_categories: "All Categories",
         no_events_title: "No Events Found",
