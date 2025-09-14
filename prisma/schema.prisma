@@ -1,0 +1,213 @@
+// datasource db mendefinisikan koneksi database Anda
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// generator client menginstruksikan Prisma untuk membuat Prisma Client
+generator client {
+  provider = "prisma-client-js"
+}
+
+// =================================================================
+// MODEL-MODEL UNTUK MANAJEMEN KONTEN
+// =================================================================
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     Json
+  articles Article[]
+  plants   Plant[]
+  events   Event[]
+}
+
+model PlantType {
+  id       Int       @id @default(autoincrement())
+  name     Json
+  articles Article[]
+  plants   Plant[]   @relation("PlantFamily")
+  events   Event[]
+}
+
+// =================================================================
+// MODEL-MODEL UTAMA APLIKASI
+// =================================================================
+
+model User {
+  id          Int               @id @default(autoincrement())
+  email       String            @unique
+  name        String
+  password    String
+  role        Role              @default(USER)
+  articles    Article[]
+  likes       Like[]
+  submissions EventSubmission[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // --- Detail Profil Pengguna ---
+  address     String?
+  phoneNumber String?
+  socialMedia Json?
+}
+
+model Article {
+  id               Int                    @id @default(autoincrement())
+  title            Json
+  excerpt          Json
+  content          Json
+  imageUrl         String
+  author           User                   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId         Int
+  status           ArticleStatus          @default(DRAFT)
+  feedback         String?                @db.Text
+  seo              Json?
+  viewCount        Int                    @default(0)
+  likes            Like[]
+  adminEditRequest AdminEditRequestStatus @default(NONE)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  category    Category  @relation(fields: [categoryId], references: [id])
+  categoryId  Int
+  plantType   PlantType? @relation(fields: [plantTypeId], references: [id])
+  plantTypeId Int?
+}
+
+model Plant {
+  id             Int       @id @default(autoincrement())
+  name           Json
+  scientificName String
+  description    Json
+  imageUrl       String
+  careLevel      CareLevel
+  size           PlantSize
+  stores         Json
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  category   Category  @relation(fields: [categoryId], references: [id])
+  categoryId Int
+  family     PlantType @relation("PlantFamily", fields: [familyId], references: [id])
+  familyId   Int
+}
+
+model Event {
+  id          Int               @id @default(autoincrement())
+  title       Json
+  description Json
+  imageUrl    String
+  location    String
+  organizer   String
+  startDate   DateTime
+  endDate     DateTime
+  eventType   EventType
+  externalUrl String?
+  submissions EventSubmission[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  externalLinkClicks Int @default(0)
+  category   Category @relation(fields: [categoryId], references: [id])
+  categoryId Int
+
+  plantType   PlantType? @relation(fields: [plantTypeId], references: [id])
+  plantTypeId Int?       // Dibuat opsional (?) karena tidak semua event terkait tanaman
+}
+
+model EventSubmission {
+  id              Int      @id @default(autoincrement())
+  event           Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId         Int
+  submissionUrl   String
+  submissionNotes String?  @db.Text
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          Int
+  placement       Int?
+}
+
+model Like {
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId Int
+  createdAt DateTime @default(now())
+
+  @@id([userId, articleId])
+}
+
+// =================================================================
+// MODEL UNTUK PENGATURAN SITUS
+// =================================================================
+
+model SiteSettings {
+  id                  Int      @id @default(1)
+  name                String?
+  logoUrl             String?
+  faviconUrl          String?
+  businessDescription Json?
+  contactInfo         Json?
+  faqs                Json?
+  companyValues       Json?
+  privacyPolicy       Json?
+  seo                 Json?
+  googleAnalyticsId   String?
+  googleAdsId         String?
+  metaPixelId         String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  bannerTagline       Json? // <-- Tagline utama untuk semua banner
+  bannerImages        BannerImage[]
+}
+
+model BannerImage {
+  id             Int          @id @default(autoincrement())
+  imageUrl       String
+  // tagline dihapus dari sini
+  siteSettings   SiteSettings @relation(fields: [siteSettingsId], references: [id], onDelete: Cascade)
+  siteSettingsId Int
+}
+
+// =================================================================
+// ENUMS
+// =================================================================
+
+enum Role {
+  ADMIN
+  JOURNALIST
+  USER
+}
+
+enum ArticleStatus {
+  DRAFT
+  IN_REVIEW
+  NEEDS_REVISION
+  JOURNALIST_REVISING
+  REVISED
+  PUBLISHED
+  REJECTED
+}
+
+enum AdminEditRequestStatus {
+  NONE
+  PENDING
+  APPROVED
+  DENIED
+}
+
+enum CareLevel {
+  Mudah
+  Sedang
+  Sulit
+}
+
+enum PlantSize {
+  Kecil
+  Sedang
+  Besar
+}
+
+enum EventType {
+  INTERNAL
+  EXTERNAL
+}
