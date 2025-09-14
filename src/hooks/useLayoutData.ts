@@ -19,7 +19,7 @@ interface SiteSettings {
     socialMedia?: {
         instagram?: string;
         facebook?: string;
-        twitter?: string;
+        tiktok?: string;
     }
   };
   // REVISI: Tambahkan properti yang hilang di sini

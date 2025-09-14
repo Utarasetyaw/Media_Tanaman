@@ -92,7 +92,7 @@ export const GeneralSettingsComponent: React.FC = () => {
             const newArray = JSON.parse(JSON.stringify(prev[arrayName] || []));
             if (!newArray[index]) return prev;
             if (!newArray[index][fieldName]) newArray[index][fieldName] = { id: '', en: '' };
-            newArray[index][fieldName][lang] = value;
+            (newArray[index][fieldName] as any)[lang] = value;
             return { ...prev, [arrayName]: newArray };
         });
     };
@@ -159,8 +159,12 @@ export const GeneralSettingsComponent: React.FC = () => {
                 <div className="md:col-span-2">
                   <TextareaField label="Alamat" name="address" value={formData.contactInfo?.address || ''} onChange={(e) => handleNestedChange('contactInfo', 'address', e.target.value)} />
                 </div>
-                <InputField label="URL Instagram" name="instagram" placeholder="https://instagram.com/akunanda" value={formData.contactInfo?.socialMedia?.instagram || ''} onChange={(e) => handleDeeplyNestedChange('contactInfo', 'socialMedia', 'instagram', e.target.value)} />
-                <InputField label="URL Facebook" name="facebook" placeholder="https://facebook.com/akunanda" value={formData.contactInfo?.socialMedia?.facebook || ''} onChange={(e) => handleDeeplyNestedChange('contactInfo', 'socialMedia', 'facebook', e.target.value)} />
+                 {/* REVISI: Grup media sosial dibuat dalam satu baris untuk layout yang lebih rapi */}
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <InputField label="URL Instagram" name="instagram" placeholder="https://instagram.com/akunanda" value={formData.contactInfo?.socialMedia?.instagram || ''} onChange={(e) => handleDeeplyNestedChange('contactInfo', 'socialMedia', 'instagram', e.target.value)} />
+                    <InputField label="URL Facebook" name="facebook" placeholder="https://facebook.com/akunanda" value={formData.contactInfo?.socialMedia?.facebook || ''} onChange={(e) => handleDeeplyNestedChange('contactInfo', 'socialMedia', 'facebook', e.target.value)} />
+                    <InputField label="URL TikTok" name="tiktok" placeholder="https://tiktok.com/@akunanda" value={formData.contactInfo?.socialMedia?.tiktok || ''} onChange={(e) => handleDeeplyNestedChange('contactInfo', 'socialMedia', 'tiktok', e.target.value)} />
+                </div>
             </SectionCard>
             
             <SectionCard title="Deskripsi Perusahaan" className='md:grid-cols-1'>
@@ -212,7 +216,6 @@ export const GeneralSettingsComponent: React.FC = () => {
                         <button onClick={() => removeArrayItem('companyValues', index)} className="absolute top-2 right-2 text-red-500 hover:text-red-400"><Trash2 size={18}/></button>
                         <InputField label={`Judul Nilai ${index + 1} (ID)`} name={`value_t_id_${index}`} value={value.title?.id || ''} onChange={(e) => handleArrayItemChange('companyValues', index, 'title', 'id', e.target.value)}/>
                         <InputField label={`Judul Nilai ${index + 1} (EN)`} name={`value_t_en_${index}`} value={value.title?.en || ''} onChange={(e) => handleArrayItemChange('companyValues', index, 'title', 'en', e.target.value)}/>
-                        {/* REVISI: Gunakan type assertion (as any) untuk mengakses 'description' karena tipe impor tidak sesuai */}
                         <TextareaField label={`Deskripsi ${index + 1} (ID)`} name={`value_d_id_${index}`} value={(value as any).description?.id || ''} onChange={(e) => handleArrayItemChange('companyValues', index, 'description', 'id', e.target.value)}/>
                         <TextareaField label={`Deskripsi ${index + 1} (EN)`} name={`value_d_en_${index}`} value={(value as any).description?.en || ''} onChange={(e) => handleArrayItemChange('companyValues', index, 'description', 'en', e.target.value)}/>
                     </div>

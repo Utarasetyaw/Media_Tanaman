@@ -25,7 +25,7 @@ export interface ContactInfo {
     socialMedia?: {
         instagram?: string;
         facebook?: string;
-        twitter?: string;
+        tiktok?: string;
     }
 }
 

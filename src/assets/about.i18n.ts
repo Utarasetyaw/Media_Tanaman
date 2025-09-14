@@ -7,6 +7,7 @@ type AboutTranslation = {
     privacy_policy_title: string;
     email: string;
     phone: string;
+    address: string;
     loading: string;
     error: string;
 };
@@ -21,6 +22,7 @@ export const aboutTranslations: { [key in 'id' | 'en']: AboutTranslation } = {
         privacy_policy_title: "Kebijakan Privasi",
         email: "Email",
         phone: "Telepon",
+        address: 'Alamat',
         loading: "Memuat halaman...",
         error: "Gagal memuat data halaman."
     },
@@ -33,6 +35,7 @@ export const aboutTranslations: { [key in 'id' | 'en']: AboutTranslation } = {
         privacy_policy_title: "Privacy Policy",
         email: "Email",
         phone: "Phone",
+        address: "Address",
         loading: "Loading page...",
         error: "Failed to load page data."
     }
