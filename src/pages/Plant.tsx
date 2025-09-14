@@ -4,8 +4,8 @@ import { useOutletContext } from 'react-router-dom';
 import { SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { Menu, Transition } from '@headlessui/react';
 import { useLayoutData } from '../hooks/useLayoutData';
-import { usePlantsPage } from '../hooks/usePlantsPage'; // Hook baru
-import { plantsTranslations } from '../assets/plants.i18n'; // Translasi baru
+import { usePlantsPage } from '../hooks/usePlantsPage';
+import { plantsTranslations } from '../assets/plants.i18n';
 import PlantCard from '../components/PlantCard';
 import VerticalAd from '../components/VerticalAd';
 import HorizontalAd from '../components/HorizontalAd';
@@ -63,7 +63,7 @@ const PlantPage: FC = () => {
   };
 
   return (
-    <div className="bg-[#003938] min-h-screen relative">
+    <div className="relative w-full bg-[#003938] min-h-screen">
       <VerticalAd position="left" />
       <VerticalAd position="right" />
      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 2xl:px-60 py-12 sm:py-16">
@@ -74,9 +74,15 @@ const PlantPage: FC = () => {
         
         <div className="mb-12 p-4 bg-[#004A49]/60 border-2 border-lime-400/50 rounded-lg flex flex-col sm:flex-row items-center gap-4">
           <SlidersHorizontal className="text-lime-400 hidden sm:block flex-shrink-0" size={24} />
-          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <CustomDropdown placeholder={t('all_families')} selectedValue={filters.familyId} onSelect={(val) => handleFilterChange('familyId', val)} options={layoutData?.plantTypes.map(pt => ({ value: pt.id, label: pt.name[currentLang] })) || []} />
-            <CustomDropdown placeholder={t('all_categories')} selectedValue={filters.categoryId} onSelect={(val) => handleFilterChange('categoryId', val)} options={layoutData?.categories.map(cat => ({ value: cat.id, label: cat.name[currentLang] })) || []} />
+          {/* --- BAGIAN INI YANG DIPERBAIKI --- */}
+          {/* Kelas sm:max-w-xs dan sm:mx-auto dihapus agar dropdown menjadi panjang */}
+          <div className="w-full">
+            <CustomDropdown 
+              placeholder={t('all_families')} 
+              selectedValue={filters.familyId} 
+              onSelect={(val) => handleFilterChange('familyId', val)} 
+              options={layoutData?.plantTypes.map(pt => ({ value: pt.id, label: pt.name[currentLang] })) || []} 
+            />
           </div>
         </div>
 
