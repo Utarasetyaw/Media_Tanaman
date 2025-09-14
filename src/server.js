@@ -21,7 +21,7 @@ import dashboardRoutes from './routes/dashboard.routes.js';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3009;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
