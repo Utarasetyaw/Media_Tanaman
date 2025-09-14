@@ -1,7 +1,7 @@
 import type { FC } from 'react';
-import { Fragment, useState, useRef, useEffect } from 'react';
+import { Fragment, useState, useEffect } from 'react'; // useRef dihapus
 import { Link, useOutletContext } from 'react-router-dom';
-import { Calendar, MapPin, ChevronDown, ListFilter, ChevronLeft, ChevronRight, Sprout } from 'lucide-react';
+import { Calendar, MapPin, ChevronDown, ListFilter, Sprout } from 'lucide-react'; // ChevronLeft & ChevronRight dihapus
 import { Menu, Transition } from '@headlessui/react';
 import { useHomePage } from '../hooks/useHomePage';
 import type { Article, Event, Plant, Category, BannerImage, LocalizedString } from '../hooks/useHomePage';
@@ -94,56 +94,22 @@ const UpcomingEvent: FC<{ event: Event, lang: 'id' | 'en', t: (key: keyof typeof
 const FeaturedPlant: FC<{ plant: Plant, lang: 'id' | 'en', t: (key: keyof typeof homeTranslations.id) => string }> = ({ plant, lang, t }) => (<section className="py-12"><div className="max-w-4xl mx-auto bg-[#004A49]/60 p-4 sm:p-6 md:p-8 rounded-lg border-2 border-lime-400/80 grid md:grid-cols-2 gap-8 items-center"><div className="w-full aspect-[4/5] md:aspect-square rounded-lg overflow-hidden bg-black/20"><img src={plant.imageUrl} alt={plant.name[lang]} className="w-full h-full object-cover" /></div><div className="flex flex-col justify-center"><h3 className="font-sans text-lime-400 font-bold uppercase text-sm tracking-wider">{t('plant_of_the_week')}</h3><h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-100 my-2">{plant.name[lang]}</h2><p className="font-sans text-gray-300 leading-relaxed line-clamp-4">{plant.description[lang]}</p><div className="mt-6"><Link to={`/plants/${plant.id}`} className="font-sans inline-block bg-lime-300 text-gray-900 font-bold px-6 py-3 rounded-lg hover:bg-lime-400 transition-colors">{t('view_plant_detail_button')}</Link></div></div></div></section>);
 
 
-// --- INI BAGIAN YANG DI REVISI DENGAN 3 TAMPILAN BERBEDA ---
-const CategoryFilters: FC<{ categories: Category[]; plantTypes: Category[]; onFilterChange: (newFilters: Partial<{ categoryId?: number | string; plantTypeId?: number | string; }>) => void; lang: 'id' | 'en'; t: (key: keyof typeof homeTranslations.id) => string; filters: { categoryId?: number | string; plantTypeId?: number | string; }; }> = ({ categories, plantTypes, onFilterChange, lang, t, filters }) => {
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const [showLeftArrow, setShowLeftArrow] = useState(false);
-    const [showRightArrow, setShowRightArrow] = useState(false);
+// --- INI BAGIAN YANG DI REVISI ---
+// Filter diubah menjadi 2 kolom dropdown untuk semua ukuran layar (tablet ke atas)
+const CategoryFilters: FC<{ 
+    categories: Category[]; 
+    plantTypes: Category[]; 
+    onFilterChange: (newFilters: Partial<{ categoryId?: number | string; plantTypeId?: number | string; }>) => void; 
+    lang: 'id' | 'en'; 
+    t: (key: keyof typeof homeTranslations.id) => string; 
+    filters: { categoryId?: number | string; plantTypeId?: number | string; }; 
+}> = ({ categories, plantTypes, onFilterChange, lang, t, filters }) => {
 
-    const plantTypesForFilter = [
-        { id: 'all', name: { id: t('all_plant_types'), en: 'All Plant Types' } },
-        ...(plantTypes || [])
-    ];
-    const itemCount = plantTypesForFilter.length;
-
-    const gridColsMap: { [key: number]: string } = {
-        1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5',
-    };
-    const gridClass = gridColsMap[itemCount] || 'grid-cols-5';
-
-    const checkArrows = () => {
-        if (scrollRef.current) {
-            const { scrollWidth, clientWidth, scrollLeft } = scrollRef.current;
-            setShowLeftArrow(scrollLeft > 0);
-            setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 1);
-        }
-    };
-
-    useEffect(() => {
-        const scrollElement = scrollRef.current;
-        if (scrollElement) {
-            checkArrows();
-            scrollElement.addEventListener('scroll', checkArrows);
-            window.addEventListener('resize', checkArrows);
-            return () => {
-                scrollElement.removeEventListener('scroll', checkArrows);
-                window.removeEventListener('resize', checkArrows);
-            };
-        }
-    }, [plantTypesForFilter]);
-    
-    const handleScroll = (direction: 'left' | 'right') => {
-        if (scrollRef.current) {
-            const scrollAmount = scrollRef.current.clientWidth * 0.7;
-            scrollRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
-        }
-    };
-
+    // Logika untuk slider/tombol yang kompleks dihapus untuk simplifikasi.
     return (
-        // Layout berubah di breakpoint md (tablet) dan xl (desktop besar)
-        <div className="my-8 flex flex-col md:grid md:grid-cols-2 xl:flex xl:flex-row items-center gap-4 rounded-lg bg-[#004A49]/60 border-2 border-lime-400/50 p-3">
-            {/* Dropdown Kategori (Selalu tampil) */}
-            <div className="w-full xl:w-auto xl:min-w-[200px] xl:flex-shrink-0">
+        <div className="my-8 grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg bg-[#004A49]/60 border-2 border-lime-400/50 p-3">
+            {/* Kolom 1: Dropdown Kategori */}
+            <div className="w-full">
                 <CustomDropdown
                     placeholder={t('all_categories')}
                     selectedValue={filters.categoryId || 'all'}
@@ -153,8 +119,8 @@ const CategoryFilters: FC<{ categories: Category[]; plantTypes: Category[]; onFi
                 />
             </div>
 
-            {/* Dropdown Tipe Tanaman (Tampil di mobile, tablet & laptop, TAPI HILANG di desktop besar) */}
-            <div className="w-full xl:hidden">
+            {/* Kolom 2: Dropdown Tipe Tanaman */}
+            <div className="w-full">
                 <CustomDropdown
                     placeholder={t('all_plant_types')}
                     selectedValue={filters.plantTypeId || 'all'}
@@ -162,45 +128,6 @@ const CategoryFilters: FC<{ categories: Category[]; plantTypes: Category[]; onFi
                     options={plantTypes.map(pt => ({ value: pt.id, label: pt.name[lang] }))}
                     icon={<Sprout size={16} />}
                 />
-            </div>
-
-            {/* Pemisah (HANYA TAMPIL DI DESKTOP BESAR) */}
-            <div className="hidden xl:block w-px h-8 bg-lime-400/50"></div>
-            
-            {/* Tombol/Slider Tipe Tanaman "CARD MODE" (HANYA TAMPIL DI DESKTOP BESAR) */}
-            <div className="w-full xl:flex-1 relative hidden xl:block">
-                {itemCount <= 5 && (
-                    <div className={`grid ${gridClass} gap-2 w-full`}>
-                        {plantTypesForFilter.map(pt => (
-                            <button key={pt.id} onClick={() => onFilterChange({ plantTypeId: pt.id })} className={`w-full px-4 py-2.5 text-sm font-semibold rounded-md transition-colors duration-200 whitespace-nowrap ${(filters.plantTypeId === pt.id) ? 'bg-lime-300 text-lime-900' : 'bg-[#003938]/80 text-gray-200 hover:bg-[#003938]'}`}>
-                                {pt.name[lang]}
-                            </button>
-                        ))}
-                    </div>
-                )}
-                {itemCount > 5 && (
-                    <div className="relative flex items-center">
-                        {showLeftArrow && (
-                            <button onClick={() => handleScroll('left')} className="absolute -left-3 top-1/2 -translate-y-1/2 z-10 p-1 rounded-full bg-[#003938]/80 text-white hover:bg-[#003938] backdrop-blur-sm">
-                                <ChevronLeft size={20} />
-                            </button>
-                        )}
-                        <div ref={scrollRef} className="w-full overflow-x-auto scrollbar-hide">
-                            <div className="flex items-center gap-2">
-                                {plantTypesForFilter.map(pt => (
-                                    <button key={pt.id} onClick={() => onFilterChange({ plantTypeId: pt.id })} className={`px-4 py-2.5 text-sm font-semibold rounded-md transition-colors duration-200 whitespace-nowrap ${(filters.plantTypeId === pt.id) ? 'bg-lime-300 text-lime-900' : 'bg-[#003938]/80 text-gray-200 hover:bg-[#003938]'}`}>
-                                        {pt.name[lang]}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        {showRightArrow && (
-                             <button onClick={() => handleScroll('right')} className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 p-1 rounded-full bg-[#003938]/80 text-white hover:bg-[#003938] backdrop-blur-sm">
-                                <ChevronRight size={20} />
-                            </button>
-                        )}
-                    </div>
-                )}
             </div>
         </div>
     );
