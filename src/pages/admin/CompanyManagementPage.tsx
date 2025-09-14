@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { TaxonomyManager } from './components/TaxonomyManager';
 import { GeneralSettingsComponent } from './components/GeneralSettingsComponent';
-// REVISI: Impor 'api' dari service utama, bukan dari 'apiAdmin' yang tidak ada
 import api from '../../services/apiService'; 
 
-// --- Tipe Data Lokal untuk API ---
-// Ini harus cocok dengan tipe 'TaxonomyPayload' di dalam hook
+// Tipe data untuk payload API taksonomi
 type TaxonomyPayload = { name: { id: string; en: string } };
 
-// REVISI: Definisikan fungsi-fungsi API untuk Kategori di sini
+// Fungsi-fungsi API untuk Kategori
 const categoryApi = {
   getAll: () => api.get('/categories').then(res => res.data),
   create: (data: TaxonomyPayload) => api.post('/categories', data).then(res => res.data),
@@ -16,7 +14,7 @@ const categoryApi = {
   delete: (id: number) => api.delete(`/categories/${id}`).then(res => res.data),
 };
 
-// REVISI: Definisikan fungsi-fungsi API untuk Tipe Tanaman di sini
+// Fungsi-fungsi API untuk Tipe Tanaman
 const plantTypeApi = {
   getAll: () => api.get('/plant-types').then(res => res.data),
   create: (data: TaxonomyPayload) => api.post('/plant-types', data).then(res => res.data),
@@ -37,7 +35,6 @@ export const CompanyManagementPage: React.FC = () => {
                         queryKey="adminCategories" 
                         title="Manajemen Kategori"
                         itemName="Kategori"
-                        // REVISI: Berikan objek API yang sudah kita definisikan di atas
                         api={categoryApi}
                     />
                 );
@@ -47,7 +44,6 @@ export const CompanyManagementPage: React.FC = () => {
                         queryKey="adminPlantTypes"
                         title="Manajemen Tipe Tanaman"
                         itemName="Tipe Tanaman"
-                        // REVISI: Berikan objek API yang sudah kita definisikan di atas
                         api={plantTypeApi}
                     />
                 );
@@ -60,27 +56,28 @@ export const CompanyManagementPage: React.FC = () => {
 
     return (
         <div>
-            <h2 className="text-3xl font-bold text-lime-200/90 mb-4">Pengaturan Situs</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-lime-200/90 mb-4">Pengaturan Situs</h2>
             
             <div className="mb-6 border-b border-lime-400/30">
-                <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                {/* REVISI: Navigasi dibuat flex-col di mobile dan flex-row di layar lebih besar */}
+                <nav className="-mb-px flex flex-col sm:flex-row sm:space-x-6" aria-label="Tabs">
+                    <button
+                        onClick={() => setActiveTab('general')}
+                        className={`text-left sm:text-center py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'general' ? 'border-lime-400 text-lime-300' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
+                    >
+                        Pengaturan Umum
+                    </button>
                     <button
                         onClick={() => setActiveTab('categories')}
-                        className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'categories' ? 'border-lime-400 text-lime-300' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
+                        className={`text-left sm:text-center py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'categories' ? 'border-lime-400 text-lime-300' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
                     >
                         Manajemen Kategori
                     </button>
                     <button
                         onClick={() => setActiveTab('plantTypes')}
-                        className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'plantTypes' ? 'border-lime-400 text-lime-300' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
+                        className={`text-left sm:text-center py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'plantTypes' ? 'border-lime-400 text-lime-300' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
                     >
                         Manajemen Tipe Tanaman
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('general')}
-                        className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'general' ? 'border-lime-400 text-lime-300' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
-                    >
-                        Pengaturan Umum
                     </button>
                 </nav>
             </div>

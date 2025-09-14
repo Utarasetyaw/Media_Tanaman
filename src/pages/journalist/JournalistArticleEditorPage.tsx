@@ -3,9 +3,17 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Save, Send, Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useJournalistArticleEditor } from '../../hooks/useJournalistArticleEditor';
 import { MarkdownEditor } from '../admin/components/MarkdownEditor';
-import { useAuth } from '../../contexts/AuthContext';
 
-const initialFormData = {
+type JournalistArticleFormData = {
+    title: { id: string; en: string };
+    excerpt: { id: string; en: string };
+    content: { id: string; en: string };
+    imageUrl: string;
+    categoryId: number;
+    plantTypeId: number;
+};
+
+const initialFormData: JournalistArticleFormData = {
     title: { id: '', en: '' },
     excerpt: { id: '', en: '' },
     content: { id: '', en: '' },
@@ -17,7 +25,6 @@ const initialFormData = {
 export const JournalistArticleEditorPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const isEditMode = Boolean(id);
-    useAuth();
 
     const { 
         articleData, 
@@ -46,12 +53,14 @@ export const JournalistArticleEditorPage: React.FC = () => {
     }, [articleData, isEditMode]);
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData((prev: any) => ({ ...prev, [name]: value }));
+        setFormData((prev: JournalistArticleFormData) => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
     const handleJsonChange = (field: 'title' | 'excerpt' | 'content', lang: 'id' | 'en', value: string | undefined) => {
-        setFormData((prev: any) => ({ ...prev, [field]: { ...prev[field], [lang]: value || '' } }));
+        setFormData((prev: JournalistArticleFormData) => ({
+            ...prev,
+            [field]: { ...prev[field], [lang]: value || '' }
+        }));
     };
     
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,8 +92,10 @@ export const JournalistArticleEditorPage: React.FC = () => {
             return;
         }
         try {
+            // Simpan perubahan terakhir sebelum menyelesaikan revisi
             const savedArticle = await saveArticleAsync({ formData, imageFile, action: 'save' });
             if (savedArticle) {
+                // Tandai revisi selesai
                 finishRevision(savedArticle.id);
             }
         } catch (error) {
@@ -97,7 +108,8 @@ export const JournalistArticleEditorPage: React.FC = () => {
     const displayImageUrl = imageFile ? URL.createObjectURL(imageFile) : formData.imageUrl;
 
     return (
-        <div>
+        // REVISI: Padding utama dibuat responsif
+        <div className="p-4 sm:p-6 lg:p-8">
             <Link to="/jurnalis/articles" className="inline-flex items-center gap-2 text-lime-300 hover:text-lime-200 mb-6 transition-colors">
                 <ArrowLeft size={20} /> Kembali ke Artikel Saya
             </Link>
@@ -105,25 +117,26 @@ export const JournalistArticleEditorPage: React.FC = () => {
             {articleData?.feedback && ['NEEDS_REVISION', 'JOURNALIST_REVISING'].includes(articleData.status) && (
                 <div className="bg-yellow-500/20 border-l-4 border-yellow-400 text-yellow-300 p-4 mb-6 rounded-r-lg">
                     <div className="flex items-start">
-                        <AlertTriangle className="h-5 w-5 mr-3 mt-1"/>
+                        <AlertTriangle className="h-5 w-5 mr-3 mt-1 flex-shrink-0"/>
                         <div>
-                            <p className="font-bold">Feedback dari Admin:</p>
+                            <p className="font-bold">Umpan Balik dari Admin:</p>
                             <p className="text-sm italic">"{articleData.feedback}"</p>
                         </div>
                     </div>
                 </div>
             )}
-
-            <form onSubmit={(e) => e.preventDefault()} className="bg-[#004A49]/60 border-2 border-lime-400/50 shadow-lg rounded-lg p-6 space-y-6">
+            
+            {/* REVISI: Padding form dibuat responsif */}
+            <form onSubmit={(e) => e.preventDefault()} className="bg-[#004A49]/60 border-2 border-lime-400/50 shadow-lg rounded-lg p-4 sm:p-6 space-y-6">
                 <div className="grid md:grid-cols-2 gap-4">
                     <input value={formData.title.id} onChange={(e) => handleJsonChange('title', 'id', e.target.value)} placeholder="Judul (Indonesia)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200" required/>
-                    <input value={formData.title.en} onChange={(e) => handleJsonChange('title', 'en', e.target.value)} placeholder="Title (English)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
-                    <textarea value={formData.excerpt.id} onChange={(e) => handleJsonChange('excerpt', 'id', e.target.value)} rows={3} placeholder="Excerpt (Indonesia)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
-                    <textarea value={formData.excerpt.en} onChange={(e) => handleJsonChange('excerpt', 'en', e.target.value)} rows={3} placeholder="Excerpt (English)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
+                    <input value={formData.title.en} onChange={(e) => handleJsonChange('title', 'en', e.target.value)} placeholder="Judul (Bahasa Inggris)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
+                    <textarea value={formData.excerpt.id} onChange={(e) => handleJsonChange('excerpt', 'id', e.target.value)} rows={3} placeholder="Kutipan (Indonesia)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
+                    <textarea value={formData.excerpt.en} onChange={(e) => handleJsonChange('excerpt', 'en', e.target.value)} rows={3} placeholder="Kutipan (Bahasa Inggris)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
                 </div>
                 
                 <div><label className="block text-sm font-medium text-gray-300 mb-2">Konten (Indonesia)</label><MarkdownEditor value={formData.content.id} onChange={(value) => handleJsonChange('content', 'id', value)} /></div>
-                <div><label className="block text-sm font-medium text-gray-300 mb-2">Konten (English)</label><MarkdownEditor value={formData.content.en} onChange={(value) => handleJsonChange('content', 'en', value)} /></div>
+                <div><label className="block text-sm font-medium text-gray-300 mb-2">Konten (Bahasa Inggris)</label><MarkdownEditor value={formData.content.en} onChange={(value) => handleJsonChange('content', 'en', value)} /></div>
 
                 <div className="grid md:grid-cols-2 gap-6 border-t border-lime-400/30 pt-6">
                     <div>
@@ -149,10 +162,8 @@ export const JournalistArticleEditorPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* --- REVISI UTAMA PADA BAGIAN TOMBOL --- */}
                 <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t border-lime-400/30">
                     {isEditMode && ['NEEDS_REVISION', 'JOURNALIST_REVISING'].includes(articleData?.status || '') ? (
-                        // KONDISI 1: Jurnalis sedang merevisi
                         <>
                             <button type="button" onClick={handleSaveDraft} disabled={isSaving} className="w-full sm:w-auto bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600 disabled:bg-gray-700 disabled:opacity-60 flex items-center justify-center gap-2">
                                 {isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={16} />} Simpan Perubahan
@@ -162,7 +173,6 @@ export const JournalistArticleEditorPage: React.FC = () => {
                             </button>
                         </>
                     ) : (
-                        // KONDISI 2: Selain merevisi (misal membuat draf baru)
                         <>
                             <button type="button" onClick={handleSaveDraft} disabled={isSaving} className="w-full sm:w-auto bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600 disabled:bg-gray-700 disabled:opacity-60 flex items-center justify-center gap-2">
                                 {isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={16} />} Simpan Draf

@@ -9,7 +9,7 @@ import { JournalistLayout } from './layouts/JournalistLayout';
 import UserLayout from './layouts/UserLayout'; // <-- Impor layout baru
 
 // --- Halaman Publik ---
-import Home from './pages/Home';
+import HomePage from './pages/HomePage';
 import About from './pages/About';
 import ArticlePage from './pages/Articles';
 import ArticleDetail from './pages/ArticlesDetail';
@@ -67,7 +67,7 @@ const App: React.FC = () => {
       <Routes>
         {/* === Rute Publik dengan Layout Utama === */}
         <Route path="/" element={<MainLayout />}>
-          <Route index element={<Home />} />
+          <Route index element={<HomePage />} />
           <Route path="about" element={<About />} />
           <Route path="articles" element={<ArticlePage />} />
           <Route path="articles/:id" element={<ArticleDetail />} />

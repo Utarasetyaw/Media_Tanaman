@@ -1,27 +1,32 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/apiService';
 
-// --- Definisikan Tipe Data dari API /api/about ---
+// Tipe Data
 export interface LocalizedString {
   id: string;
   en: string;
 }
 
 export interface FaqItem {
-  q: LocalizedString;
-  a: LocalizedString;
+  question: LocalizedString;
+  answer: LocalizedString;
 }
 
 export interface CompanyValue {
-  title: LocalizedString;
-  text: LocalizedString;
+  question: LocalizedString;
+  answer: LocalizedString;
 }
 
+// REVISI: Tambahkan socialMedia ke dalam tipe ContactInfo
 export interface ContactInfo {
     email?: string;
     phone?: string;
     address?: string;
-    // Anda bisa menambahkan info kontak lain di sini
+    socialMedia?: {
+        instagram?: string;
+        facebook?: string;
+        twitter?: string;
+    }
 }
 
 export interface AboutData {
@@ -34,17 +39,17 @@ export interface AboutData {
   privacyPolicy: LocalizedString;
 }
 
-// Fungsi untuk mengambil data dari API
+// Fungsi Fetch
 const fetchAboutData = async (): Promise<AboutData> => {
   const { data } = await api.get('/about');
   return data;
 };
 
-// --- Custom Hook ---
+// Custom Hook
 export const useAboutData = () => {
   return useQuery<AboutData, Error>({
-    queryKey: ['aboutData'], // Kunci unik untuk query ini
+    queryKey: ['aboutData'],
     queryFn: fetchAboutData,
-    staleTime: Infinity, // Data 'About' jarang berubah, jadi bisa disimpan selamanya
+    staleTime: Infinity,
   });
 };

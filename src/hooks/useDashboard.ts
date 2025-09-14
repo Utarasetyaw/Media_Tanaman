@@ -3,6 +3,14 @@ import { useAuth } from '../contexts/AuthContext'; // Sesuaikan path jika perlu
 import api from '../services/apiService';
 
 // --- Tipe Data untuk Respons API ---
+
+// Tipe data untuk titik-titik pada grafik, bisa dipakai ulang
+interface ChartDataPoint {
+  name: string;
+  views: number;
+  likes: number;
+}
+
 export interface TopArticle {
   id: number;
   title: { id: string };
@@ -14,12 +22,13 @@ export interface AdminDashboardData {
   stats: {
     publishedArticles: number;
     journalistRequests: number;
-
     runningEvents: number;
   };
   performanceChart: {
     totalViews: number;
     totalLikes: number;
+    // REVISI: Tambahkan properti chartData sebagai opsional agar tipenya cocok
+    chartData?: ChartDataPoint[]; 
   };
   topArticles: TopArticle[];
 }
@@ -34,6 +43,8 @@ export interface JournalistDashboardData {
   performanceChart: {
     totalViews: number;
     totalLikes: number;
+    // REVISI: Dibuat opsional agar konsisten dan lebih aman
+    chartData?: ChartDataPoint[];
   };
   topArticles: TopArticle[];
 }
@@ -46,14 +57,12 @@ const getJournalistDashboardData = (): Promise<JournalistDashboardData> => api.g
 // --- Hook Utama ---
 export const useDashboard = () => {
   const { user } = useAuth();
-
   const isAdmin = user?.role === 'ADMIN';
 
-  // useQuery akan secara dinamis memilih fungsi dan kunci berdasarkan peran user
   const { data, isLoading, isError } = useQuery<AdminDashboardData | JournalistDashboardData>({
-    queryKey: ['dashboard', user?.role], // Kunci query yang berbeda untuk setiap peran
+    queryKey: ['dashboard', user?.role],
     queryFn: () => isAdmin ? getAdminDashboardData() : getJournalistDashboardData(),
-    enabled: !!user, // Hanya jalankan query jika user sudah terautentikasi
+    enabled: !!user,
   });
 
   return {

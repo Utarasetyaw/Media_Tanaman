@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useSiteSettings } from '../../../hooks/useSiteSettings';
-// Baris impor untuk 'uploadFile' dihapus dari sini
 import { Trash2, PlusCircle, UploadCloud } from 'lucide-react';
 import type { BannerImage, FaqItem, CompanyValue, SiteSettings } from '../../../types/settings';
 
-// --- Tipe Data Lokal ---
+// Tipe Data Lokal
 type ArrayField = 'faqs' | 'companyValues';
 type FaqSubField = keyof FaqItem;
 type CompanyValueSubField = keyof CompanyValue;
 
-// --- Komponen UI Kecil (Reusable & Themed) ---
+// Komponen UI Kecil (Reusable & Themed)
 const InputField: React.FC<{ label: string; name: string; value: string; onChange: React.ChangeEventHandler<HTMLInputElement>; placeholder?: string, type?: string }> = 
 ({ label, name, value, onChange, placeholder, type='text' }) => (
     <div>
@@ -41,9 +40,6 @@ const SectionCard: React.FC<{ title: string; children: React.ReactNode; classNam
     </div>
 );
 
-// =================================================================
-// KOMPONEN UTAMA
-// =================================================================
 export const GeneralSettingsComponent: React.FC = () => {
     const { settings, isLoading, isSaving, updateSettings } = useSiteSettings();
     
@@ -153,7 +149,7 @@ export const GeneralSettingsComponent: React.FC = () => {
     }
 
     return (
-        <div className="bg-[#0b5351]/30 p-6 rounded-lg border border-lime-400/50 space-y-8">
+        <div className="bg-[#0b5351]/30 p-4 sm:p-6 rounded-lg border border-lime-400/50 space-y-8">
             <h3 className="text-xl font-bold text-gray-200">Pengaturan Umum Situs</h3>
             <SectionCard title="Informasi Dasar & Kontak">
                 <InputField label="Nama Situs" name="name" value={formData.name || ''} onChange={handleInputChange} />
@@ -168,7 +164,7 @@ export const GeneralSettingsComponent: React.FC = () => {
             
             <SectionCard title="Deskripsi Perusahaan" className='md:grid-cols-1'>
                 <TextareaField label="Deskripsi (Indonesia)" name="id" value={formData.businessDescription?.id || ''} onChange={(e) => handleNestedChange('businessDescription', 'id', e.target.value)} />
-                <TextareaField label="Deskripsi (English)" name="en" value={formData.businessDescription?.en || ''} onChange={(e) => handleNestedChange('businessDescription', 'en', e.target.value)} />
+                <TextareaField label="Deskripsi (Bahasa Inggris)" name="en" value={formData.businessDescription?.en || ''} onChange={(e) => handleNestedChange('businessDescription', 'en', e.target.value)} />
             </SectionCard>
 
             <SectionCard title="Aset Visual">
@@ -190,7 +186,7 @@ export const GeneralSettingsComponent: React.FC = () => {
                     <InputField label="Tagline Banner (ID)" name="bannerTagline_id" value={formData.bannerTagline?.id || ''} onChange={(e) => handleNestedChange('bannerTagline', 'id', e.target.value)} />
                     <InputField label="Tagline Banner (EN)" name="bannerTagline_en" value={formData.bannerTagline?.en || ''} onChange={(e) => handleNestedChange('bannerTagline', 'en', e.target.value)} />
                  </div>
-                 <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4'>
+                 <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4'>
                     {formData.bannerImages?.map((banner: BannerImage, index: number) => (
                         <div key={banner.id || index} className="relative group">
                             <img src={banner.imageUrl} alt={`banner-${index}`} className="w-full h-24 object-cover rounded-md bg-white/10" />
@@ -209,7 +205,7 @@ export const GeneralSettingsComponent: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-                 <h4 className='text-lg font-semibold text-lime-300 border-b border-lime-400/30 pb-2'>FAQ (Tanya Jawab)</h4>
+                 <h4 className='text-lg font-semibold text-lime-300 border-b border-lime-400/30 pb-2'>Tanya Jawab (FAQ)</h4>
                 {formData.faqs?.map((faq: FaqItem, index: number) => (
                     <div key={index} className="p-4 border border-lime-400/20 rounded-lg space-y-2 relative bg-gray-900/20">
                         <button onClick={() => removeArrayItem('faqs', index)} className="absolute top-2 right-2 text-red-500 hover:text-red-400"><Trash2 size={18}/></button>

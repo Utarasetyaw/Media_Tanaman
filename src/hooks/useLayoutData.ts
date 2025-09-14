@@ -22,6 +22,10 @@ interface SiteSettings {
         twitter?: string;
     }
   };
+  // REVISI: Tambahkan properti yang hilang di sini
+  googleAnalyticsId?: string | null;
+  googleAdsId?: string | null;
+  metaPixelId?: string | null;
 }
 
 interface Ad {
@@ -33,7 +37,6 @@ export interface LayoutData {
   settings: SiteSettings;
   categories: any[];
   plantTypes: any[];
-  // PENTING: Asumsi data 'ads' ada di response. Sesuaikan backend jika perlu.
   ads?: {
     banner?: Ad[];
     vertical?: Ad[];
@@ -43,7 +46,6 @@ export interface LayoutData {
 
 // Fungsi untuk mengambil data dari API
 const fetchLayoutData = async (): Promise<LayoutData> => {
-  // REVISI: Hapus '/page' dari URL agar sesuai dengan server.js
   const { data } = await api.get('/layout');
   return data;
 };
@@ -51,9 +53,9 @@ const fetchLayoutData = async (): Promise<LayoutData> => {
 // --- Custom Hook ---
 export const useLayoutData = () => {
   return useQuery<LayoutData, Error>({
-    queryKey: ['layoutData'], // Kunci unik untuk query ini
+    queryKey: ['layoutData'],
     queryFn: fetchLayoutData,
-    staleTime: 1000 * 60 * 5, // Data dianggap fresh selama 5 menit
-    refetchOnWindowFocus: false, // Tidak fetch ulang saat window di-fokus
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
   });
 };

@@ -1,154 +1,87 @@
-import { useState } from 'react';
 import type { FC } from 'react';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
-import { SlidersHorizontal } from 'lucide-react';
-
-// Impor hook dan tipe data yang sudah ada
+import { Fragment } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import { SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { Menu, Transition } from '@headlessui/react';
 import { useLayoutData } from '../hooks/useLayoutData';
-import type { PlantsApiResponse } from '../types/plant';
-import api from '../services/apiService';
-
-// Impor komponen UI
+import { usePlantsPage } from '../hooks/usePlantsPage'; // Hook baru
+import { plantsTranslations } from '../assets/plants.i18n'; // Translasi baru
 import PlantCard from '../components/PlantCard';
 import VerticalAd from '../components/VerticalAd';
 import HorizontalAd from '../components/HorizontalAd';
 
-// Tipe untuk state filter
-interface PlantFilters {
-  categoryId: string;
-  familyId: string; // familyId di backend adalah plantTypeId
+// Komponen Dropdown Custom
+interface CustomDropdownProps {
+    options: { value: string | number; label: string }[];
+    selectedValue: string | number;
+    onSelect: (value: string) => void;
+    placeholder: string;
 }
-
-// Fungsi untuk mengambil data tanaman dari API dengan filter
-const fetchPlants = async (page: number, filters: PlantFilters): Promise<PlantsApiResponse> => {
-  const params = new URLSearchParams({
-    page: String(page),
-    limit: '12',
-  });
-  if (filters.categoryId) {
-    params.append('categoryId', filters.categoryId);
-  }
-  if (filters.familyId) {
-    params.append('familyId', filters.familyId);
-  }
-  
-  const { data } = await api.get(`/plants?${params.toString()}`);
-  return data;
+const CustomDropdown: FC<CustomDropdownProps> = ({ options, selectedValue, onSelect, placeholder }) => {
+    const selectedLabel = options.find(opt => opt.value.toString() === selectedValue.toString())?.label || placeholder;
+    return (
+        <Menu as="div" className="relative inline-block text-left w-full">
+            <Menu.Button className="inline-flex w-full justify-between items-center rounded-lg bg-[#003938] border border-lime-500 px-4 py-2 text-sm font-medium text-white hover:bg-opacity-80 focus:outline-none">
+                {selectedLabel}
+                <ChevronDown className="ml-2 -mr-1 h-5 w-5" />
+            </Menu.Button>
+            <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
+                <Menu.Items className="absolute left-0 mt-2 w-full origin-top-right rounded-md bg-[#003938] border-2 border-lime-400/50 shadow-lg ring-1 ring-black/5 focus:outline-none z-10"><div className="px-1 py-1 max-h-60 overflow-y-auto"><Menu.Item>{({ active }) => (<button type="button" onClick={() => onSelect('all')} className={`${active ? 'bg-[#004A49] text-white' : 'text-gray-300'} group flex w-full items-center rounded-md px-3 py-2 text-sm`}>{placeholder}</button>)}</Menu.Item>{options.map((option) => (<Menu.Item key={option.value}>{({ active }) => (<button type="button" onClick={() => onSelect(String(option.value))} className={`${active ? 'bg-[#004A49] text-white' : 'text-gray-300'} group flex w-full items-center rounded-md px-3 py-2 text-sm`}>{option.label}</button>)}</Menu.Item>))}</div></Menu.Items></Transition>
+        </Menu>
+    );
 };
 
+
 const PlantPage: FC = () => {
-  const { t } = useTranslation();
-  const lang: 'id' | 'en' = 'id';
+  const { lang: currentLang } = useOutletContext<{ lang: 'id' | 'en' }>();
+  const t = (key: keyof typeof plantsTranslations.id) => plantsTranslations[currentLang]?.[key] || key;
   
-  // REVISI: State untuk pagination dan filter dropdown
-  const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState<PlantFilters>({
-    categoryId: '',
-    familyId: '',
-  });
+  const { data: layoutData } = useLayoutData();
+  const { page, setPage, filters, handleFilterChange, plants, pagination, isLoading, isError, isFetching } = usePlantsPage();
 
-  // Ambil data untuk mengisi dropdown filter (kategori & jenis tanaman)
-  const { data: layoutData, isLoading: isLoadingLayout } = useLayoutData();
-  const categories = layoutData?.categories || [];
-  const plantTypes = layoutData?.plantTypes || [];
-
-  // Gunakan Tanstack Query untuk mengambil data tanaman berdasarkan filter
-  const { data, isLoading, isError, isFetching } = useQuery<PlantsApiResponse, Error>({
-    queryKey: ['plants', page, filters], // Otomatis fetch ulang saat page atau filters berubah
-    queryFn: () => fetchPlants(page, filters),
-    placeholderData: keepPreviousData,
-  });
-  
-  const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
-    setPage(1); // Kembali ke halaman pertama setiap kali filter diubah
+  const renderContent = () => {
+    if (isLoading) return <p className="text-center text-gray-300 py-16">{t('loading_plants')}</p>;
+    if (isError) return <p className="text-center text-red-400 py-16">{t('error_plants')}</p>;
+    if (plants.length === 0) {
+      return (
+        <div className="text-center text-gray-400 py-16"><h3 className="text-2xl font-semibold mb-2 text-white">{t('no_plants_title')}</h3><p>{t('no_plants_desc')}</p></div>
+      );
+    }
+    return (
+      <>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
+          {plants.map(plant => <PlantCard key={plant.id} plant={plant} lang={currentLang} />)}
+        </div>
+        <div className="flex justify-center items-center gap-4 mt-12">
+          <button onClick={() => setPage(old => Math.max(old - 1, 1))} disabled={page === 1 || isFetching} className="px-4 py-2 bg-lime-400 text-gray-900 font-bold rounded-lg disabled:bg-gray-500 disabled:cursor-not-allowed">{t('previous_button')}</button>
+          <span className="text-white font-medium">{t('page_info').replace('{currentPage}', String(pagination?.currentPage)).replace('{totalPages}', String(pagination?.totalPages))}</span>
+          <button onClick={() => setPage(old => (pagination && old < pagination.totalPages ? old + 1 : old))} disabled={!pagination || page === pagination.totalPages || isFetching} className="px-4 py-2 bg-lime-400 text-gray-900 font-bold rounded-lg disabled:bg-gray-500 disabled:cursor-not-allowed">{t('next_button')}</button>
+        </div>
+        {isFetching && <span className="block text-center text-sm text-gray-400 mt-2">{t('fetching')}</span>}
+      </>
+    );
   };
-
-  const plants = data?.data || [];
-  const pagination = data?.pagination;
 
   return (
     <div className="bg-[#003938] min-h-screen relative">
       <VerticalAd position="left" />
       <VerticalAd position="right" />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         <div className="text-center mb-12">
-          <h2 className="font-serif text-4xl sm:text-5xl font-bold text-lime-400 mb-4">{t('plantPage.title')}</h2>
-          <p className="text-lg text-gray-300 max-w-2xl mx-auto">{t('plantPage.description')}</p>
+          <h2 className="font-serif text-4xl sm:text-5xl font-bold text-lime-400 mb-4">{t('title')}</h2>
+          <p className="text-lg text-gray-300 max-w-2xl mx-auto">{t('description')}</p>
         </div>
         
-        {/* REVISI: Ganti Search Bar dengan Filter Dropdown */}
-        <div className="mb-12 p-4 bg-[#004A49]/60 border-2 border-lime-400 rounded-lg flex flex-col sm:flex-row justify-center items-center gap-4">
-          <SlidersHorizontal className="text-lime-400 hidden sm:block" size={24} />
-          <select 
-            name="familyId"
-            value={filters.familyId}
-            onChange={handleFilterChange}
-            className="w-full sm:w-auto bg-[#003938] border border-lime-500 text-white rounded-md px-4 py-2 focus:ring-lime-400 focus:border-lime-400"
-          >
-            <option value="">Semua Jenis Tanaman</option>
-            {plantTypes.map(pt => (
-              <option key={pt.id} value={pt.id}>{pt.name[lang]}</option>
-            ))}
-          </select>
-          <select 
-            name="categoryId"
-            value={filters.categoryId}
-            onChange={handleFilterChange}
-            className="w-full sm:w-auto bg-[#003938] border border-lime-500 text-white rounded-md px-4 py-2 focus:ring-lime-400 focus:border-lime-400"
-          >
-            <option value="">Semua Kategori</option>
-            {categories.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.name[lang]}</option>
-            ))}
-          </select>
+        <div className="mb-12 p-4 bg-[#004A49]/60 border-2 border-lime-400/50 rounded-lg flex flex-col sm:flex-row items-center gap-4">
+          <SlidersHorizontal className="text-lime-400 hidden sm:block flex-shrink-0" size={24} />
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <CustomDropdown placeholder={t('all_families')} selectedValue={filters.familyId} onSelect={(val) => handleFilterChange('familyId', val)} options={layoutData?.plantTypes.map(pt => ({ value: pt.id, label: pt.name[currentLang] })) || []} />
+            <CustomDropdown placeholder={t('all_categories')} selectedValue={filters.categoryId} onSelect={(val) => handleFilterChange('categoryId', val)} options={layoutData?.categories.map(cat => ({ value: cat.id, label: cat.name[currentLang] })) || []} />
+          </div>
         </div>
 
-        <div className="mb-12">
-            <HorizontalAd />
-        </div>
-
-        {isLoading || isLoadingLayout ? (
-          <p className="text-center text-gray-300">Loading plants...</p>
-        ) : isError ? (
-          <p className="text-center text-red-400">Failed to load plants.</p>
-        ) : plants.length > 0 ? (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              {plants.map(plant => <PlantCard key={plant.id} plant={plant} />)}
-            </div>
-
-            <div className="flex justify-center items-center gap-4 mt-12">
-              <button
-                onClick={() => setPage(old => Math.max(old - 1, 1))}
-                disabled={page === 1}
-                className="px-4 py-2 bg-lime-400 text-gray-900 font-bold rounded-lg disabled:bg-gray-500 disabled:cursor-not-allowed"
-              >
-                {t('pagination.previous')}
-              </button>
-              
-              <span className="text-white font-medium">
-                Halaman {pagination?.currentPage} dari {pagination?.totalPages}
-              </span>
-
-              <button
-                onClick={() => setPage(old => (pagination && old < pagination.totalPages ? old + 1 : old))}
-                disabled={!pagination || page === pagination.totalPages}
-                className="px-4 py-2 bg-lime-400 text-gray-900 font-bold rounded-lg disabled:bg-gray-500 disabled:cursor-not-allowed"
-              >
-                {t('pagination.next')}
-              </button>
-            </div>
-            {isFetching && <span className="block text-center text-sm text-gray-400 mt-2">Fetching...</span>}
-          </>
-        ) : (
-          <p className="text-center text-gray-400 text-lg py-16">
-            Tidak ada tanaman yang cocok dengan filter Anda.
-          </p>
-        )}
+        <div className="mb-12"><HorizontalAd /></div>
+        {renderContent()}
       </div>
     </div>
   );

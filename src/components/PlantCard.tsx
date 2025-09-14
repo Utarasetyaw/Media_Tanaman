@@ -1,28 +1,38 @@
 import type { FC } from 'react';
 import { Link } from 'react-router-dom';
-import type { Plant } from '../types/plant'; // REVISI: Impor tipe Plant yang benar dari API
+import type { Plant } from '../types/plant';
+// Impor file translasi
+import { cardTranslations } from '../assets/card.i18n';
 
-// Ganti bahasa ini sesuai state global Anda nantinya
-const lang: 'id' | 'en' = 'id';
-
+// REVISI 1: Definisikan props untuk menerima bahasa
 interface PlantCardProps {
   plant: Plant;
+  lang: 'id' | 'en';
 }
 
-const PlantCard: FC<PlantCardProps> = ({ plant }) => {
+const PlantCard: FC<PlantCardProps> = ({ plant, lang }) => {
+  // REVISI 2: Hapus `const lang` yang hardcoded
+
+  // Fungsi translasi lokal
+  const t = (key: keyof typeof cardTranslations.id): string => {
+    return cardTranslations[lang]?.[key] || key;
+  };
+
   return (
-    <div className="border-2 border-lime-400 bg-[#004A49]/60 rounded-lg shadow-sm overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-      <Link to={`/plants/${plant.id}`} className="block aspect-square overflow-hidden">
-        <img
-          src={plant.imageUrl}
-          alt={plant.name[lang]}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-        />
+    <div className="border-2 border-lime-400/50 bg-[#004A49]/60 rounded-lg shadow-sm overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-lg hover:shadow-lime-400/20 hover:-translate-y-1">
+      <Link to={`/plants/${plant.id}`} className="block group overflow-hidden">
+        {/* REVISI 3: Ubah rasio aspek menjadi 4:5 agar konsisten */}
+        <div className="aspect-[4/5] bg-black/20">
+            <img
+            src={plant.imageUrl}
+            alt={plant.name[lang]}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+        </div>
       </Link>
-      <div className="p-4 flex flex-col flex-grow">
+      <div className="p-3 sm:p-4 flex flex-col flex-grow">
         <div className="flex-grow">
-          {/* REVISI: Gunakan plant.name[lang] untuk mengakses nama */}
-          <h3 className="font-serif font-bold text-lg text-gray-100 truncate">
+          <h3 className="font-serif font-bold text-base sm:text-lg text-gray-100 truncate">
             <Link to={`/plants/${plant.id}`} className="hover:text-lime-400 transition-colors">
               {plant.name[lang]}
             </Link>
@@ -36,7 +46,8 @@ const PlantCard: FC<PlantCardProps> = ({ plant }) => {
             to={`/plants/${plant.id}`}
             className="font-sans inline-block w-full text-center bg-lime-300 text-gray-900 font-bold px-4 py-2 rounded-lg hover:bg-lime-400 transition-colors text-sm"
           >
-            Lihat Detail
+            {/* REVISI 4: Gunakan teks dari translasi */}
+            {t('view_detail')}
           </Link>
         </div>
       </div>

@@ -1,26 +1,40 @@
 import React from 'react';
 import { CheckCircle, Clock, Edit, ShieldAlert, XCircle, FileText, MessageSquare } from 'lucide-react';
 import type { Article, ArticleStatus, AdminEditRequestStatus } from '../../types';
-// REVISI: Impor hook baru
 import { useJournalistDashboard } from '../../hooks/useJournalistDashboard';
 
-// --- Sub-Komponen ---
-
+// Komponen Card Statistik yang sudah responsif
 const StatCard: React.FC<{ icon: React.ElementType; title: string; value: number; color: string }> = ({ icon: Icon, title, value, color }) => (
-    <div className="bg-black/20 border-2 border-lime-400/30 p-6 rounded-lg shadow-md flex items-center transition-all hover:border-lime-400 hover:bg-black/40">
+    <div className="bg-black/20 border-2 border-lime-400/30 p-4 sm:p-6 rounded-lg shadow-md flex items-center transition-all hover:border-lime-400 hover:bg-black/40">
         <div className={`p-3 rounded-full bg-${color}-500/20`}>
             <Icon className={`text-${color}-300`} size={28} />
         </div>
         <div className="ml-4">
             <p className="text-sm font-medium text-gray-300">{title}</p>
-            <p className="text-2xl font-bold text-white">{value}</p>
+            <p className="text-xl sm:text-2xl font-bold text-white">{value}</p>
         </div>
     </div>
 );
 
+// Helper untuk menerjemahkan status dan memberikan warna
 const getStatusChip = (article: Article) => {
-    const displayStatus = article.adminEditRequest === 'PENDING' ? article.adminEditRequest : article.status;
-    const statusText = displayStatus.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    let displayStatus: ArticleStatus | AdminEditRequestStatus = article.status;
+    let statusText = '';
+
+    if (article.adminEditRequest === 'PENDING') {
+        displayStatus = 'PENDING';
+        statusText = 'Req. Akses Edit';
+    } else {
+        switch(article.status) {
+            case 'PUBLISHED': statusText = 'Diterbitkan'; break;
+            case 'IN_REVIEW': statusText = 'Dalam Tinjauan'; break;
+            case 'NEEDS_REVISION': statusText = 'Perlu Revisi'; break;
+            case 'JOURNALIST_REVISING': statusText = 'Sedang Direvisi'; break;
+            case 'REVISED': statusText = 'Telah Direvisi'; break;
+            case 'REJECTED': statusText = 'Ditolak'; break;
+            default: statusText = 'Draf';
+        }
+    }
     
     const styles: Record<ArticleStatus | AdminEditRequestStatus | 'NONE', string> = {
         PUBLISHED: 'bg-green-500/20 text-green-300',
@@ -39,9 +53,7 @@ const getStatusChip = (article: Article) => {
 };
 
 
-// --- Komponen Utama ---
 export const JournalistDashboardPage: React.FC = () => {
-    // REVISI: Panggil hook untuk mendapatkan data
     const { data, isLoading, error } = useJournalistDashboard();
 
     if (isLoading) return <div className="p-8 text-center text-white">Memuat dashboard...</div>;
@@ -52,7 +64,7 @@ export const JournalistDashboardPage: React.FC = () => {
 
     return (
         <div className="p-4 sm:p-6 lg:p-8">
-            <h2 className="text-3xl font-bold text-lime-400 mb-6 font-serif">Dashboard Jurnalis</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-lime-200/90 mb-6">Dashboard Jurnalis</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
                 <StatCard icon={CheckCircle} title="Diterbitkan" value={stats?.published ?? 0} color="green" />
@@ -62,31 +74,34 @@ export const JournalistDashboardPage: React.FC = () => {
                 <StatCard icon={XCircle} title="Ditolak" value={stats?.rejected ?? 0} color="red" />
             </div>
 
-            <div className="mt-10 bg-[#004A49]/60 border-2 border-lime-400 p-6 rounded-lg shadow-md">
+            <div className="mt-10 bg-[#004A49]/60 border-2 border-lime-400 p-4 sm:p-6 rounded-lg shadow-md">
                 <div className="flex justify-between items-center mb-4 pb-4 border-b-2 border-lime-400/30">
                     <h3 className="text-xl font-bold text-lime-400">Aktivitas Artikel Terbaru</h3>
                 </div>
                  {recentArticles.length > 0 ? (
-                    <ul className="space-y-0">
+                    <ul className="space-y-2">
                         {recentArticles.map((article) => (
                             <li key={article.id} className="p-3 hover:bg-black/20 rounded-md transition-colors border-b-2 border-lime-400/20 last:border-b-0">
-                                <div className="flex items-center justify-between">
+                                {/* REVISI: Tata letak dibuat responsif (vertikal di mobile) */}
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                                     <p className="font-semibold text-white flex items-center gap-2">
-                                        <FileText size={16} className="text-gray-400"/>
-                                        {article.title.id}
+                                        <FileText size={16} className="text-gray-400 flex-shrink-0"/>
+                                        <span className="break-words">{article.title.id}</span>
                                     </p>
-                                    {getStatusChip(article)}
+                                    <div className="self-end sm:self-center flex-shrink-0">
+                                        {getStatusChip(article)}
+                                    </div>
                                 </div>
                                 {(article.status === 'NEEDS_REVISION' || article.status === 'REJECTED') && article.feedback && 
-                                    <p className="text-xs text-yellow-400 mt-2 italic pl-8">
-                                        <MessageSquare size={12} className="inline mr-1"/> Feedback: "{article.feedback}"
+                                    <p className="text-xs text-yellow-400 mt-2 italic pl-6 sm:pl-8">
+                                        <MessageSquare size={12} className="inline mr-1.5"/> Umpan Balik: "{article.feedback}"
                                     </p>
                                 }
                             </li>
                         ))}
                     </ul>
                  ) : (
-                    <p className="text-center text-gray-400 py-4">Belum ada aktivitas artikel.</p>
+                    <p className="text-center text-gray-400 py-4">Belum ada aktivitas artikel terbaru.</p>
                  )}
             </div>
         </div>
