@@ -1,70 +1,132 @@
+// controllers/auth.controller.js
+
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
 
-/**
- * Mendaftarkan pengguna baru (default role: USER).
- */
-export const register = async (req, res) => {
-    const { name, email, password } = req.body;
+// Fungsi helper untuk validasi input umum
+const validateInput = (res, data) => {
+    const { name, email, password } = data;
 
-    // --- Validasi Input ---
-    if (!name || !email || !password) {
-        return res.status(400).json({ error: "Name, email, and password are required" });
+    if (name === undefined) { // Name tidak wajib untuk login
+        if (!email || !password) {
+            return res.status(400).json({ error: "Email and password are required" });
+        }
+    } else { // Wajib untuk register
+        if (!name || !email || !password) {
+            return res.status(400).json({ error: "Name, email, and password are required" });
+        }
     }
 
-    // Validasi format email sederhana
     const emailRegex = /\S+@\S+\.\S+/;
     if (!emailRegex.test(email)) {
         return res.status(400).json({ error: "Invalid email format" });
     }
 
-    // Validasi kekuatan password
-    if (password.length < 8) {
+    if (password && password.length < 8) {
         return res.status(400).json({ error: "Password must be at least 8 characters long" });
     }
+    return null; // Tidak ada error
+};
+
+
+/**
+ * =================================================================
+ * REGISTRASI
+ * =================================================================
+ */
+
+/**
+ * @desc Mendaftarkan pengguna baru sebagai PESERTA.
+ */
+export const registerParticipant = async (req, res) => {
+    const { name, email, password } = req.body;
+
+    const validationError = validateInput(res, { name, email, password });
+    if (validationError) return;
 
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
         
-        // Membuat user, role akan otomatis menjadi 'USER' sesuai default di schema.prisma
         const user = await prisma.user.create({
-            data: { name, email, password: hashedPassword },
+            data: { 
+                name, 
+                email, 
+                password: hashedPassword,
+                role: 'PARTICIPANT' // Langsung set role sebagai PARTICIPANT
+            },
         });
 
-        // Hapus password dari objek sebelum dikirim kembali
         delete user.password;
-
-        res.status(201).json({ message: "User created successfully", user });
+        res.status(201).json({ message: "Participant registered successfully", user });
 
     } catch (error) {
-        // Cek spesifik jika error disebabkan oleh email yang sudah ada
-        if (error.code === 'P2002' && error.meta?.target?.includes('email')) {
+        if (error.code === 'P2002') {
             return res.status(409).json({ error: "User with this email already exists" });
         }
-        // Error lainnya
-        console.error("Register error:", error);
-        res.status(500).json({ error: "Could not create user" });
+        console.error("Register Participant error:", error);
+        res.status(500).json({ error: "Could not create participant" });
     }
 };
 
 /**
- * Login pengguna dan mengembalikan token JWT.
+ * @desc Mendaftarkan pengguna baru sebagai JURNALIS.
  */
-export const login = async (req, res) => {
+export const registerJournalist = async (req, res) => {
+    const { name, email, password } = req.body;
+    
+    const validationError = validateInput(res, { name, email, password });
+    if (validationError) return;
+
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        const user = await prisma.user.create({
+            data: { 
+                name, 
+                email, 
+                password: hashedPassword,
+                role: 'JOURNALIST' // Langsung set role sebagai JOURNALIST
+            },
+        });
+
+        delete user.password;
+        res.status(201).json({ message: "Journalist registered successfully", user });
+
+    } catch (error) {
+        if (error.code === 'P2002') {
+            return res.status(409).json({ error: "User with this email already exists" });
+        }
+        console.error("Register Journalist error:", error);
+        res.status(500).json({ error: "Could not create journalist" });
+    }
+};
+
+/**
+ * =================================================================
+ * LOGIN
+ * =================================================================
+ */
+
+// Fungsi helper untuk proses login, agar tidak duplikat kode
+const handleLogin = async (req, res, expectedRole) => {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-        return res.status(400).json({ error: "Email and password are required" });
-    }
+    const validationError = validateInput(res, { email, password });
+    if (validationError) return;
 
     try {
         const user = await prisma.user.findUnique({ where: { email } });
 
         if (!user) {
             return res.status(404).json({ error: "Email tidak ditemukan" });
+        }
+        
+        // Cek apakah rolenya sesuai
+        if (user.role !== expectedRole) {
+            return res.status(403).json({ error: "Access denied. Invalid role for this endpoint." });
         }
         
         const isPasswordCorrect = await bcrypt.compare(password, user.password);
@@ -76,45 +138,59 @@ export const login = async (req, res) => {
         const token = jwt.sign(
             { userId: user.id, role: user.role },
             process.env.JWT_SECRET,
-            { expiresIn: '24h' } // Token berlaku selama 24 jam
+            { expiresIn: '24h' }
         );
 
-        // Hapus password dari objek sebelum dikirim kembali
         delete user.password;
 
         res.json({
-            message: "Login successful",
+            message: `${expectedRole.charAt(0).toUpperCase() + expectedRole.slice(1).toLowerCase()} login successful`,
             token,
-            user, // Kirim semua data user (tanpa password)
+            user,
         });
 
     } catch (error) {
-        console.error("Login error:", error);
+        console.error(`Login ${expectedRole} error:`, error);
         res.status(500).json({ error: "An unexpected error occurred." });
     }
 };
 
 /**
- * Mendapatkan data profil pengguna yang sedang login.
+ * @desc Login sebagai ADMIN.
+ */
+export const loginAdmin = (req, res) => handleLogin(req, res, 'ADMIN');
+
+/**
+ * @desc Login sebagai JURNALIS.
+ */
+export const loginJournalist = (req, res) => handleLogin(req, res, 'JOURNALIST');
+
+/**
+ * @desc Login sebagai PESERTA.
+ */
+export const loginParticipant = (req, res) => handleLogin(req, res, 'PARTICIPANT');
+
+
+/**
+ * =================================================================
+ * FUNGSI LAINNYA (TETAP SAMA)
+ * =================================================================
+ */
+
+/**
+ * @desc Mendapatkan data profil pengguna yang sedang login.
  */
 export const getProfile = async (req, res) => {
-    // userId diambil dari token oleh middleware 'authenticate'
     const userId = req.user.userId;
 
     try {
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            // Anda bisa menyertakan data relasi di sini jika perlu
-            // contoh: include: { submissions: true }
-        });
+        const user = await prisma.user.findUnique({ where: { id: userId } });
 
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
 
-        // Hapus password dari objek sebelum dikirim kembali
         delete user.password;
-
         res.json(user);
     } catch (error) {
         console.error("Get profile error:", error);
@@ -123,10 +199,8 @@ export const getProfile = async (req, res) => {
 };
 
 /**
- * Logout pengguna (stateless).
+ * @desc Logout pengguna (stateless).
  */
-export const logout = async (req, res) => {
-    // Untuk JWT, logout ditangani di sisi klien dengan menghapus token.
-    // Backend hanya perlu mengonfirmasi permintaan.
+export const logout = (req, res) => {
     res.status(200).json({ message: "Logout successful" });
 };

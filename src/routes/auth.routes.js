@@ -1,11 +1,15 @@
+// routes/auth.routes.js
+
 import { Router } from 'express';
 import { 
-  register, 
-  login, 
-  logout, 
-  getProfile
+  registerParticipant,
+  registerJournalist,
+  loginAdmin,
+  loginJournalist,
+  loginParticipant,
+  getProfile,
+  logout
 } from '../controllers/auth.controller.js';
-// REVISI: Ganti nama fungsi yang diimpor menjadi 'authenticateToken'
 import { authenticateToken } from '../middlewares/auth.middleware.js';
 
 const router = Router();
@@ -14,17 +18,23 @@ const router = Router();
 // RUTE PUBLIK (Tidak Perlu Login)
 // =================================================================
 
-router.post('/register', register);
-router.post('/login', login);
+// --- Rute Registrasi ---
+router.post('/register/participant', registerParticipant);
+router.post('/register/journalist', registerJournalist);
+
+// --- Rute Login ---
+router.post('/login/admin', loginAdmin);
+router.post('/login/journalist', loginJournalist);
+router.post('/login/participant', loginParticipant);
 
 // =================================================================
 // RUTE TERPROTEKSI (Wajib Login / Menggunakan Token)
 // =================================================================
 
-// REVISI: Gunakan 'authenticateToken'
+// Mendapatkan profil pengguna yang sedang login
 router.get('/profile', authenticateToken, getProfile);
 
-// REVISI: Gunakan 'authenticateToken'
+// Logout
 router.post('/logout', authenticateToken, logout);
 
 
