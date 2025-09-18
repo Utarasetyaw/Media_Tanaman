@@ -225,6 +225,8 @@ export const getUserDashboardData = async (req, res) => {
 
     const now = new Date();
     const events = await prisma.event.findMany({
+      // 👇 TAMBAHKAN BARIS INI UNTUK FILTER
+      where: { eventType: 'INTERNAL' },
       orderBy: { startDate: 'desc' },
       include: { submissions: { where: { userId } } },
     });
