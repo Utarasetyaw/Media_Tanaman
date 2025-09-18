@@ -3,20 +3,19 @@ import { useQuery } from '@tanstack/react-query';
 import type { EventsApiResponse } from '../types/event';
 import api from '../services/apiService';
 
-// --- Tipe untuk state filter ---
-interface EventFilters {
-  categoryId: string;
-  plantTypeId: string;
-}
+// DIHAPUS: Tipe untuk state filter tidak lagi diperlukan
+// interface EventFilters {
+//   categoryId: string;
+//   plantTypeId: string;
+// }
 
-// REVISI 1: Buat hook custom untuk mendeteksi lebar layar
+// Hook custom untuk mendeteksi lebar layar (tidak ada perubahan)
 const useWindowWidth = () => {
     const [width, setWidth] = useState(window.innerWidth);
 
     useEffect(() => {
         const handleResize = () => setWidth(window.innerWidth);
         window.addEventListener('resize', handleResize);
-        // Cleanup listener saat komponen tidak lagi digunakan
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
@@ -24,27 +23,22 @@ const useWindowWidth = () => {
 };
 
 
-// REVISI 2: Fungsi fetchEvents sekarang menerima 'limit' sebagai argumen
-const fetchEvents = async (filters: EventFilters, limit: number): Promise<EventsApiResponse> => {
+// DIUBAH: Fungsi fetchEvents tidak lagi menerima 'filters'
+const fetchEvents = async (limit: number): Promise<EventsApiResponse> => {
+  // Hanya menggunakan parameter 'limit'
   const params = new URLSearchParams({ limit: String(limit) }); 
-  if (filters.categoryId && filters.categoryId !== 'all') {
-    params.append('categoryId', filters.categoryId);
-  }
-  if (filters.plantTypeId && filters.plantTypeId !== 'all') {
-    params.append('plantTypeId', filters.plantTypeId);
-  }
+  
+  // DIHAPUS: Logika untuk menambahkan filter ke parameter URL
   
   const { data } = await api.get(`/events?${params.toString()}`);
   return data;
 };
 
 export const useEventsPage = () => {
-  const [filters, setFilters] = useState<EventFilters>({
-    categoryId: 'all',
-    plantTypeId: 'all',
-  });
+  // DIHAPUS: State untuk filter tidak lagi digunakan
+  // const [filters, setFilters] = useState<EventFilters>({ ... });
 
-  // REVISI 3: Dapatkan lebar layar dan tentukan limit
+  // Dapatkan lebar layar dan tentukan limit (tidak ada perubahan)
   const width = useWindowWidth();
   const limit = useMemo(() => {
     if (width < 768) return 6;       // Mobile (< 768px)
@@ -53,13 +47,13 @@ export const useEventsPage = () => {
   }, [width]);
 
 
-  // REVISI 4: Tambahkan 'limit' ke queryKey dan panggil fetchEvents dengan limit
+  // DIUBAH: 'filters' dihapus dari queryKey dan pemanggilan queryFn
   const { data, isLoading, isError } = useQuery<EventsApiResponse, Error>({
-    queryKey: ['events', filters, limit],
-    queryFn: () => fetchEvents(filters, limit),
+    queryKey: ['events', limit],
+    queryFn: () => fetchEvents(limit),
   });
 
-  // Logika untuk memisahkan event (tidak berubah)
+  // Logika untuk memisahkan event (tidak ada perubahan)
   const processedEvents = useMemo(() => {
     const allEvents = data?.data || [];
     if (allEvents.length === 0) {
@@ -78,11 +72,10 @@ export const useEventsPage = () => {
     return { featuredEvent: featured, otherUpcomingEvents: others, pastEvents: past };
   }, [data]);
 
+  // DIUBAH: 'filters' dan 'setFilters' dihapus dari return object
   return {
     isLoading,
     isError,
-    filters,
-    setFilters,
     ...processedEvents,
   };
 };

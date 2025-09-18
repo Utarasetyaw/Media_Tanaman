@@ -52,7 +52,7 @@ const EventCard: React.FC<{
                         {event.submission ? (
                             <div className="flex items-center justify-between gap-3 text-green-300 bg-green-900/40 p-3 rounded-md border border-green-500/30">
                                 <div className="flex items-center gap-3"><CheckCircle size={20} /><p className="font-semibold">Karya Terkirim</p></div>
-                                <button onClick={() => onViewClick(event)} className="text-sm text-blue-400 hover:underline flex-shrink-0">Lihat/Ubah</button>
+                                <button onClick={() => onViewClick(event)} className="text-sm text-blue-400 hover:underline flex-shrink-0">Lihat</button>
                             </div>
                         ) : (
                              <p className="text-sm text-yellow-300 bg-yellow-900/40 p-2 rounded-md border border-yellow-500/30">Anda belum mengirimkan karya.</p>
@@ -95,8 +95,6 @@ export const UserDashboardPage: React.FC = () => {
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [profileData, setProfileData] = useState({ address: '', phoneNumber: '', socialMedia: '' });
     
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
     useEffect(() => { setCaption(selectedEvent?.submission?.submissionNotes || ''); }, [selectedEvent]);
     useEffect(() => {
         if (dashboardData?.currentUserProfile) {
@@ -180,7 +178,10 @@ export const UserDashboardPage: React.FC = () => {
                     <div className="bg-[#073f3d] text-gray-200 rounded-lg shadow-xl w-full max-w-lg border border-green-400/50 flex flex-col max-h-[90vh]">
                         <div className="p-4 flex justify-between items-center border-b border-gray-700 flex-shrink-0"><h3 className="text-xl font-bold text-white">{modalMode === 'upload' ? 'Unggah/Ubah Karya' : 'Lihat Karya'}</h3><button onClick={closeModal} className="text-gray-400 hover:text-white"><X /></button></div>
                         <div className="p-6 space-y-4 overflow-y-auto">
-                            <div className="w-full h-64 rounded-md bg-black/20 flex items-center justify-center"><img src={selectedFile ? URL.createObjectURL(selectedFile) : `${API_BASE_URL}${selectedEvent.submission?.submissionUrl}`} alt="Pratinjau Karya" className="max-w-full max-h-full object-contain" /></div>
+                            <div className="w-full h-64 rounded-md bg-black/20 flex items-center justify-center">
+                                {/* REVISI DI SINI: Hapus ${API_BASE_URL} */}
+                                <img src={selectedFile ? URL.createObjectURL(selectedFile) : selectedEvent.submission?.submissionUrl} alt="Pratinjau Karya" className="max-w-full max-h-full object-contain" />
+                            </div>
                             {modalMode === 'upload' && (<><button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-600 rounded-lg p-4 text-center hover:border-green-400 hover:bg-black/20 transition-colors">{selectedFile ? <span className="text-green-300 font-semibold">{selectedFile.name}</span> : <span className="text-gray-400">Ganti Berkas (Opsional)</span>}</button><input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" /></>)}
                             <div><label htmlFor="caption" className="block text-sm font-medium text-gray-300 mb-2">Keterangan (Caption)</label><textarea id="caption" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Tulis keterangan atau deskripsi singkat karyamu..." className="w-full bg-black/20 border border-gray-600 rounded-md p-2 focus:ring-green-500 focus:border-green-500" rows={4} readOnly={modalMode === 'view'} /></div>
                         </div>

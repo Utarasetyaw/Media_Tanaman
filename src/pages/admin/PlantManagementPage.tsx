@@ -1,12 +1,12 @@
 import { useState, useMemo, Fragment } from 'react';
 import type { FC } from 'react';
-import { Plus, Trash2, X, PlusCircle,ChevronDown } from 'lucide-react';
+import { Plus, Trash2, X, PlusCircle, ChevronDown } from 'lucide-react';
 import { Menu, Transition } from '@headlessui/react';
 import { usePlantManager } from '../../hooks/usePlantManager';
 
 const lang: 'id' | 'en' = 'id';
 
-// Komponen Dropdown Custom yang Baru
+// Komponen Dropdown Custom (tidak ada perubahan)
 const CustomDropdown: FC<{
     options: { id: string | number; name: string }[];
     selectedValue: string;
@@ -52,7 +52,8 @@ const CustomDropdown: FC<{
 
 export const PlantManagementPage: FC = () => {
     const {
-        plants, categories, plantTypes, isLoading, isError,
+        // DIUBAH: categories dihapus
+        plants, plantTypes, isLoading, isError,
         isEditModalOpen, isDetailModalOpen, editingPlant, viewingPlant,
         formData, imageFile, isMutating,
         openEditModal, closeEditModal, openDetailModal, closeDetailModal,
@@ -62,7 +63,7 @@ export const PlantManagementPage: FC = () => {
     } = usePlantManager();
 
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState('all');
+    // DIHAPUS: state untuk selectedCategory
     const [selectedPlantType, setSelectedPlantType] = useState('all');
 
     const filteredPlants = useMemo(() => {
@@ -70,11 +71,11 @@ export const PlantManagementPage: FC = () => {
             const searchMatch = searchTerm.trim() === '' ||
                 plant.name[lang].toLowerCase().includes(searchTerm.toLowerCase()) ||
                 plant.scientificName.toLowerCase().includes(searchTerm.toLowerCase());
-            const categoryMatch = selectedCategory === 'all' || plant.category.id.toString() === selectedCategory;
+            // DIHAPUS: filter categoryMatch
             const plantTypeMatch = selectedPlantType === 'all' || plant.family.id.toString() === selectedPlantType;
-            return searchMatch && categoryMatch && plantTypeMatch;
+            return searchMatch && plantTypeMatch;
         });
-    }, [plants, searchTerm, selectedCategory, selectedPlantType]);
+    }, [plants, searchTerm, selectedPlantType]);
 
     if (isLoading) return <div className="text-center text-gray-300 p-8">Memuat data tanaman...</div>;
     if (isError) return <div className="text-center text-red-400 p-8">Gagal memuat data.</div>;
@@ -89,7 +90,8 @@ export const PlantManagementPage: FC = () => {
             </div>
 
             <div className="mb-6 p-4 bg-[#0b5351]/30 border border-lime-400/30 rounded-lg">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* DIUBAH: Grid disesuaikan menjadi 2 kolom */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input
                         type="text"
                         placeholder="Cari nama tanaman..."
@@ -97,13 +99,7 @@ export const PlantManagementPage: FC = () => {
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-lime-400"
                     />
-                    {/* REVISI: Menggunakan komponen CustomDropdown */}
-                    <CustomDropdown
-                        placeholder="Semua Kategori"
-                        selectedValue={selectedCategory}
-                        onSelect={setSelectedCategory}
-                        options={categories.map(c => ({ id: c.id, name: c.name[lang] }))}
-                    />
+                    {/* DIHAPUS: Dropdown untuk Kategori */}
                     <CustomDropdown
                         placeholder="Semua Tipe Tanaman"
                         selectedValue={selectedPlantType}
@@ -155,7 +151,7 @@ export const PlantManagementPage: FC = () => {
                                 <div className='md:col-span-2'>
                                     <textarea value={formData.description?.en || ''} onChange={(e) => handleJsonChange('description', 'en', e.target.value)} placeholder="Deskripsi (Bahasa Inggris)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200" rows={3}></textarea>
                                 </div>
-                                <select name="categoryId" value={formData.categoryId || 0} onChange={handleInputChange} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"><option value={0} disabled>Pilih Kategori</option>{categories.map(cat => <option key={cat.id} value={cat.id} className="bg-[#003938] text-white">{cat.name[lang]}</option>)}</select>
+                                {/* DIHAPUS: Select untuk Kategori */}
                                 <select name="familyId" value={formData.familyId || 0} onChange={handleInputChange} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"><option value={0} disabled>Pilih Tipe Tanaman</option>{plantTypes.map(pt => <option key={pt.id} value={pt.id} className="bg-[#003938] text-white">{pt.name[lang]}</option>)}</select>
                                 <select name="careLevel" value={formData.careLevel || 'Mudah'} onChange={handleInputChange} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"><option className="bg-[#003938] text-white" value="Mudah">Tingkat Perawatan: Mudah</option><option className="bg-[#003938] text-white" value="Sedang">Tingkat Perawatan: Sedang</option><option className="bg-[#003938] text-white" value="Sulit">Tingkat Perawatan: Sulit</option></select>
                                 <select name="size" value={formData.size || 'Sedang'} onChange={handleInputChange} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"><option className="bg-[#003938] text-white" value="Kecil">Ukuran Tumbuh: Kecil</option><option className="bg-[#003938] text-white" value="Sedang">Ukuran Tumbuh: Sedang</option><option className="bg-[#003938] text-white" value="Besar">Ukuran Tumbuh: Besar</option></select>
@@ -195,7 +191,7 @@ export const PlantManagementPage: FC = () => {
                         <div className="p-4 sm:p-6 space-y-4 overflow-y-auto">
                             <img src={viewingPlant.imageUrl} alt={viewingPlant.name[lang]} className="w-full h-auto max-h-64 object-cover rounded-lg mb-4" />
                             <div><strong className="text-lime-400">Nama Ilmiah:</strong> <span className="text-gray-300">{viewingPlant.scientificName}</span></div>
-                            <div><strong className="text-lime-400">Kategori:</strong> <span className="text-gray-300">{viewingPlant.category.name[lang]}</span></div>
+                            {/* DIHAPUS: Tampilan Kategori */}
                             <div><strong className="text-lime-400">Tipe Tanaman:</strong> <span className="text-gray-300">{viewingPlant.family.name[lang]}</span></div>
                             <div><strong className="text-lime-400">Tingkat Perawatan:</strong> <span className="text-gray-300">{viewingPlant.careLevel}</span></div>
                             <div><strong className="text-lime-400">Ukuran:</strong> <span className="text-gray-300">{viewingPlant.size}</span></div>

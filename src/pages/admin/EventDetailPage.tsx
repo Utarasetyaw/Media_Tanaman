@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-// REVISI: Impor ikon CheckCircle dan Clock
 import { ArrowLeft, Users, ExternalLink, Image as ImageIcon, X, User as UserIcon, Calendar, CheckCircle, Clock } from 'lucide-react';
 import { useEventManager } from '../../hooks/useEventManager';
 import { format } from 'date-fns';
@@ -72,14 +71,14 @@ export const EventDetailPage: React.FC = () => {
                     <img src={event.imageUrl} alt={event.title[lang]} className="w-full md:w-1/3 h-64 md:h-auto object-cover rounded-md self-start" />
                     <div className="flex-1 space-y-4">
                         <div>
-                            <p className="font-semibold text-lime-300">{event.category.name[lang]}</p>
+                            {/* DIHILANGKAN: Baris yang menampilkan kategori event dihapus karena data tidak lagi tersedia dari API */}
+                            {/* <p className="font-semibold text-lime-300">{event.category.name[lang]}</p> */}
                             <h2 className="text-2xl sm:text-3xl font-bold text-gray-100">{event.title[lang]}</h2>
                             <h3 className="text-lg sm:text-xl font-normal text-gray-300">{event.title.en}</h3>
                         </div>
 
                         <div className="text-sm text-gray-400 flex items-center gap-2"><Calendar size={16} /><span>{format(new Date(event.startDate), 'd MMM yyyy', { locale: id })} - {format(new Date(event.endDate), 'd MMM yyyy', { locale: id })}</span></div>
 
-                        {/* REVISI: Menggunakan komponen StatCard agar konsisten */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-lime-400/20">
                             {event.eventType === 'EXTERNAL' ? (
                                 <StatCard icon={ExternalLink} title="Jumlah Klik Link" value={event.externalLinkClicks || 0} color="lime" />

@@ -1,12 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+// REVISI: Hapus 'useNavigate' karena tidak akan digunakan lagi di sini
 import api from '../services/apiService';
 import type { Article, Category, PlantType } from '../types';
 
-// --- Definisi Fungsi-fungsi API ---
+// --- Definisi Fungsi-fungsi API (Tidak Berubah) ---
 
 const getArticleById = async (id: number): Promise<Article> => {
-  // Endpoint analytics tidak memiliki '/management' jadi ini sudah benar
   const { data } = await api.get(`/articles/management/analytics/${id}`);
   return data;
 };
@@ -30,49 +29,43 @@ const uploadFile = async (folder: string, file: File): Promise<{ imageUrl: strin
     return data;
 };
 
-// REVISI: Tambahkan '/management' pada endpoint
 const createArticle = async (payload: any): Promise<Article> => {
     const { data } = await api.post('/articles/management', payload);
     return data;
 };
 
-// REVISI: Tambahkan '/management' pada endpoint
 const updateArticle = async (payload: any): Promise<Article> => {
     const { id, ...dataToUpdate } = payload;
     const { data } = await api.put(`/articles/management/${id}`, dataToUpdate);
     return data;
 };
 
-// Tipe untuk payload yang dikirim dari komponen
+// Fungsi ini tidak lagi dipakai di hook admin, tapi kita biarkan untuk referensi
+// (submitForReview function removed because it is unused)
+
+
+// --- Tipe Data untuk Payload ---
 interface SaveArticlePayload {
-    formData: any;
-    imageFile: File | null;
-    action: 'save' | 'publish';
+  formData: any;
+  imageFile: File | null;
+  action: 'save' | 'publish';
 }
 
 // --- Hook Utama ---
 export const useArticleEditor = (id?: string) => {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const articleId = id ? Number(id) : undefined;
   const isEditMode = Boolean(articleId);
 
-  // --- Data Fetching ---
+  // --- Data Fetching (Tidak Berubah) ---
   const { data: articleData, isLoading: isLoadingArticle } = useQuery<Article>({
     queryKey: ['articleEditor', articleId],
     queryFn: () => getArticleById(articleId!),
     enabled: isEditMode,
   });
 
-  const { data: categories = [] } = useQuery<Category[]>({
-    queryKey: ['allCategories'],
-    queryFn: getCategories,
-  });
-
-  const { data: plantTypes = [] } = useQuery<PlantType[]>({
-    queryKey: ['allPlantTypes'],
-    queryFn: getPlantTypes,
-  });
+  const { data: categories = [] } = useQuery<Category[]>({ queryKey: ['allCategories'], queryFn: getCategories });
+  const { data: plantTypes = [] } = useQuery<PlantType[]>({ queryKey: ['allPlantTypes'], queryFn: getPlantTypes });
 
   // --- Mutation untuk Menyimpan (Create/Update) ---
   const saveMutation = useMutation({
@@ -89,25 +82,23 @@ export const useArticleEditor = (id?: string) => {
 
         const payload = { ...formData, imageUrl: finalImageUrl };
 
+        // REVISI 1: Tambahkan logika untuk mengubah status saat 'publish' di mode edit
         if (isEditMode) {
+            if (action === 'publish') {
+                payload.status = 'PUBLISHED';
+            }
             return updateArticle({ id: articleId, ...payload });
         } else {
             payload.status = action === 'publish' ? 'PUBLISHED' : 'DRAFT';
             return createArticle(payload);
         }
     },
+    // REVISI 2: Sederhanakan onSuccess. Hapus semua alert dan navigasi.
     onSuccess: (savedArticle) => {
         queryClient.invalidateQueries({ queryKey: ['allAdminArticles'] });
         queryClient.invalidateQueries({ queryKey: ['myArticles'] });
-        
-        alert(`Artikel berhasil ${savedArticle.status === 'PUBLISHED' ? 'dipublikasikan' : 'disimpan sebagai draf'}!`);
-        
-        if (!isEditMode) {
-            const destination = window.location.pathname.includes('/admin') 
-                ? `/admin/articles/edit/${savedArticle.id}` 
-                : `/jurnalis/articles/edit/${savedArticle.id}`;
-            navigate(destination);
-        }
+        queryClient.invalidateQueries({ queryKey: ['articleEditor', savedArticle.id] });
+        queryClient.invalidateQueries({ queryKey: ['journalistArticle', savedArticle.id] }); // Untuk konsistensi
     },
     onError: (error: any) => {
         const message = error.response?.data?.error || error.message;
@@ -115,6 +106,9 @@ export const useArticleEditor = (id?: string) => {
         console.error("Save article error:", error);
     }
   });
+
+  // Kami tidak menggunakan finishRevisionMutation di editor Admin, jadi bisa dihapus jika mau
+  // ...
 
   const isLoading = isEditMode && isLoadingArticle;
 
@@ -124,6 +118,7 @@ export const useArticleEditor = (id?: string) => {
     plantTypes,
     isLoading,
     isSaving: saveMutation.isPending,
-    handleSaveAction: saveMutation.mutate,
+    // REVISI 3: Ganti `mutate` menjadi `mutateAsync` agar bisa di-await di komponen
+    handleSaveAction: saveMutation.mutateAsync,
   };
 };

@@ -1,33 +1,33 @@
 // src/services/apiAuth.ts
+import axios from 'axios';
 
-import api from './apiService'; // Import instance axios yang sudah dikonfigurasi
+const API_URL = import.meta.env.VITE_API_URL || 'https://backend.narapatiflora.com/api';
 
-// Fungsi untuk login
-export const loginUser = async (credentials: any) => {
-  const response = await api.post('/auth/login', credentials);
-  return response.data;
-};
+const api = axios.create({
+  baseURL: API_URL,
+});
 
-// Fungsi untuk register (jika Anda butuh di frontend)
-export const registerUser = async (userData: any) => {
-    const response = await api.post('/auth/register', userData);
-    return response.data;
-};
+// Interceptor untuk menambahkan token ke header
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-// Fungsi untuk mendapatkan profil pengguna yang sedang login
+// --- FUNGSI LOGIN ---
+export const loginAdmin = (credentials: any) => api.post('/auth/login/admin', credentials);
+export const loginJournalist = (credentials: any) => api.post('/auth/login/journalist', credentials);
+export const loginParticipant = (credentials: any) => api.post('/auth/login/participant', credentials);
+
+// --- FUNGSI REGISTRASI ---
+export const registerParticipant = (userData: any) => api.post('/auth/register/participant', userData);
+export const registerJournalist = (userData: any) => api.post('/auth/register/journalist', userData);
+
+// --- FUNGSI LAINNYA ---
 export const getMyProfile = async () => {
-    // --- PERBAIKAN PENTING ---
-    // Endpoint di backend sudah kita ubah dari /users/me menjadi /auth/profile
     const response = await api.get('/auth/profile');
     return response.data;
 };
-
-// Fungsi untuk memanggil endpoint logout
-export const logoutUser = async () => {
-    await api.post('/auth/logout');
-};
-
-export const getMySubmissionHistory = async () => {
-  const response = await api.get('/users/me/submissions');
-  return response.data;
-};
+export const logoutUser = () => api.post('/auth/logout');

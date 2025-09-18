@@ -19,14 +19,12 @@ export interface EventDashboard {
     submission?: SubmissionInfo | null;
 }
 
-// 1. Definisikan tipe untuk data profil pengguna
 interface UserProfile {
     address: string | null;
     phoneNumber: string | null;
     socialMedia?: string | null;
 }
 
-// 2. Perbarui interface DashboardData
 interface DashboardData {
     stats: {
         participated: number;
@@ -37,7 +35,7 @@ interface DashboardData {
     upcomingEvents: EventDashboard[];
     pastEventsHistory: EventDashboard[];
     isProfileComplete: boolean;
-    currentUserProfile: UserProfile; // Data untuk pre-fill form di modal
+    currentUserProfile: UserProfile;
 }
 
 
@@ -48,7 +46,6 @@ const getDashboardData = async (): Promise<DashboardData> => {
     return data;
 };
 
-// 3. Buat fungsi API baru untuk update profil
 const updateUserProfile = async (profileData: UserProfile) => {
     const { data } = await api.put('/users/me/profile', profileData);
     return data;
@@ -72,27 +69,36 @@ const uploadFile = async (folder: string, file: File): Promise<{ imageUrl: strin
 // --- Main Custom Hook ---
 export const useUserDashboard = () => {
     const queryClient = useQueryClient();
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-    // Query untuk fetching semua data dashboard
     const { data, isLoading, isError, error } = useQuery<DashboardData, Error>({
         queryKey: ['userDashboard'],
         queryFn: getDashboardData,
     });
 
-    // Mutation untuk submit/update karya event
     const submitMutation = useMutation({
         mutationFn: async (variables: { eventId: number; file?: File | null; caption?: string; currentImageUrl?: string }) => {
             let finalImageUrl = variables.currentImageUrl;
+
             if (variables.file) {
                 const uploadRes = await uploadFile('submissions', variables.file);
                 finalImageUrl = uploadRes.imageUrl;
             }
+
             if (!finalImageUrl) {
-                throw new Error("A file must be uploaded for the first submission.");
+                throw new Error("Gambar wajib diunggah untuk pengiriman pertama.");
             }
+
+            // REVISI: Ubah kembali menjadi path relatif sebelum dikirim ke backend
+            let relativeImageUrl = finalImageUrl;
+            if (relativeImageUrl.startsWith(API_BASE_URL)) {
+                // Ini akan menghapus "http://localhost:5000" dari URL
+                relativeImageUrl = relativeImageUrl.substring(API_BASE_URL.length);
+            }
+
             return submitOrUpdateEvent({ 
                 eventId: variables.eventId, 
-                submissionUrl: finalImageUrl, 
+                submissionUrl: relativeImageUrl, // Kirim path relatif
                 submissionNotes: variables.caption 
             });
         },
@@ -107,11 +113,9 @@ export const useUserDashboard = () => {
         }
     });
 
-    // 4. Tambahkan mutation baru untuk update profil
     const updateProfileMutation = useMutation({
         mutationFn: updateUserProfile,
         onSuccess: () => {
-            // Setelah berhasil, refetch data dashboard agar notifikasi hilang & tombol aktif
             queryClient.invalidateQueries({ queryKey: ['userDashboard'] });
             alert("Profil berhasil diperbarui!");
         },
@@ -128,6 +132,6 @@ export const useUserDashboard = () => {
         isError,
         error,
         submitMutation,
-        updateProfileMutation, // <-- 5. Ekspor mutation baru
+        updateProfileMutation,
     };
 };

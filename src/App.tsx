@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import MainLayout from './layouts/MainLayout';
 import AdminLayout from './layouts/AdminLayout';
 import { JournalistLayout } from './layouts/JournalistLayout';
-import UserLayout from './layouts/UserLayout'; // <-- Impor layout baru
+import UserLayout from './layouts/UserLayout';
 
 // --- Halaman Publik ---
 import HomePage from './pages/HomePage';
@@ -18,9 +18,12 @@ import EventDetail from './pages/EventDetail';
 import PlantPage from './pages/Plant';
 import PlantDetail from './pages/PlantDetail';
 
-// --- Halaman Auth ---
-import { LoginPage } from './pages/auth/LoginPage';
-import { RegisterPage } from './pages/auth/RegisterPage';
+// --- Halaman Auth (Menggunakan URL Spesifik) ---
+import { AdminLoginPage } from './pages/auth/AdminLoginPage';
+import { JournalistLoginPage } from './pages/auth/JournalistLoginPage';
+import { ParticipantLoginPage } from './pages/auth/ParticipantLoginPage';
+import { JournalistRegisterPage } from './pages/auth/JournalistRegisterPage';
+import { ParticipantRegisterPage } from './pages/auth/ParticipantRegisterPage';
 
 // --- Halaman Admin ---
 import { DashboardPage } from './pages/admin/DashboardPage';
@@ -41,7 +44,7 @@ import { JournalistArticleEditorPage } from './pages/journalist/JournalistArticl
 import { JournalistArticleAnalyticsPage } from './pages/journalist/JournalistArticleAnalyticsPage';
 
 // --- Halaman User ---
-import { UserDashboardPage } from './pages/user/UserDashboardPage'; // <-- Impor halaman baru
+import { UserDashboardPage } from './pages/user/UserDashboardPage';
 
 
 // --- Komponen Pelindung Rute yang Fleksibel ---
@@ -52,8 +55,9 @@ const ProtectedRoute: React.FC<{ allowedRoles: string[] }> = ({ allowedRoles }) 
     return <div className="flex items-center justify-center h-screen bg-[#003938] text-white">Memeriksa sesi...</div>;
   }
 
+  // Arahkan ke halaman login yang paling umum jika tidak terautentikasi
   if (!user || !allowedRoles.includes(user.role)) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/participant/login" replace />;
   }
 
   return <Outlet />;
@@ -77,9 +81,13 @@ const App: React.FC = () => {
           <Route path="plants/:id" element={<PlantDetail />} />
         </Route>
 
-        {/* === Rute Autentikasi === */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+        {/* === Rute Autentikasi Spesifik === */}
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/journalist/login" element={<JournalistLoginPage />} />
+        <Route path="/journalist/register" element={<JournalistRegisterPage />} />
+        <Route path="/participant/login" element={<ParticipantLoginPage />} />
+        <Route path="/participant/register" element={<ParticipantRegisterPage />} />
+
 
         {/* === Rute Terproteksi untuk Admin === */}
         <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
@@ -115,7 +123,6 @@ const App: React.FC = () => {
         <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
           <Route path="/dashboard" element={<UserLayout />}>
              <Route index element={<UserDashboardPage />} />
-             {/* Anda bisa tambahkan rute lain untuk user di sini, misal /dashboard/profile */}
           </Route>
         </Route>
 
@@ -127,3 +134,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+

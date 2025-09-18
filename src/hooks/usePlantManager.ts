@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/apiService';
-import type { Plant, Category, PlantType, Store } from '../types/plantManagement';
+// DIUBAH: Hapus 'Category' dari import
+import type { Plant, PlantType, Store } from '../types/plantManagement';
 
 // =================================================================
 // --- FUNGSI-FUNGSI API ---
@@ -10,10 +11,7 @@ const getPlants = async (): Promise<Plant[]> => {
     const { data } = await api.get('/plants/management');
     return data;
 };
-const getCategories = async (): Promise<Category[]> => {
-    const { data } = await api.get('/categories');
-    return data;
-};
+// DIHAPUS: Fungsi getCategories tidak diperlukan lagi
 const getPlantTypes = async (): Promise<PlantType[]> => {
     const { data } = await api.get('/plant-types');
     return data;
@@ -29,7 +27,6 @@ const updatePlant = async (id: number, plantData: Partial<Plant>): Promise<Plant
 const deletePlant = async (id: number): Promise<void> => {
     await api.delete(`/plants/management/${id}`);
 };
-
 const uploadFile = async (folder: string, file: File): Promise<{ imageUrl: string }> => {
     const formData = new FormData();
     formData.append('image', file);
@@ -50,14 +47,13 @@ const initialFormData: Partial<Plant> = {
     careLevel: 'Mudah',
     size: 'Sedang',
     stores: [{ name: '', url: '' }],
-    categoryId: 0,
+    // DIHAPUS: categoryId
     familyId: 0,
 };
 
 export const usePlantManager = () => {
     const queryClient = useQueryClient();
 
-    // --- State Management ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [editingPlant, setEditingPlant] = useState<Plant | null>(null);
@@ -65,16 +61,16 @@ export const usePlantManager = () => {
     const [formData, setFormData] = useState<Partial<Plant>>(initialFormData);
     const [imageFile, setImageFile] = useState<File | null>(null);
 
-    // --- Data Fetching (Query) ---
     const { data, isLoading, isError } = useQuery({
         queryKey: ['plantManagementData'],
         queryFn: async () => {
-            const [plants, categories, plantTypes] = await Promise.all([
+            // DIUBAH: Hanya fetch plants dan plantTypes
+            const [plants, plantTypes] = await Promise.all([
                 getPlants(),
-                getCategories(),
                 getPlantTypes(),
             ]);
-            return { plants, categories, plantTypes };
+            // DIUBAH: Kembalikan data tanpa categories
+            return { plants, plantTypes };
         },
     });
 
@@ -85,7 +81,6 @@ export const usePlantManager = () => {
         }
     }, [data, editingPlant]);
 
-    // --- Data Manipulation (Mutations) ---
     const mutationOptions = {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['plantManagementData'] });
@@ -102,20 +97,15 @@ export const usePlantManager = () => {
     const updateMutation = useMutation({ mutationFn: (payload: { id: number, data: Partial<Plant> }) => updatePlant(payload.id, payload.data), ...mutationOptions });
     const deleteMutation = useMutation({ mutationFn: deletePlant, ...mutationOptions });
 
-    // --- Handlers ---
     const openEditModal = (plant: Plant | null = null) => {
         setImageFile(null);
         if (plant) {
             setEditingPlant(plant);
-            // REVISI: Pastikan 'stores' selalu dalam format array untuk menghindari error .map()
-            const storesAsArray = Array.isArray(plant.stores)
-                ? plant.stores
-                : [{ name: '', url: '' }]; // Default jika data stores tidak valid atau kosong
-
+            const storesAsArray = Array.isArray(plant.stores) ? plant.stores : [{ name: '', url: '' }];
             setFormData({
               ...plant,
-              stores: storesAsArray, // Gunakan array yang sudah divalidasi
-              categoryId: plant.category?.id || 0,
+              stores: storesAsArray,
+              // DIHAPUS: categoryId
               familyId: plant.family?.id || 0,
             });
         } else {
@@ -125,11 +115,7 @@ export const usePlantManager = () => {
         setIsEditModalOpen(true);
     };
     const closeEditModal = () => setIsEditModalOpen(false);
-
-    const openDetailModal = (plant: Plant) => {
-        setViewingPlant(plant);
-        setIsDetailModalOpen(true);
-    };
+    const openDetailModal = (plant: Plant) => { setViewingPlant(plant); setIsDetailModalOpen(true); };
     const closeDetailModal = () => setIsDetailModalOpen(false);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -161,28 +147,36 @@ export const usePlantManager = () => {
     };
 
     const handleSave = async () => {
-        if (!formData.name?.id || !formData.categoryId || !formData.familyId) {
-            alert("Nama (Indonesia), Kategori, dan Tipe Tanaman wajib diisi.");
+        // DIUBAH: Hapus validasi untuk categoryId
+        if (!formData.name?.id || !formData.familyId) {
+            alert("Nama (Indonesia) dan Tipe Tanaman wajib diisi.");
             return;
         }
-        let finalImageUrl = editingPlant?.imageUrl || formData.imageUrl;
+        
+        let imageUrlForPayload = '';
         try {
             if (imageFile) {
                 const uploadRes = await uploadFile('plants', imageFile);
-                finalImageUrl = uploadRes.imageUrl;
+                imageUrlForPayload = uploadRes.imageUrl;
+            } else if (editingPlant?.imageUrl) {
+                const url = new URL(editingPlant.imageUrl);
+                imageUrlForPayload = url.pathname;
             }
-            if (!finalImageUrl) throw new Error("Gambar utama wajib diunggah.");
+
+            if (!imageUrlForPayload) throw new Error("Gambar utama wajib diunggah.");
 
             const payload: Partial<Plant> = {
                 ...formData,
-                imageUrl: finalImageUrl,
-                categoryId: parseInt(String(formData.categoryId), 10),
+                imageUrl: imageUrlForPayload,
+                // DIHAPUS: categoryId
                 familyId: parseInt(String(formData.familyId), 10),
                 stores: (formData.stores || []).filter((store: Store) => store.name && store.url),
             };
 
+            // DIHAPUS: category dan categoryId dari payload
             delete payload.id;
             delete payload.category;
+            delete payload.categoryId;
             delete payload.family;
 
             if (editingPlant) {
@@ -204,7 +198,7 @@ export const usePlantManager = () => {
 
     return {
         plants: data?.plants || [],
-        categories: data?.categories || [],
+        // DIHAPUS: categories tidak lagi diekspor
         plantTypes: data?.plantTypes || [],
         isLoading,
         isError,

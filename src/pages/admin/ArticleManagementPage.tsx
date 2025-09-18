@@ -8,7 +8,6 @@ import { useArticleManager } from '../../hooks/useArticleManager';
 
 type ArticleFilter = 'ALL' | ArticleStatus | 'NEEDS_REVISION_GROUP' | AdminEditRequestStatus | 'REJECTED_GROUP';
 
-// Helper untuk menerjemahkan status dan memberikan warna
 const getStatusProps = (status: ArticleStatus, requestStatus?: AdminEditRequestStatus) => {
     const displayStatus = (requestStatus && requestStatus !== 'NONE') ? requestStatus : status;
     switch (displayStatus) {
@@ -26,7 +25,6 @@ const getStatusProps = (status: ArticleStatus, requestStatus?: AdminEditRequestS
     }
 };
 
-// Komponen Tombol Aksi
 const ActionButton: FC<{
     onClick?: () => void; to?: string; target?: string; rel?: string;
     color: 'blue' | 'green' | 'red' | 'yellow' | 'purple' | 'gray';
@@ -114,7 +112,6 @@ export const ArticleManagementPage: FC = () => {
     if (isError) return <div className="text-red-400 p-8 text-center">Gagal memuat data artikel.</div>;
 
     const ActionButtons: FC<{ article: Article }> = ({ article }) => {
-        // Logika tidak berubah
         if (article.adminEditRequest === 'PENDING') return <ActionButton to={`/admin/articles/analytics/${article.id}`} color="gray" icon={<Eye size={12}/>}>Lihat</ActionButton>;
         if (article.adminEditRequest === 'APPROVED') return <>
             <ActionButton to={`/admin/articles/edit/${article.id}`} color="blue" icon={<Edit3 size={12}/>}>Ubah</ActionButton>
@@ -140,7 +137,8 @@ export const ArticleManagementPage: FC = () => {
                 <ActionButton onClick={() => openFeedbackModal(article)} color="yellow" icon={<MessageSquare size={12}/>}>Revisi</ActionButton>
             </>;
             case 'PUBLISHED': return <>
-                <ActionButton to={`/news/${article.id}`} target="_blank" rel="noopener noreferrer" color="gray" icon={<Eye size={12}/>}>Lihat</ActionButton>
+                {/* REVISI: Tombol "Lihat" sekarang mengarah ke halaman analitik */}
+                <ActionButton to={`/admin/articles/analytics/${article.id}`} color="gray" icon={<Eye size={12}/>} title="Lihat Analitik">Lihat</ActionButton>
                 <ActionButton to={`/admin/articles/seo/${article.id}`} color="gray" icon={<Settings2 size={12}/>}>SEO</ActionButton>
                 <ActionButton to={`/admin/articles/edit/${article.id}`} color="blue" icon={<Edit size={12}/>}>Ubah</ActionButton>
                 <ActionButton onClick={() => handleDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>
@@ -165,45 +163,23 @@ export const ArticleManagementPage: FC = () => {
             </div>
             
             <div className="mb-6 pb-2 border-b-2 border-lime-400/30">
-                {/* REVISI: Breakpoint diubah dari lg ke xl untuk filter */}
                 <div className="xl:hidden">
                     <Menu as="div" className="relative inline-block text-left w-full sm:w-auto">
-                        <div>
-                            <Menu.Button className="inline-flex w-full sm:w-auto justify-between items-center rounded-md bg-[#004A49]/60 border-2 border-lime-400/50 px-4 py-2 text-sm font-medium text-lime-300 hover:bg-[#004A49]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/75">
-                                {activeFilterLabel} ({articleCounts[activeFilter as keyof typeof articleCounts] ?? 0})
-                                <ChevronDown className="ml-2 -mr-1 h-5 w-5 text-lime-200/70" aria-hidden="true" />
-                            </Menu.Button>
-                        </div>
+                        <div><Menu.Button className="inline-flex w-full sm:w-auto justify-between items-center rounded-md bg-[#004A49]/60 border-2 border-lime-400/50 px-4 py-2 text-sm font-medium text-lime-300 hover:bg-[#004A49]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/75">{activeFilterLabel} ({articleCounts[activeFilter as keyof typeof articleCounts] ?? 0})<ChevronDown className="ml-2 -mr-1 h-5 w-5 text-lime-200/70" aria-hidden="true" /></Menu.Button></div>
                         <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
                             <Menu.Items className="absolute left-0 mt-2 w-56 origin-top-right divide-y divide-gray-600 rounded-md bg-[#003938] border-2 border-lime-400/50 shadow-lg ring-1 ring-black/5 focus:outline-none z-10">
                                 <div className="px-1 py-1">
-                                    {filterOptions.map((option) => (
-                                        <Menu.Item key={option.key}>
-                                            {({ active }) => (
-                                                <button onClick={() => setActiveFilter(option.key as ArticleFilter)} className={`${ active ? 'bg-[#004A49] text-white' : 'text-gray-300' } group flex w-full items-center justify-between rounded-md px-3 py-2 text-sm`}>
-                                                    {option.label}
-                                                    <span className="bg-gray-700 text-gray-200 text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">{option.count}</span>
-                                                </button>
-                                            )}
-                                        </Menu.Item>
-                                    ))}
+                                    {filterOptions.map((option) => (<Menu.Item key={option.key}>{({ active }) => (<button onClick={() => setActiveFilter(option.key as ArticleFilter)} className={`${ active ? 'bg-[#004A49] text-white' : 'text-gray-300' } group flex w-full items-center justify-between rounded-md px-3 py-2 text-sm`}>{option.label}<span className="bg-gray-700 text-gray-200 text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">{option.count}</span></button>)}</Menu.Item>))}
                                 </div>
                             </Menu.Items>
                         </Transition>
                     </Menu>
                 </div>
-
                 <div className="hidden xl:flex gap-2 overflow-x-auto -mb-px pb-2">
-                    {filterOptions.map(option => (
-                        <button key={option.key} onClick={() => setActiveFilter(option.key as ArticleFilter)} className={`px-3 py-2 text-sm font-semibold rounded-lg transition-colors flex-shrink-0 border-2 flex items-center gap-2 ${ activeFilter === option.key ? 'bg-lime-300 text-lime-900 border-lime-300' : 'bg-[#004A49]/60 text-lime-300 border-lime-400/50 hover:bg-[#004A49]/90'}`}>
-                            {option.label} 
-                            <span className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ${ activeFilter === option.key ? 'bg-white text-lime-900' : 'bg-gray-800/80 text-gray-200'}`}>{option.count}</span>
-                        </button>
-                    ))}
+                    {filterOptions.map(option => (<button key={option.key} onClick={() => setActiveFilter(option.key as ArticleFilter)} className={`px-3 py-2 text-sm font-semibold rounded-lg transition-colors flex-shrink-0 border-2 flex items-center gap-2 ${ activeFilter === option.key ? 'bg-lime-300 text-lime-900 border-lime-300' : 'bg-[#004A49]/60 text-lime-300 border-lime-400/50 hover:bg-[#004A49]/90'}`}>{option.label} <span className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ${ activeFilter === option.key ? 'bg-white text-lime-900' : 'bg-gray-800/80 text-gray-200'}`}>{option.count}</span></button>))}
                 </div>
             </div>
-
-            {/* Tampilan Tabel untuk Tablet ke Atas (lg ke atas) */}
+            
             <div className="hidden lg:block bg-[#004A49]/60 border-2 border-lime-400/50 shadow-lg rounded-lg overflow-x-auto">
                 <table className="min-w-full divide-y-2 divide-lime-400/30">
                     <thead className="bg-black/20">
@@ -228,7 +204,6 @@ export const ArticleManagementPage: FC = () => {
                 </table>
             </div>
 
-            {/* Tampilan Kartu untuk Mobile (di bawah lg) */}
             <div className="lg:hidden space-y-4">
                 {filteredArticles.map(article => {
                     const status = getStatusProps(article.status, article.adminEditRequest);

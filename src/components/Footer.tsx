@@ -1,6 +1,7 @@
 import type { FC } from 'react';
 import { Link } from 'react-router-dom';
 import { Instagram, Facebook, Music } from 'lucide-react'; 
+// Pastikan path impor ini sudah benar
 import { useLayoutData } from '../hooks/useLayoutData';
 import { footerTranslations } from '../assets/footer.i18n';
 
@@ -19,12 +20,13 @@ const Footer: FC<FooterProps> = ({ currentLang }) => {
 
   return (
     <footer className="bg-[#003938] text-white relative z-30 border-t-2 border-lime-400">
-      {/* DIUBAH: Lebar maksimum diganti dari max-w-7xl menjadi max-w-screen-2xl */}
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="py-12 sm:py-16">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 md:gap-12">
+          {/* DIUBAH: Grid diubah untuk mengakomodasi lebih banyak kolom */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-10">
             
-            <div className="md:col-span-2 lg:col-span-2 space-y-4">
+            {/* DIUBAH: Kolom deskripsi diperkecil */}
+            <div className="sm:col-span-2 md:col-span-3 lg:col-span-2 space-y-4">
               <Link to="/" className="text-2xl font-bold text-white inline-block">
                 {isLoading ? (
                   <span className="h-8 w-32 bg-gray-700 rounded animate-pulse"></span>
@@ -46,6 +48,7 @@ const Footer: FC<FooterProps> = ({ currentLang }) => {
               </div>
             </div>
 
+            {/* Kolom Jelajahi */}
             <div>
               <h4 className="font-bold text-lime-300 mb-6 tracking-wider">{t('explore')}</h4>
               <ul className="space-y-3 text-gray-300">
@@ -56,22 +59,37 @@ const Footer: FC<FooterProps> = ({ currentLang }) => {
               </ul>
             </div>
 
+            {/* DIUBAH: Kolom Jurnalis (dibuat terpisah) */}
             <div>
-              <h4 className="font-bold text-lime-300 mb-6 tracking-wider">{t('support')}</h4>
+              <h4 className="font-bold text-lime-300 mb-6 tracking-wider">{t('support_journalist')}</h4>
               <ul className="space-y-3 text-gray-300">
-                <li><Link to="/about" className="hover:text-white transition-colors duration-300">{t('about')}</Link></li>
-                <li><Link to="/login" className="hover:text-white transition-colors duration-300">{t('login_participant')}</Link></li>
-                <li><Link to="/register" className="hover:text-white transition-colors duration-300">{t('register_participant')}</Link></li>
-                <li><Link to="/login" className="hover:text-white transition-colors duration-300">{t('login_journalist')}</Link></li>
-                <li><Link to="/register" className="hover:text-white transition-colors duration-300">{t('register_journalist')}</Link></li>
+                <li><Link to="/journalist/login" className="hover:text-white transition-colors duration-300">{t('login_journalist')}</Link></li>
+                <li><Link to="/journalist/register" className="hover:text-white transition-colors duration-300">{t('register_journalist')}</Link></li>
               </ul>
             </div>
+
+            {/* DIUBAH: Kolom Peserta (dibuat terpisah) */}
+            <div>
+              <h4 className="font-bold text-lime-300 mb-6 tracking-wider">{t('support_participant')}</h4>
+              <ul className="space-y-3 text-gray-300">
+                <li><Link to="/participant/login" className="hover:text-white transition-colors duration-300">{t('login_participant')}</Link></li>
+                <li><Link to="/participant/register" className="hover:text-white transition-colors duration-300">{t('register_participant')}</Link></li>
+              </ul>
+            </div>
+
+            {/* DIUBAH: Kolom Bantuan (dibuat terpisah) */}
+            <div>
+              <h4 className="font-bold text-lime-300 mb-6 tracking-wider">{t('support_help')}</h4>
+              <ul className="space-y-3 text-gray-300">
+                <li><Link to="/about" className="hover:text-white transition-colors duration-300">{t('about')}</Link></li>
+              </ul>
+            </div>
+            
           </div>
         </div>
       </div>
       
       <div className="bg-black/20">
-        {/* DIUBAH: Lebar maksimum di sini juga diganti agar sejajar */}
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-sm text-gray-400">
           &copy; {new Date().getFullYear()} {layoutData?.settings.name || 'Narapati Flora'}. {t('copyright')}
         </div>

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/apiService';
 import type { Article, Category, PlantType } from '../types';
 
-// --- Definisi Fungsi-fungsi API ---
+// --- Definisi Fungsi-fungsi API (Tidak Berubah) ---
 
 const getArticleById = async (id: number): Promise<Article> => {
   const { data } = await api.get(`/articles/management/analytics/${id}`);
@@ -50,7 +50,6 @@ const finishRevisionApi = async (articleId: number) => {
     return data;
 };
 
-
 // --- Tipe Data untuk Payload ---
 interface SavePayload {
   formData: any;
@@ -77,7 +76,7 @@ export const useJournalistArticleEditor = () => {
   const { data: categories = [] } = useQuery<Category[]>({ queryKey: ['allCategories'], queryFn: getCategories });
   const { data: plantTypes = [] } = useQuery<PlantType[]>({ queryKey: ['allPlantTypes'], queryFn: getPlantTypes });
 
-  // --- Mutation ---
+  // --- REVISI 1: Sederhanakan Mutation ---
   const articleMutation = useMutation({
     mutationFn: async ({ formData, imageFile, action }: SavePayload) => {
         let finalImageUrl = formData.imageUrl || '';
@@ -104,19 +103,10 @@ export const useJournalistArticleEditor = () => {
 
         return savedArticle;
     },
-    onSuccess: (savedArticle, variables) => {
+    // REVISI 2: Hapus alert dan navigasi dari onSuccess. Cukup invalidasi query.
+    onSuccess: (savedArticle) => {
         queryClient.invalidateQueries({ queryKey: ['myArticles'] });
-        queryClient.invalidateQueries({ queryKey: ['journalistArticle', articleId] });
-        
-        if (variables.action === 'submit') {
-            alert('Artikel berhasil dikirim untuk ditinjau!');
-            navigate('/jurnalis/articles');
-        } else {
-            alert('Draf berhasil disimpan!');
-            if (!isEditMode) {
-                navigate(`/jurnalis/articles/edit/${savedArticle.id}`);
-            }
-        }
+        queryClient.invalidateQueries({ queryKey: ['journalistArticle', savedArticle.id] });
     },
     onError: (error: any) => {
         const message = error.response?.data?.error || error.message;
@@ -143,6 +133,7 @@ export const useJournalistArticleEditor = () => {
     plantTypes,
     isLoading: isLoadingArticle,
     isSaving: articleMutation.isPending || finishRevisionMutation.isPending,
+    // Pastikan `mutateAsync` yang diekspor agar bisa di `await`
     saveArticleAsync: articleMutation.mutateAsync,
     finishRevision: finishRevisionMutation.mutate,
   };

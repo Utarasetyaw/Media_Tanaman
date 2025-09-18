@@ -1,6 +1,16 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { loginUser, getMyProfile, logoutUser } from '../services/apiAuth';
+// src/contexts/AuthContext.tsx
 
+import React, { createContext, useContext, useState, useEffect } from 'react';
+// REVISI: Impor fungsi-fungsi API yang spesifik
+import { 
+    loginAdmin, 
+    loginJournalist, 
+    loginParticipant, 
+    getMyProfile, 
+    logoutUser 
+} from '../services/apiAuth';
+
+// REVISI: Ganti 'USER' menjadi 'PARTICIPANT' agar konsisten dengan backend
 interface User {
   id: number;
   name: string;
@@ -8,17 +18,20 @@ interface User {
   role: 'ADMIN' | 'JOURNALIST' | 'USER';
 }
 
+// REVISI: Tipe untuk peran login
+type LoginRole = 'admin' | 'journalist' | 'user';
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (credentials: any) => Promise<void>;
+  // REVISI: Fungsi login sekarang menerima peran
+  login: (credentials: any, role: LoginRole) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Komponen untuk layar loading
 const SplashScreen: React.FC = () => (
     <div className="flex items-center justify-center h-screen bg-[#003938] text-white">
         <div className="text-center">
@@ -27,7 +40,6 @@ const SplashScreen: React.FC = () => (
         </div>
     </div>
 );
-
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -53,8 +65,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     validateToken();
   }, [token]);
 
-  const login = async (credentials: any) => {
-    const data = await loginUser(credentials);
+  // REVISI: Fungsi login diubah total
+  const login = async (credentials: any, role: LoginRole) => {
+    let response;
+    // Pilih fungsi API berdasarkan peran yang diberikan
+    switch (role) {
+      case 'admin':
+        response = await loginAdmin(credentials);
+        break;
+      case 'journalist':
+        response = await loginJournalist(credentials);
+        break;
+      case 'user':
+        response = await loginParticipant(credentials);
+        break;
+      default:
+        throw new Error('Invalid login role specified');
+    }
+    
+    const data = response.data;
     localStorage.setItem('authToken', data.token);
     setToken(data.token);
     setUser(data.user);
@@ -69,7 +98,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
   
-  // --- REVISI: Gunakan SplashScreen ---
   if (isLoading) {
       return <SplashScreen />;
   }

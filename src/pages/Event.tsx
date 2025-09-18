@@ -17,7 +17,6 @@ const EventCard: FC<{ event: Event; isPast?: boolean; lang: 'id' | 'en' }> = ({ 
 
   return (
     <Link to={`/events/${event.id}`} className="block group">
-      {/* Kurung kurawal {} digunakan untuk menggabungkan variabel (isPast) ke dalam string className */}
       <div className={`bg-[#004A49]/60 border-2 border-lime-400/50 rounded-lg shadow-lg overflow-hidden h-full flex flex-col transition-all duration-300 group-hover:shadow-lime-400/20 group-hover:-translate-y-1 ${isPast ? 'opacity-70' : ''}`}>
         <div className="relative">
             <div className="aspect-video bg-black/20">
@@ -27,7 +26,6 @@ const EventCard: FC<{ event: Event; isPast?: boolean; lang: 'id' | 'en' }> = ({ 
                 className={`w-full h-full object-cover ${isPast ? 'grayscale' : ''}`} 
               />
             </div>
-          {/* Tanda {} dengan && digunakan untuk menampilkan sesuatu hanya jika kondisi (isPast) terpenuhi */}
           {isPast && (
             <div className="absolute top-2 right-2 bg-gray-800 text-white text-xs font-bold px-2 py-1 rounded">
               {t('finished_badge')}
@@ -64,7 +62,6 @@ const EventPage: FC = () => {
 
       <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 2xl:px-60 py-12 sm:py-16">
         <div className="text-center mb-12">
-          {/* Kurung kurawal {} di sini menjalankan fungsi t() untuk mendapatkan teks terjemahan */}
           <h2 className="font-serif text-4xl sm:text-5xl font-bold text-lime-400 mb-4">{t('title')}</h2>
           <p className="text-lg text-gray-300 max-w-2xl mx-auto">{t('description')}</p>
         </div>
@@ -101,7 +98,6 @@ const EventPage: FC = () => {
                 {otherUpcomingEvents.length > 0 && (
                   <section>
                     <h3 className="font-serif text-3xl font-bold text-center text-lime-400 mb-8">{t('other_events')}</h3>
-                    {/* Kurung kurawal {} di sini digunakan untuk melakukan iterasi/looping (map) pada array */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
                       {otherUpcomingEvents.map(event => <EventCard key={event.id} event={event} lang={currentLang}/>)}
                     </div>

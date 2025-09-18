@@ -55,7 +55,7 @@ export const JournalistLayout: React.FC = () => {
   const handleLogout = () => {
     logout();
     // Arahkan ke halaman login yang sesuai
-    navigate('/login'); 
+    navigate('/'); 
   };
 
   return (

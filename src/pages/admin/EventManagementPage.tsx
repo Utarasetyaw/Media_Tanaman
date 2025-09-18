@@ -5,11 +5,9 @@ import { Plus, X, ChevronDown } from 'lucide-react';
 import { Menu, Transition } from '@headlessui/react';
 import { useEventManager } from '../../hooks/useEventManager';
 
-// Tipe data yang dibutuhkan
-type PlantType = { id: number; name: { id: string; en?: string } };
-type Category = { id: number; name: { id: string; en?: string } };
+// Tipe data yang dibutuhkan (tidak perlu diubah)
 
-// Helper untuk format tanggal
+// Helper untuk format tanggal (tidak perlu diubah)
 const formatDateRange = (start: string, end: string) => {
     const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' };
     const startDate = new Date(start).toLocaleDateString('id-ID', options);
@@ -17,7 +15,7 @@ const formatDateRange = (start: string, end: string) => {
     return `${startDate} - ${endDate}`;
 };
 
-// Komponen Dropdown Custom
+// Komponen Dropdown Custom (tidak perlu diubah)
 const CustomDropdown: FC<{
     options: { value: string | number; label: string }[];
     selectedValue: string | number;
@@ -63,26 +61,30 @@ const CustomDropdown: FC<{
 
 export const EventManagementPage: React.FC = () => {
     const {
-        events, categories, plantTypes, isLoadingList, filter, setFilter,
+        // DIUBAH: 'categories' dan 'plantTypes' mungkin tidak lagi dibutuhkan di sini, tapi kita biarkan hook yang mengelolanya
+        events, isLoadingList, filter, setFilter,
         isModalOpen, editingEvent, formData, imageFile, openModal, closeModal,
-        handleInputChange, handleJsonChange, handleImageChange, handleSave, handleDelete, isMutating,
+        handleInputChange, handleJsonChange, handleImageChange, handleSave, handleDelete, isMutating, // Tetap diimpor jika hook membutuhkannya, tapi tidak dipakai di filter
     } = useEventManager();
     
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState('all');
-    const [selectedPlantType, setSelectedPlantType] = useState('all');
+    // DIHAPUS: State untuk filter kategori dan tipe tanaman
+    // const [selectedCategory, setSelectedCategory] = useState('all');
+    // const [selectedPlantType, setSelectedPlantType] = useState('all');
 
     const finalFilteredEvents = useMemo(() => {
         return events.filter(event => {
             const searchMatch = searchTerm.trim() === '' ||
                 event.title.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 event.organizer.toLowerCase().includes(searchTerm.toLowerCase());
-            const categoryMatch = selectedCategory === 'all' || event.category.id.toString() === selectedCategory;
-            const plantTypeMatch = selectedPlantType === 'all' || (event.plantType && event.plantType.id.toString() === selectedPlantType);
             
-            return searchMatch && categoryMatch && plantTypeMatch;
+            // DIHAPUS: Logika filter untuk kategori dan tipe tanaman
+            // const categoryMatch = selectedCategory === 'all' || event.category.id.toString() === selectedCategory;
+            // const plantTypeMatch = selectedPlantType === 'all' || (event.plantType && event.plantType.id.toString() === selectedPlantType);
+            
+            return searchMatch; // Hanya mengembalikan searchMatch
         });
-    }, [events, searchTerm, selectedCategory, selectedPlantType]);
+    }, [events, searchTerm]); // Dependensi yang tidak perlu dihapus
 
     if (isLoadingList) return <div className="text-center text-gray-300 p-8">Memuat data event...</div>;
 
@@ -98,10 +100,10 @@ export const EventManagementPage: React.FC = () => {
             </div>
             
             <div className="mb-6 p-4 bg-[#0b5351]/30 border border-lime-400/30 rounded-lg">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                     <input type="text" placeholder="Cari event..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={inputClassName} />
-                    <CustomDropdown placeholder="Semua Kategori" selectedValue={selectedCategory} onSelect={setSelectedCategory} options={categories.map(c => ({ value: c.id, label: c.name.id }))} />
-                    <CustomDropdown placeholder="Semua Tipe Tanaman" selectedValue={selectedPlantType} onSelect={setSelectedPlantType} options={plantTypes.map(pt => ({ value: pt.id, label: pt.name.id }))} />
+                {/* DIUBAH: Layout grid disederhanakan hanya untuk pencarian */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                     <input type="text" placeholder="Cari event berdasarkan judul atau penyelenggara..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={`${inputClassName} md:col-span-2 lg:col-span-3`} />
+                     {/* DIHAPUS: Dropdown untuk kategori dan tipe tanaman */}
                 </div>
             </div>
 
@@ -146,7 +148,6 @@ export const EventManagementPage: React.FC = () => {
                         </div>
                         <div className="p-4 sm:p-6 space-y-4 overflow-y-auto">
                             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                                {/* --- REVISI MODAL DIMULAI DI SINI --- */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-1">Judul Event (Indonesia)</label>
                                     <input type="text" value={formData.title.id} onChange={(e) => handleJsonChange('title', 'id', e.target.value)} className={inputClassName} required />
@@ -179,14 +180,9 @@ export const EventManagementPage: React.FC = () => {
                                     <label className='block text-sm font-medium text-gray-300 mb-1'>Tanggal Selesai</label>
                                     <input type="datetime-local" name="endDate" value={formData.endDate} onChange={handleInputChange} className={inputClassName} required />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-1">Kategori</label>
-                                    <CustomDropdown name="categoryId" placeholder="Pilih Kategori" selectedValue={formData.categoryId || 0} onSelect={(val) => handleInputChange({ target: { name: 'categoryId', value: val } } as any)} options={categories.map((cat: Category) => ({ value: cat.id, label: cat.name.id }))} />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-1">Tipe Tanaman (Opsional)</label>
-                                    <CustomDropdown name="plantTypeId" placeholder="Pilih Tipe Tanaman" selectedValue={formData.plantTypeId || 0} onSelect={(val) => handleInputChange({ target: { name: 'plantTypeId', value: val } } as any)} options={plantTypes.map((pt: PlantType) => ({ value: pt.id, label: pt.name.id }))} />
-                                </div>
+                                
+                                {/* DIHAPUS: Input untuk Kategori dan Tipe Tanaman */}
+                                
                                 <div className='md:col-span-2'>
                                     <label className="block text-sm font-medium text-gray-300 mb-1">Tipe Event</label>
                                     <CustomDropdown name="eventType" placeholder="Pilih Tipe Event" selectedValue={formData.eventType} onSelect={(val) => handleInputChange({ target: { name: 'eventType', value: val } } as any)} options={[{value: 'EXTERNAL', label: 'Eksternal'}, {value: 'INTERNAL', label: 'Internal (Dengan Pendaftaran)'}]} />
