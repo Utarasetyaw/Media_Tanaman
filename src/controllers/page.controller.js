@@ -58,7 +58,6 @@ const homeEventSelect = {
   startDate: true
 };
 
-// REVISI: Obyek `select` baru untuk daftar dan detail artikel
 const articleListSelect = {
   id: true, title: true, excerpt: true, content: true, imageUrl: true, status: true,
   categoryId: true, plantTypeId: true,
@@ -73,17 +72,12 @@ const articleDetailSelect = {
   author: { select: { name: true, role: true } },
   category: { select: { id: true, name: true } },
   plantType: { select: { id: true, name: true } },
-  _count: { select: { likes: true } } // _count masih berguna di halaman detail
+  _count: { select: { likes: true } }
 };
 
-
-// Obyek `select` baru untuk daftar dan detail event
 const eventListSelect = {
   id: true, title: true, description: true, imageUrl: true,
   location: true, organizer: true, startDate: true, endDate: true,
-  categoryId: true, plantTypeId: true,
-  category: { select: { id: true, name: true } },
-  plantType: { select: { id: true, name: true } }
 };
 
 const eventDetailSelect = {
@@ -92,7 +86,6 @@ const eventDetailSelect = {
   externalUrl: true, eventType: true
 };
 
-// REVISI: Obyek `select` baru untuk daftar dan detail tanaman
 const plantListSelect = {
   id: true, name: true, scientificName: true, imageUrl: true,
   categoryId: true, familyId: true,
@@ -272,16 +265,14 @@ export const getPlants = async (req, res) => {
 // Endpoint: GET /api/events
 // =================================================================
 export const getEvents = async (req, res) => {
-  const { page = 1, limit = 5, search, categoryId, plantTypeId } = req.query;
+  const { page = 1, limit = 5, search } = req.query;
   const pageNum = parseInt(page);
   const limitNum = parseInt(limit);
   const skip = (pageNum - 1) * limitNum;
 
   const where = {};
   if (search) { where.OR = [{ title: { path: ['id'], string_contains: search, mode: 'insensitive' } },{ location: { contains: search, mode: 'insensitive' } },{ organizer: { contains: search, mode: 'insensitive' } }];}
-  if (categoryId) where.categoryId = parseInt(categoryId);
-  if (plantTypeId) where.plantTypeId = parseInt(plantTypeId);
-
+  
   try {
     const [totalEvents, eventsFromDb] = await prisma.$transaction([
       prisma.event.count({ where }),
@@ -410,9 +401,8 @@ export const trackEventClick = async (req, res) => {
 // =================================================================
 export const getAboutPageData = async (req, res) => {
     try {
-        // Ambil hanya data yang relevan untuk halaman 'About' dari SiteSettings
         const aboutData = await prisma.siteSettings.findUnique({
-            where: { id: 1 }, // Asumsi pengaturan selalu ada di ID 1
+            where: { id: 1 },
             select: {
                 name: true,
                 logoUrl: true,
@@ -428,7 +418,6 @@ export const getAboutPageData = async (req, res) => {
             return res.status(404).json({ error: 'About page settings not found.' });
         }
         
-        // Transformasikan URL logo jika ada
         const transformedData = transformImageUrls(req, aboutData);
 
         res.json(transformedData);
@@ -438,4 +427,3 @@ export const getAboutPageData = async (req, res) => {
         res.status(500).json({ error: 'Gagal mengambil data halaman Tentang Kami.' });
     }
 };
-
