@@ -27,7 +27,6 @@ export const getManagementEvents = async (req, res) => {
     try {
         const events = await prisma.event.findMany({
             orderBy: { startDate: 'desc' },
-            include: { category: true, plantType: true }
         });
         res.json(events.map(event => transformEventImage(req, event)));
     } catch (error) {
@@ -48,8 +47,6 @@ export const getEventByIdForAdmin = async (req, res) => {
         const event = await prisma.event.findUnique({
             where: { id: eventId },
             include: {
-                category: true,
-                plantType: true,
                 submissions: {
                     orderBy: { createdAt: 'desc' },
                     include: { 
@@ -83,8 +80,8 @@ export const getEventByIdForAdmin = async (req, res) => {
  * ADMIN: Membuat event baru.
  */
 export const createEvent = async (req, res) => {
-  const { title, description, imageUrl, location, organizer, startDate, endDate, eventType, externalUrl, categoryId, plantTypeId } = req.body;
-  if (!title || !description || !imageUrl || !location || !organizer || !startDate || !endDate || !eventType || !categoryId) {
+  const { title, description, imageUrl, location, organizer, startDate, endDate, eventType, externalUrl } = req.body;
+  if (!title || !description || !imageUrl || !location || !organizer || !startDate || !endDate || !eventType) {
     return res.status(400).json({ error: 'Please provide all required fields.' });
   }
   try {
@@ -93,8 +90,6 @@ export const createEvent = async (req, res) => {
         title, description, imageUrl, location, organizer, eventType, externalUrl,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
-        categoryId: parseInt(categoryId),
-        plantTypeId: plantTypeId ? parseInt(plantTypeId) : null,
       },
     });
     res.status(201).json(transformEventImage(req, newEvent));
@@ -113,8 +108,6 @@ export const updateEvent = async (req, res) => {
   if (isNaN(eventId)) return res.status(400).json({ error: 'Invalid event ID' });
 
   const data = req.body;
-  if (data.categoryId) data.categoryId = parseInt(data.categoryId);
-  if ('plantTypeId' in data) data.plantTypeId = data.plantTypeId ? parseInt(data.plantTypeId) : null;
   if (data.startDate) data.startDate = new Date(data.startDate);
   if (data.endDate) data.endDate = new Date(data.endDate);
 
