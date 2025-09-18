@@ -16,6 +16,16 @@ const transformEventImage = (req, event) => {
   return event;
 };
 
+// HELPER BARU UNTUK MENGUBAH PATH RELATIF MENJADI URL LENGKAP
+const transformRelativePath = (req, relativePath) => {
+  if (relativePath && relativePath.startsWith('/')) {
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    return `${baseUrl}${relativePath}`;
+  }
+  return relativePath;
+};
+
+
 // =================================================================
 // RUTE-RUTE MANAJEMEN ADMIN
 // =================================================================
@@ -174,17 +184,14 @@ export const getUserDashboardData = async (req, res) => {
         const upcomingEvents = [];
         const pastEventsHistory = [];
 
-        // --- GANTI BLOK INI ---
         allInternalEvents.forEach(event => {
             const userSubmission = event.submissions.length > 0 ? event.submissions[0] : null;
             const transformedEvent = transformEventImage(req, event);
             
-            // Definisikan tanggal di awal agar lebih mudah dibaca
             const startDate = new Date(transformedEvent.startDate);
             const endDate = new Date(transformedEvent.endDate);
 
             if (endDate < now) {
-                // Event sudah berakhir -> Masuk riwayat jika ada submission
                 if (userSubmission) {
                     pastEventsHistory.push({
                         id: transformedEvent.id,
@@ -194,23 +201,26 @@ export const getUserDashboardData = async (req, res) => {
                         endDate: transformedEvent.endDate,
                         submission: {
                             id: userSubmission.id,
-                            submissionUrl: userSubmission.submissionUrl,
+                            submissionUrl: transformRelativePath(req, userSubmission.submissionUrl),
                             placement: userSubmission.placement,
                         }
                     });
                 }
             } else if (startDate <= now && endDate >= now) {
-                // Event sedang berlangsung (terbuka) -> Tambahkan kondisi `endDate >= now`
                 openForSubmission.push({
                     id: transformedEvent.id,
                     title: transformedEvent.title,
                     imageUrl: transformedEvent.imageUrl,
                     startDate: transformedEvent.startDate,
                     endDate: transformedEvent.endDate,
-                    submission: userSubmission
+                    submission: userSubmission 
+                        ? {
+                            ...userSubmission,
+                            submissionUrl: transformRelativePath(req, userSubmission.submissionUrl),
+                          }
+                        : null,
                 });
             } else {
-                // Sisanya pasti event yang akan datang (`startDate > now`)
                 upcomingEvents.push({
                     id: transformedEvent.id,
                     title: transformedEvent.title,
@@ -220,7 +230,6 @@ export const getUserDashboardData = async (req, res) => {
                 });
             }
         });
-        // --- AKHIR BLOK PENGGANTIAN ---
         
         const dashboardData = {
             stats: {
