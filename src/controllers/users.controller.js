@@ -78,13 +78,39 @@ export const getAllUsers = async (req, res) => {
 export const getUserById = async (req, res) => {
   const { id } = req.params;
   const userId = parseInt(id);
-  // ... (sisa logika tidak berubah)
+  
   if (isNaN(userId)) return res.status(400).json({ error: 'Invalid user ID' });
+  
   try {
-    const user = await prisma.user.findUnique({ where: { id: userId } /* ... */ });
+    // DIPERBAIKI: Logika dilengkapi untuk menyertakan artikel
+    const user = await prisma.user.findUnique({ 
+        where: { id: userId },
+        select: {
+            ...userSelection,
+            articles: {
+                orderBy: { createdAt: 'desc' },
+                select: {
+                    id: true,
+                    title: true,
+                    status: true,
+                    createdAt: true,
+                    viewCount: true,
+                    _count: { select: { likes: true } }
+                }
+            }
+        }
+    });
+
     if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    // Transformasi URL gambar untuk setiap artikel
+    if(user.articles) {
+        user.articles = user.articles.map(article => transformImageUrl(req, article));
+    }
+
     res.json(user);
   } catch (error) {
+    console.error("Get User by ID Error:", error);
     res.status(500).json({ error: 'Failed to fetch user details.' });
   }
 };
@@ -186,7 +212,6 @@ export const getUserDashboardData = async (req, res) => {
   const userId = req.user.userId;
 
   try {
-    // 1. Ambil data profil pengguna yang lebih lengkap
     const currentUser = await prisma.user.findUnique({
       where: { id: userId },
       select: { address: true, phoneNumber: true, socialMedia: true },
@@ -198,14 +223,12 @@ export const getUserDashboardData = async (req, res) => {
 
     const isProfileComplete = !!(currentUser.address && currentUser.phoneNumber);
 
-    // 2. Ambil data event
     const now = new Date();
     const events = await prisma.event.findMany({
       orderBy: { startDate: 'desc' },
       include: { submissions: { where: { userId } } },
     });
 
-    // 3. Proses dan kelompokkan event
     const openForSubmission = [];
     const upcomingEvents = [];
     const pastEventsHistory = [];
@@ -229,21 +252,19 @@ export const getUserDashboardData = async (req, res) => {
       }
     });
 
-    // 4. Hitung statistik
     const stats = {
       open: openForSubmission.length,
       upcoming: upcomingEvents.length,
       participated: pastEventsHistory.length,
     };
     
-    // 5. Kirim semua data, termasuk data profil saat ini untuk diisi di modal
     res.json({
       stats,
       openForSubmission,
       upcomingEvents,
       pastEventsHistory,
       isProfileComplete,
-      currentUserProfile: currentUser, // <-- Data untuk pre-fill form modal
+      currentUserProfile: currentUser,
     });
 
   } catch (error) {

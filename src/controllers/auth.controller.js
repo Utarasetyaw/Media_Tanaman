@@ -1,6 +1,6 @@
 // controllers/auth.controller.js
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client'; // DIPERBAIKI: Impor Prisma untuk error handling
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -12,21 +12,21 @@ const validateInput = (res, data) => {
 
     if (name === undefined) { // Name tidak wajib untuk login
         if (!email || !password) {
-            return res.status(400).json({ error: "Email and password are required" });
+            return res.status(400).json({ error: "Email dan password wajib diisi" });
         }
     } else { // Wajib untuk register
         if (!name || !email || !password) {
-            return res.status(400).json({ error: "Name, email, and password are required" });
+            return res.status(400).json({ error: "Nama, email, dan password wajib diisi" });
         }
     }
 
     const emailRegex = /\S+@\S+\.\S+/;
     if (!emailRegex.test(email)) {
-        return res.status(400).json({ error: "Invalid email format" });
+        return res.status(400).json({ error: "Format email tidak valid" });
     }
 
     if (password && password.length < 8) {
-        return res.status(400).json({ error: "Password must be at least 8 characters long" });
+        return res.status(400).json({ error: "Password minimal harus 8 karakter" });
     }
     return null; // Tidak ada error
 };
@@ -39,7 +39,7 @@ const validateInput = (res, data) => {
  */
 
 /**
- * @desc Mendaftarkan pengguna baru sebagai PESERTA.
+ * @desc Mendaftarkan pengguna baru sebagai PESERTA (USER).
  */
 export const registerParticipant = async (req, res) => {
     const { name, email, password } = req.body;
@@ -55,19 +55,20 @@ export const registerParticipant = async (req, res) => {
                 name, 
                 email, 
                 password: hashedPassword,
-                role: 'PARTICIPANT' // Langsung set role sebagai PARTICIPANT
+                role: 'USER' // DIUBAH: 'PARTICIPANT' menjadi 'USER' agar sesuai schema
             },
         });
 
         delete user.password;
-        res.status(201).json({ message: "Participant registered successfully", user });
+        res.status(21).json({ message: "Registrasi peserta berhasil", user });
 
     } catch (error) {
-        if (error.code === 'P2002') {
-            return res.status(409).json({ error: "User with this email already exists" });
+        // DIPERBAIKI: Penanganan error yang lebih aman dan spesifik
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+            return res.status(409).json({ error: "Email ini sudah terdaftar." });
         }
         console.error("Register Participant error:", error);
-        res.status(500).json({ error: "Could not create participant" });
+        res.status(500).json({ error: "Gagal mendaftarkan peserta." });
     }
 };
 
@@ -88,19 +89,20 @@ export const registerJournalist = async (req, res) => {
                 name, 
                 email, 
                 password: hashedPassword,
-                role: 'JOURNALIST' // Langsung set role sebagai JOURNALIST
+                role: 'JOURNALIST'
             },
         });
 
         delete user.password;
-        res.status(201).json({ message: "Journalist registered successfully", user });
+        res.status(201).json({ message: "Registrasi jurnalis berhasil", user });
 
     } catch (error) {
-        if (error.code === 'P2002') {
-            return res.status(409).json({ error: "User with this email already exists" });
+        // DIPERBAIKI: Penanganan error yang lebih aman dan spesifik
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+            return res.status(409).json({ error: "Email ini sudah terdaftar." });
         }
         console.error("Register Journalist error:", error);
-        res.status(500).json({ error: "Could not create journalist" });
+        res.status(500).json({ error: "Gagal mendaftarkan jurnalis." });
     }
 };
 
@@ -124,9 +126,8 @@ const handleLogin = async (req, res, expectedRole) => {
             return res.status(404).json({ error: "Email tidak ditemukan" });
         }
         
-        // Cek apakah rolenya sesuai
         if (user.role !== expectedRole) {
-            return res.status(403).json({ error: "Access denied. Invalid role for this endpoint." });
+            return res.status(403).json({ error: "Akses ditolak. Role tidak sesuai untuk endpoint ini." });
         }
         
         const isPasswordCorrect = await bcrypt.compare(password, user.password);
@@ -144,14 +145,14 @@ const handleLogin = async (req, res, expectedRole) => {
         delete user.password;
 
         res.json({
-            message: `${expectedRole.charAt(0).toUpperCase() + expectedRole.slice(1).toLowerCase()} login successful`,
+            message: `Login ${expectedRole.toLowerCase()} berhasil`,
             token,
             user,
         });
 
     } catch (error) {
         console.error(`Login ${expectedRole} error:`, error);
-        res.status(500).json({ error: "An unexpected error occurred." });
+        res.status(500).json({ error: "Terjadi kesalahan tak terduga." });
     }
 };
 
@@ -166,9 +167,9 @@ export const loginAdmin = (req, res) => handleLogin(req, res, 'ADMIN');
 export const loginJournalist = (req, res) => handleLogin(req, res, 'JOURNALIST');
 
 /**
- * @desc Login sebagai PESERTA.
+ * @desc Login sebagai PESERTA (USER).
  */
-export const loginParticipant = (req, res) => handleLogin(req, res, 'PARTICIPANT');
+export const loginParticipant = (req, res) => handleLogin(req, res, 'USER'); // DIUBAH: 'PARTICIPANT' menjadi 'USER'
 
 
 /**
