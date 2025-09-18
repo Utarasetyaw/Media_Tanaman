@@ -88,15 +88,18 @@ const eventDetailSelect = {
 
 const plantListSelect = {
   id: true, name: true, scientificName: true, imageUrl: true,
-  categoryId: true, familyId: true,
-  category: { select: { id: true, name: true } },
+  // DIHAPUS: categoryId
+  familyId: true,
+  // DIHAPUS: relasi category
   family: { select: { id: true, name: true } }
 };
 
 const plantDetailSelect = {
   id: true, name: true, scientificName: true, description: true, imageUrl: true,
-  careLevel: true, size: true, stores: true, categoryId: true, familyId: true,
-  category: { select: { id: true, name: true } },
+  careLevel: true, size: true, stores: true, 
+  // DIHAPUS: categoryId
+  familyId: true,
+  // DIHAPUS: relasi category
   family: { select: { id: true, name: true } }
 };
 
@@ -233,14 +236,15 @@ export const getArticles = async (req, res) => {
 // Endpoint: GET /api/plants
 // =================================================================
 export const getPlants = async (req, res) => {
-  const { page = 1, limit = 12, search, categoryId, familyId } = req.query;
+  // DIHAPUS: categoryId dari query
+  const { page = 1, limit = 12, search, familyId } = req.query;
   const pageNum = parseInt(page);
   const limitNum = parseInt(limit);
   const skip = (pageNum - 1) * limitNum;
 
   const where = {};
   if (search) { where.OR = [{ name: { path: ['id'], string_contains: search, mode: 'insensitive' } },{ scientificName: { contains: search, mode: 'insensitive' } }];}
-  if (categoryId) where.categoryId = parseInt(categoryId);
+  // DIHAPUS: Filter berdasarkan categoryId
   if (familyId) where.familyId = parseInt(familyId);
 
   try {

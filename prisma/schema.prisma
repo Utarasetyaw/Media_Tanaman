@@ -17,7 +17,6 @@ model Category {
   id       Int       @id @default(autoincrement())
   name     Json
   articles Article[]
-  plants   Plant[]
 }
 
 model PlantType {
@@ -83,9 +82,6 @@ model Plant {
   stores         Json
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
-
-  category   Category  @relation(fields: [categoryId], references: [id])
-  categoryId Int
   family     PlantType @relation("PlantFamily", fields: [familyId], references: [id])
   familyId   Int
 }

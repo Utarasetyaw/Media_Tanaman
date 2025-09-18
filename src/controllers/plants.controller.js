@@ -28,7 +28,7 @@ export const getManagementPlants = async (req, res) => {
     const plants = await prisma.plant.findMany({
       orderBy: { name: 'asc' },
       include: {
-        category: true,
+        // DIHAPUS: 'category: true'
         family: true,
       }
     });
@@ -44,15 +44,17 @@ export const getManagementPlants = async (req, res) => {
  * ADMIN: Membuat tanaman baru.
  */
 export const createPlant = async (req, res) => {
-  const { name, scientificName, description, imageUrl, categoryId, familyId, careLevel, size, stores } = req.body;
-  if (!name || !scientificName || !description || !imageUrl || !categoryId || !familyId || !careLevel || !size || !stores) {
+  // DIHAPUS: categoryId dari destrukturisasi
+  const { name, scientificName, description, imageUrl, familyId, careLevel, size, stores } = req.body;
+  // DIHAPUS: categoryId dari validasi
+  if (!name || !scientificName || !description || !imageUrl || !familyId || !careLevel || !size || !stores) {
     return res.status(400).json({ error: 'Please provide all required fields.' });
   }
   try {
     const plant = await prisma.plant.create({
       data: {
         name, scientificName, description, imageUrl, careLevel, size, stores,
-        categoryId: parseInt(categoryId),
+        // DIHAPUS: 'categoryId: parseInt(categoryId)'
         familyId: parseInt(familyId),
       },
     });
@@ -72,7 +74,7 @@ export const updatePlant = async (req, res) => {
   if (isNaN(plantId)) return res.status(400).json({ error: 'Invalid Plant ID.' });
 
   const dataToUpdate = req.body;
-  if (dataToUpdate.categoryId) dataToUpdate.categoryId = parseInt(dataToUpdate.categoryId);
+  // DIHAPUS: Logika parsing untuk categoryId
   if (dataToUpdate.familyId) dataToUpdate.familyId = parseInt(dataToUpdate.familyId);
 
   try {
@@ -118,6 +120,9 @@ export const deletePlant = async (req, res) => {
   }
 };
 
+/**
+ * ADMIN: Mengambil detail satu tanaman.
+ */
 export const getPlantByIdForAdmin = async (req, res) => {
   const { id } = req.params;
   const plantId = parseInt(id);
@@ -130,7 +135,7 @@ export const getPlantByIdForAdmin = async (req, res) => {
     const plant = await prisma.plant.findUnique({
       where: { id: plantId },
       include: {
-        category: true,
+        // DIHAPUS: 'category: true'
         family: true,
       }
     });
