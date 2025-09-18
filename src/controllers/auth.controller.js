@@ -1,6 +1,6 @@
 // controllers/auth.controller.js
 
-import { PrismaClient, Prisma } from '@prisma/client'; // DIPERBAIKI: Impor Prisma untuk error handling
+import { PrismaClient, Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -55,15 +55,14 @@ export const registerParticipant = async (req, res) => {
                 name, 
                 email, 
                 password: hashedPassword,
-                role: 'USER' // DIUBAH: 'PARTICIPANT' menjadi 'USER' agar sesuai schema
+                role: 'USER'
             },
         });
 
         delete user.password;
-        res.status(21).json({ message: "Registrasi peserta berhasil", user });
+        res.status(201).json({ message: "Registrasi peserta berhasil", user });
 
     } catch (error) {
-        // DIPERBAIKI: Penanganan error yang lebih aman dan spesifik
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
             return res.status(409).json({ error: "Email ini sudah terdaftar." });
         }
@@ -97,7 +96,6 @@ export const registerJournalist = async (req, res) => {
         res.status(201).json({ message: "Registrasi jurnalis berhasil", user });
 
     } catch (error) {
-        // DIPERBAIKI: Penanganan error yang lebih aman dan spesifik
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
             return res.status(409).json({ error: "Email ini sudah terdaftar." });
         }
@@ -169,12 +167,12 @@ export const loginJournalist = (req, res) => handleLogin(req, res, 'JOURNALIST')
 /**
  * @desc Login sebagai PESERTA (USER).
  */
-export const loginParticipant = (req, res) => handleLogin(req, res, 'USER'); // DIUBAH: 'PARTICIPANT' menjadi 'USER'
+export const loginParticipant = (req, res) => handleLogin(req, res, 'USER');
 
 
 /**
  * =================================================================
- * FUNGSI LAINNYA (TETAP SAMA)
+ * FUNGSI LAINNYA
  * =================================================================
  */
 
