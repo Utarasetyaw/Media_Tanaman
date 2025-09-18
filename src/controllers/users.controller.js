@@ -25,6 +25,15 @@ const transformImageUrl = (req, item) => {
   return item;
 };
 
+// HELPER BARU: Mengubah path relatif APAPUN menjadi URL lengkap
+const transformRelativePath = (req, relativePath) => {
+  if (relativePath && relativePath.startsWith('/')) {
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    return `${baseUrl}${relativePath}`;
+  }
+  return relativePath;
+};
+
 // =================================================================
 // --- FUNGSI UNTUK ADMIN ---
 // =================================================================
@@ -82,7 +91,6 @@ export const getUserById = async (req, res) => {
   if (isNaN(userId)) return res.status(400).json({ error: 'Invalid user ID' });
   
   try {
-    // DIPERBAIKI: Logika dilengkapi untuk menyertakan artikel
     const user = await prisma.user.findUnique({ 
         where: { id: userId },
         select: {
@@ -103,7 +111,6 @@ export const getUserById = async (req, res) => {
 
     if (!user) return res.status(404).json({ error: 'User not found' });
     
-    // Transformasi URL gambar untuk setiap artikel
     if(user.articles) {
         user.articles = user.articles.map(article => transformImageUrl(req, article));
     }
@@ -225,7 +232,6 @@ export const getUserDashboardData = async (req, res) => {
 
     const now = new Date();
     const events = await prisma.event.findMany({
-      // 👇 TAMBAHKAN BARIS INI UNTUK FILTER
       where: { eventType: 'INTERNAL' },
       orderBy: { startDate: 'desc' },
       include: { submissions: { where: { userId } } },
@@ -238,10 +244,24 @@ export const getUserDashboardData = async (req, res) => {
     events.forEach(event => {
       const eventWithUrl = transformImageUrl(req, event);
       const submission = event.submissions.length > 0 ? event.submissions[0] : null;
+
+      // REVISI: Buat objek submission baru dengan URL yang sudah diubah
+      const formattedSubmission = submission
+        ? {
+            ...submission,
+            submissionUrl: transformRelativePath(req, submission.submissionUrl),
+          }
+        : null;
+
       const formattedEvent = {
-        id: eventWithUrl.id, title: eventWithUrl.title, imageUrl: eventWithUrl.imageUrl,
-        startDate: eventWithUrl.startDate, endDate: eventWithUrl.endDate, submission,
+        id: eventWithUrl.id,
+        title: eventWithUrl.title,
+        imageUrl: eventWithUrl.imageUrl,
+        startDate: eventWithUrl.startDate,
+        endDate: eventWithUrl.endDate,
+        submission: formattedSubmission, // Gunakan objek submission yang sudah diformat
       };
+      
       const startDate = new Date(event.startDate);
       const endDate = new Date(event.endDate);
 
