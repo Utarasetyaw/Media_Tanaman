@@ -18,7 +18,6 @@ model Category {
   name     Json
   articles Article[]
   plants   Plant[]
-  events   Event[]
 }
 
 model PlantType {
@@ -26,7 +25,6 @@ model PlantType {
   name     Json
   articles Article[]
   plants   Plant[]   @relation("PlantFamily")
-  events   Event[]
 }
 
 // =================================================================
