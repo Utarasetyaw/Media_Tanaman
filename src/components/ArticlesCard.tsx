@@ -1,26 +1,48 @@
 import type { FC } from 'react';
 import { Link } from 'react-router-dom';
+import { Calendar, Clock } from 'lucide-react';
 import type { Article } from '../types/article';
-// Impor file translasi yang baru
 import { cardTranslations } from '../assets/card.i18n';
 
-// Definisikan props untuk menerima bahasa
 interface ArticleCardProps {
   article: Article;
   layout?: 'default' | 'horizontal';
-  lang: 'id' | 'en'; // Prop bahasa sekarang wajib
+  lang: 'id' | 'en';
 }
 
 const ArticleCard: FC<ArticleCardProps> = ({ article, layout = 'default', lang }) => {
-  // Fungsi translasi lokal
+  // Guard clause untuk mencegah error jika article tidak ada
+  if (!article) {
+    return null; 
+  }
+
   const t = (key: keyof typeof cardTranslations.id): string => {
     return cardTranslations[lang]?.[key] || key;
   };
    
-  // Mengambil data dari objek artikel berdasarkan bahasa dari props
   const categoryName = article.category?.name[lang] || 'Uncategorized';
   const titleText = article.title[lang];
   const excerptText = article.excerpt[lang];
+  
+  const formattedDate = new Date(article.createdAt).toLocaleDateString(lang, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  // Fungsi kalkulasi tetap sama
+  const calculateReadTime = (text: string): number => {
+    if (!text) return 1;
+    const wordsPerMinute = 200;
+    const wordCount = text.trim().split(/\s+/).length;
+    const time = Math.ceil(wordCount / wordsPerMinute);
+    return time < 1 ? 1 : time;
+  };
+
+  // REVISI KUNCI: Hitung waktu baca dari EXCERPT, bukan KONTEN LENGKAP.
+  // Ini lebih aman karena excerpt dijamin ada di data ringkas artikel.
+  const readTime = calculateReadTime(excerptText);
+
 
   // Layout Horizontal
   if (layout === 'horizontal') {
@@ -37,10 +59,20 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, layout = 'default', lang }
           <div className="flex-grow">
             <span className="inline-block bg-lime-200 text-lime-800 text-xs font-semibold px-2 py-1 rounded-full mb-2">{categoryName}</span>
             <Link to={`/articles/${article.id}`}>
-              {/* REVISI: Menambahkan line-clamp-2 untuk memotong judul yang panjang */}
               <h3 className="text-xl sm:text-2xl font-bold text-gray-100 mb-2 group-hover:text-lime-400 transition-colors line-clamp-2">{titleText}</h3>
             </Link>
-            <p className="text-gray-300 text-sm line-clamp-3 sm:line-clamp-4">{excerptText}</p>
+            <p className="text-gray-300 text-sm line-clamp-3 sm:line-clamp-4 mb-4">{excerptText}</p>
+            
+            <div className="flex items-center space-x-4 text-xs text-gray-400">
+                <div className="flex items-center gap-2">
+                    <Calendar size={14} />
+                    <span>{formattedDate}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Clock size={14} />
+                    <span>{readTime} {t('min_read')}</span>
+                </div>
+            </div>
           </div>
           <div className="mt-4 pt-4 border-t border-lime-400/30">
             <Link to={`/articles/${article.id}`} className="inline-block w-full text-center bg-lime-300 text-lime-900 font-bold px-4 py-2 rounded-lg hover:bg-lime-400 transition-colors text-sm">
@@ -64,12 +96,22 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, layout = 'default', lang }
         <div className="flex-grow">
           <span className="inline-block bg-lime-200 text-lime-800 text-xs font-semibold px-2 py-1 rounded-full mb-2">{categoryName}</span>
           <Link to={`/articles/${article.id}`}>
-            {/* REVISI: Menambahkan line-clamp-2 untuk memotong judul yang panjang */}
             <h3 className="text-lg sm:text-xl font-bold text-gray-100 mb-2 group-hover:text-lime-400 transition-colors line-clamp-2">{titleText}</h3>
           </Link>
-          <p className="text-gray-300 text-sm line-clamp-3">{excerptText}</p>
+          <p className="text-gray-300 text-sm line-clamp-3 mb-4">{excerptText}</p>
+
+            <div className="flex items-center space-x-4 text-xs text-gray-400">
+                <div className="flex items-center gap-2">
+                    <Calendar size={14} />
+                    <span>{formattedDate}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Clock size={14} />
+                    <span>{readTime} {t('min_read')}</span>
+                </div>
+            </div>
         </div>
-        <div className="mt-4 pt-4 border-t border-lime-400/30">
+        <div className="mt-auto pt-4 border-t border-lime-400/30">
           <Link to={`/articles/${article.id}`} className="inline-block w-full text-center bg-lime-300 text-lime-900 font-bold px-4 py-2 rounded-lg hover:bg-lime-400 transition-colors text-sm">
             {t('view_detail')}
           </Link>

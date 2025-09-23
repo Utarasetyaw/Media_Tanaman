@@ -1,7 +1,4 @@
-// src/contexts/AuthContext.tsx
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-// REVISI: Impor fungsi-fungsi API yang spesifik
 import { 
     loginAdmin, 
     loginJournalist, 
@@ -10,7 +7,7 @@ import {
     logoutUser 
 } from '../services/apiAuth';
 
-// REVISI: Ganti 'USER' menjadi 'PARTICIPANT' agar konsisten dengan backend
+// --- (Tidak ada perubahan di bagian interface) ---
 interface User {
   id: number;
   name: string;
@@ -18,13 +15,11 @@ interface User {
   role: 'ADMIN' | 'JOURNALIST' | 'USER';
 }
 
-// REVISI: Tipe untuk peran login
 type LoginRole = 'admin' | 'journalist' | 'user';
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  // REVISI: Fungsi login sekarang menerima peran
   login: (credentials: any, role: LoginRole) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
@@ -41,34 +36,53 @@ const SplashScreen: React.FC = () => (
     </div>
 );
 
+
+// --- PERUBAIKAN: Definisikan kunci penyimpanan yang baru ---
+const TOKEN_KEY_PREFIX = 'narapati_token_';
+const ACTIVE_ROLE_KEY = 'narapati_active_role';
+
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('authToken'));
+  // --- PERUBAIKAN: State token tidak lagi mengambil langsung dari localStorage di sini ---
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // --- PERUBAIKAN: Logika inisialisasi sesi diubah total ---
   useEffect(() => {
-    const validateToken = async () => {
-      if (token) {
+    const initializeSession = async () => {
+      // 1. Cek peran yang terakhir aktif
+      const activeRole = localStorage.getItem(ACTIVE_ROLE_KEY);
+      if (!activeRole) {
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Buat nama kunci token berdasarkan peran aktif
+      const tokenKey = `${TOKEN_KEY_PREFIX}${activeRole}`;
+      const storedToken = localStorage.getItem(tokenKey);
+
+      if (storedToken) {
         try {
-          const profile = await getMyProfile();
+          // 3. Validasi token dan ambil profil pengguna
+          const profile = await getMyProfile(); // Ambil profil tanpa argumen
           setUser(profile);
+          setToken(storedToken);
         } catch (error) {
-          console.error("Session expired or invalid.", error);
-          localStorage.removeItem('authToken');
-          setToken(null);
-          setUser(null);
+          console.error("Sesi tidak valid atau kedaluwarsa.", error);
+          // Bersihkan jika token tidak valid
+          localStorage.removeItem(tokenKey);
+          localStorage.removeItem(ACTIVE_ROLE_KEY);
         }
       }
       setIsLoading(false);
     };
 
-    validateToken();
-  }, [token]);
+    initializeSession();
+  }, []);
 
-  // REVISI: Fungsi login diubah total
   const login = async (credentials: any, role: LoginRole) => {
     let response;
-    // Pilih fungsi API berdasarkan peran yang diberikan
     switch (role) {
       case 'admin':
         response = await loginAdmin(credentials);
@@ -80,20 +94,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         response = await loginParticipant(credentials);
         break;
       default:
-        throw new Error('Invalid login role specified');
+        throw new Error('Peran login tidak valid');
     }
     
     const data = response.data;
-    localStorage.setItem('authToken', data.token);
-    setToken(data.token);
-    setUser(data.user);
+    const loggedInUser: User = data.user;
+    const newTtoken: string = data.token;
+
+    // --- PERUBAIKAN: Simpan token dan peran aktif menggunakan kunci dinamis ---
+    const tokenKey = `${TOKEN_KEY_PREFIX}${loggedInUser.role}`;
+    localStorage.setItem(tokenKey, newTtoken);
+    localStorage.setItem(ACTIVE_ROLE_KEY, loggedInUser.role);
+    
+    setToken(newTtoken);
+    setUser(loggedInUser);
   };
 
-  const logout = () => {
-    logoutUser().catch(err => {
-        console.error("Logout API call failed, but logging out client-side anyway.", err);
-    });
-    localStorage.removeItem('authToken');
+  const logout = async () => {
+    // Simpan role sebelum state user di-reset
+    const roleToLogout = user?.role;
+
+    try {
+        await logoutUser();
+    } catch (err) {
+        console.error("Panggilan API logout gagal, tetap logout di sisi klien.", err);
+    }
+    
+    // --- PERUBAIKAN: Hapus kunci dinamis dari localStorage ---
+    if (roleToLogout) {
+        const tokenKey = `${TOKEN_KEY_PREFIX}${roleToLogout}`;
+        localStorage.removeItem(tokenKey);
+    }
+    localStorage.removeItem(ACTIVE_ROLE_KEY); // Selalu hapus penanda peran aktif
+    
     setToken(null);
     setUser(null);
   };
@@ -112,7 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth harus digunakan di dalam AuthProvider');
   }
   return context;
 };

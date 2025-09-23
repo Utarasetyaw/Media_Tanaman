@@ -1,12 +1,33 @@
+// useLayoutData.ts
+
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/apiService';
 
-// --- Definisikan Tipe Data dari API /api/layout ---
+// --- Tipe Data Umum ---
 interface LocalizedString {
   id: string;
   en: string;
 }
 
+export interface Category {
+  id: number;
+  name: LocalizedString;
+}
+
+// Interface untuk data SEO umum dari backend
+interface SiteSeo {
+  id: number;
+  metaTitle?: LocalizedString | null;
+  metaDescription?: LocalizedString | null;
+  metaKeywords?: string | null;
+  ogDefaultTitle?: LocalizedString | null;
+  ogDefaultDescription?: LocalizedString | null;
+  ogDefaultImageUrl?: string | null;
+  twitterSite?: string | null;
+  googleSiteVerificationId?: string | null;
+}
+
+// Interface untuk data settings utama
 interface SiteSettings {
   name: string;
   logoUrl: string;
@@ -22,40 +43,29 @@ interface SiteSettings {
         tiktok?: string;
     }
   };
-  // REVISI: Tambahkan properti yang hilang di sini
-  googleAnalyticsId?: string | null;
   googleAdsId?: string | null;
-  metaPixelId?: string | null;
+  seo: SiteSeo | null; 
 }
 
-interface Ad {
-    imageUrl: string;
-    linkUrl: string;
-}
-
+// Tipe data utama dari API /api/layout
 export interface LayoutData {
   settings: SiteSettings;
-  categories: any[];
-  plantTypes: any[];
-  ads?: {
-    banner?: Ad[];
-    vertical?: Ad[];
-    horizontal?: Ad[];
-  }
+  categories: Category[];
+  plantTypes: Category[];
 }
 
-// Fungsi untuk mengambil data dari API
+// --- Fungsi Fetching & Custom Hook ---
+
 const fetchLayoutData = async (): Promise<LayoutData> => {
   const { data } = await api.get('/layout');
   return data;
 };
 
-// --- Custom Hook ---
 export const useLayoutData = () => {
   return useQuery<LayoutData, Error>({
     queryKey: ['layoutData'],
     queryFn: fetchLayoutData,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 5, // 5 menit
     refetchOnWindowFocus: false,
   });
 };

@@ -1,36 +1,71 @@
-// Definisikan tipe data dasar yang sering digunakan
+// =================================================================
+// Tipe Data Dasar & Bersama (Reusable)
+// =================================================================
+
+/**
+ * Tipe untuk teks yang mendukung multi-bahasa (Indonesia & Inggris).
+ */
 export interface LocalizedString {
   id: string;
   en: string;
 }
 
-// Definisikan struktur objek Artikel sesuai dengan data dari API
+/**
+ * --- BARU: Tipe untuk Author dipisahkan ---
+ * Mendefinisikan struktur objek Author.
+ */
+export interface Author {
+  name: string;
+  role: string;
+}
+
+/**
+ * --- BARU: Tipe untuk Category dipisahkan ---
+ * Mendefinisikan struktur objek Category.
+ */
+export interface Category {
+  id: number;
+  name: LocalizedString;
+}
+
+/**
+ * --- BARU: Tipe untuk PlantType dipisahkan ---
+ * Mendefinisikan struktur objek PlantType.
+ */
+export interface PlantType {
+  id: number;
+  name: LocalizedString;
+}
+
+// =================================================================
+// Tipe Data Entitas Utama
+// =================================================================
+
+/**
+ * --- DIREVISI: Menggunakan tipe-tipe baru yang sudah dipisah ---
+ * Mendefinisikan struktur objek Artikel sesuai dengan data dari API.
+ * Kini lebih bersih dan mudah dibaca.
+ */
 export interface Article {
   id: number;
   title: LocalizedString;
   excerpt: LocalizedString;
-  content: LocalizedString; // <-- REVISI: Gunakan tipe LocalizedString yang sudah ada
+  content: LocalizedString;
   imageUrl: string;
   viewCount: number;
   createdAt: string;
-  author: {
-    name: string;
-    role: string;
-  };
-  category: {
-    id: number;
-    name: LocalizedString;
-  };
-  plantType: {
-    id: number;
-    name: LocalizedString;
-  } | null; // plantType bisa jadi null
+  author: Author;       // <-- Menggunakan tipe Author
+  category: Category;     // <-- Menggunakan tipe Category
+  plantType: PlantType | null; // <-- Menggunakan tipe PlantType, bisa null
   _count: {
     likes: number;
   };
 }
 
-// Definisikan struktur objek Pagination
+/**
+ * Mendefinisikan struktur objek Pagination.
+ * (Tidak ada perubahan di sini, sudah bagus)
+ */
 export interface Pagination {
   totalItems: number;
   totalPages: number;
