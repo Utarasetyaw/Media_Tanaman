@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
-// Helper untuk transformasi URL gambar (digunakan oleh semua fungsi)
+// Helper untuk transformasi URL gambar
 const transformImageUrls = (req, data) => {
     if (!data) return data;
     const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -23,16 +23,17 @@ const transformImageUrls = (req, data) => {
 };
 
 // =================================================================
-// Obyek `select` untuk meringkas data (Digunakan di Home & Search)
+// Obyek `select`
 // =================================================================
 const popularAndLatestArticleSelect = {
   id: true,
   title: true,
   excerpt: true,
   imageUrl: true,
+  createdAt: true,
   viewCount: true,
+  likeCount: true,
   category: { select: { name: true } },
-  _count: { select: { likes: true } }
 };
 
 const topHeadlineSelect = {
@@ -46,8 +47,6 @@ const homePlantSelect = {
   scientificName: true,
   description: true,
   imageUrl: true,
-  careLevel: true,
-  size: true
 };
 
 const homeEventSelect = {
@@ -60,6 +59,9 @@ const homeEventSelect = {
 
 const articleListSelect = {
   id: true, title: true, excerpt: true, content: true, imageUrl: true, status: true,
+  createdAt: true,
+  viewCount: true,
+  likeCount: true,
   categoryId: true, plantTypeId: true,
   author: { select: { name: true, role: true } },
   category: { select: { id: true, name: true } },
@@ -69,10 +71,11 @@ const articleListSelect = {
 const articleDetailSelect = {
   id: true, title: true, excerpt: true, content: true, imageUrl: true, authorId: true,
   status: true, createdAt: true, categoryId: true, plantTypeId: true,
+  likeCount: true,
   author: { select: { name: true, role: true } },
   category: { select: { id: true, name: true } },
   plantType: { select: { id: true, name: true } },
-  _count: { select: { likes: true } }
+  seo: true,
 };
 
 const eventListSelect = {
@@ -87,73 +90,84 @@ const eventDetailSelect = {
 };
 
 const plantListSelect = {
-  id: true, name: true, scientificName: true, imageUrl: true,
-  // DIHAPUS: categoryId
-  familyId: true,
-  // DIHAPUS: relasi category
-  family: { select: { id: true, name: true } }
+  id: true,
+  name: true,
+  description: true,
+  imageUrl: true,
+  plantTypeId: true,
+  plantType: { select: { id: true, name: true } }
 };
 
 const plantDetailSelect = {
   id: true, name: true, scientificName: true, description: true, imageUrl: true,
-  careLevel: true, size: true, stores: true, 
-  // DIHAPUS: categoryId
-  familyId: true,
-  // DIHAPUS: relasi category
-  family: { select: { id: true, name: true } }
+  stores: true,
+  plantTypeId: true,
+  plantType: { select: { id: true, name: true } }
 };
 
 
 // =================================================================
-// #1 FUNGSI DATA LAYOUT DASAR
-// Endpoint: GET /api/layout
+// Controller Functions
 // =================================================================
+
 export const getLayoutData = async (req, res) => {
     try {
-        const [siteSettings, categories, plantTypes] = await prisma.$transaction([
-            prisma.siteSettings.findUnique({ where: { id: 1 }, select: { name: true, logoUrl: true, faviconUrl: true, businessDescription: true, contactInfo: true, seo: true, googleAnalyticsId: true, googleAdsId: true, metaPixelId: true } }),
-            prisma.category.findMany({ orderBy: { id: 'asc' } }),
-            prisma.plantType.findMany({ orderBy: { id: 'asc' } })
+        const siteSettings = await prisma.siteSettings.findUnique({
+            where: { id: 1 },
+            select: {
+                name: true,
+                logoUrl: true,
+                faviconUrl: true,
+                businessDescription: true,
+                contactInfo: true,
+                googleAdsId: true,
+                seo: true
+            }
+        });
+
+        const [categories, plantTypes] = await prisma.$transaction([
+            prisma.category.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+            prisma.plantType.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } })
         ]);
-        res.json({ settings: transformImageUrls(req, siteSettings), categories, plantTypes });
+
+        res.json({
+            settings: transformImageUrls(req, siteSettings),
+            categories,
+            plantTypes,
+        });
     } catch (error) {
         console.error("Error fetching layout data:", error);
         res.status(500).json({ error: 'Gagal mengambil data layout.' });
     }
 };
 
-// =================================================================
-// #2 FUNGSI DATA HALAMAN UTAMA (HOME)
-// Endpoint: GET /api/home
-// =================================================================
 export const getHomePageData = async (req, res) => {
     try {
         const now = new Date();
         const [
-            siteSettings, 
-            categories, 
-            plantTypes, 
+            siteSettings,
             mostViewedArticle,
             latestArticles,
             topHeadlines,
-            runningEvents, 
+            runningEvents,
             recentPlants
         ] = await prisma.$transaction([
-            prisma.siteSettings.findUnique({ where: { id: 1 }, include: { bannerImages: true } }),
-            prisma.category.findMany({ orderBy: { id: 'asc' } }),
-            prisma.plantType.findMany({ orderBy: { id: 'asc' } }),
+            prisma.siteSettings.findUnique({ 
+                where: { id: 1 }, 
+                include: { 
+                    bannerImages: true,
+                    seo: true 
+                } 
+            }),
             prisma.article.findFirst({ where: { status: 'PUBLISHED' }, orderBy: { viewCount: 'desc' }, select: popularAndLatestArticleSelect }),
             prisma.article.findMany({ where: { status: 'PUBLISHED' }, orderBy: { createdAt: 'desc' }, take: 2, select: popularAndLatestArticleSelect }),
             prisma.article.findMany({ where: { status: 'PUBLISHED' }, orderBy: { viewCount: 'desc' }, take: 5, select: topHeadlineSelect }),
             prisma.event.findMany({ where: { startDate: { lte: now }, endDate: { gte: now } }, orderBy: { startDate: 'asc' }, take: 1, select: homeEventSelect }),
             prisma.plant.findMany({ orderBy: { createdAt: 'desc' }, take: 1, select: homePlantSelect })
         ]);
-
+        
         const responseData = {
-            bannerTagline: siteSettings?.bannerTagline,
-            bannerImages: transformImageUrls(req, siteSettings?.bannerImages || []),
-            plantTypes,
-            categories,
+            settings: transformImageUrls(req, siteSettings),
             mostViewedArticle: transformImageUrls(req, mostViewedArticle),
             latestArticles: transformImageUrls(req, latestArticles),
             topHeadlines,
@@ -168,10 +182,6 @@ export const getHomePageData = async (req, res) => {
     }
 };
 
-// =================================================================
-// #3 FUNGSI PENCARIAN GLOBAL
-// Endpoint: GET /api/search?q=...
-// =================================================================
 export const searchSite = async (req, res) => {
     const { q: query } = req.query;
     if (!query || String(query).trim().length < 3) return res.json({ articles: [], plants: [], events: [] });
@@ -194,12 +204,8 @@ export const searchSite = async (req, res) => {
     }
 };
 
-// =================================================================
-// #4 FUNGSI DAFTAR ARTIKEL (PAGINATION & FILTER)
-// Endpoint: GET /api/articles
-// =================================================================
 export const getArticles = async (req, res) => {
-  const { page = 1, limit = 10, search, categoryId, plantTypeId, startDate, endDate } = req.query;
+  const { page = 1, limit = 10, search, categoryId, plantTypeId } = req.query;
   const pageNum = parseInt(page);
   const limitNum = parseInt(limit);
   const skip = (pageNum - 1) * limitNum;
@@ -208,11 +214,6 @@ export const getArticles = async (req, res) => {
   if (search) { where.OR = [{ title: { path: ['id'], string_contains: search, mode: 'insensitive' } },{ excerpt: { path: ['id'], string_contains: search, mode: 'insensitive' } }];}
   if (categoryId) where.categoryId = parseInt(categoryId);
   if (plantTypeId) where.plantTypeId = parseInt(plantTypeId);
-  if (startDate || endDate) {
-    where.createdAt = {};
-    if (startDate) where.createdAt.gte = new Date(startDate);
-    if (endDate) where.createdAt.lte = new Date(endDate);
-  }
 
   try {
     const [totalArticles, articlesFromDb] = await prisma.$transaction([
@@ -222,7 +223,7 @@ export const getArticles = async (req, res) => {
     const totalPages = Math.ceil(totalArticles / limitNum);
 
     res.json({
-      data: articlesFromDb.map(item => transformImageUrls(req, item)),
+      data: transformImageUrls(req, articlesFromDb),
       pagination: { totalItems: totalArticles, totalPages, currentPage: pageNum, itemsPerPage: limitNum }
     });
   } catch (error) {
@@ -231,21 +232,16 @@ export const getArticles = async (req, res) => {
   }
 };
 
-// =================================================================
-// #5 FUNGSI DAFTAR TANAMAN (PAGINATION & FILTER)
-// Endpoint: GET /api/plants
-// =================================================================
 export const getPlants = async (req, res) => {
-  // DIHAPUS: categoryId dari query
-  const { page = 1, limit = 12, search, familyId } = req.query;
+  const { page = 1, limit = 12, search, plantTypeId } = req.query;
   const pageNum = parseInt(page);
   const limitNum = parseInt(limit);
   const skip = (pageNum - 1) * limitNum;
 
   const where = {};
   if (search) { where.OR = [{ name: { path: ['id'], string_contains: search, mode: 'insensitive' } },{ scientificName: { contains: search, mode: 'insensitive' } }];}
-  // DIHAPUS: Filter berdasarkan categoryId
-  if (familyId) where.familyId = parseInt(familyId);
+  
+  if (plantTypeId) where.plantTypeId = parseInt(plantTypeId);
 
   try {
     const [totalPlants, plantsFromDb] = await prisma.$transaction([
@@ -254,8 +250,16 @@ export const getPlants = async (req, res) => {
     ]);
     const totalPages = Math.ceil(totalPlants / limitNum);
     
+    const processedPlants = plantsFromDb.map(plant => {
+        const originalDescId = plant.description?.id || ''; 
+        const originalDescEn = plant.description?.en || ''; 
+        const truncatedDescId = originalDescId.length > 150 ? originalDescId.substring(0, 150) + '...' : originalDescId;
+        const truncatedDescEn = originalDescEn.length > 150 ? originalDescEn.substring(0, 150) + '...' : originalDescEn;
+        return { ...plant, description: { id: truncatedDescId, en: truncatedDescEn } };
+    });
+    
     res.json({
-      data: plantsFromDb.map(item => transformImageUrls(req, item)),
+      data: transformImageUrls(req, processedPlants),
       pagination: { totalItems: totalPlants, totalPages, currentPage: pageNum, itemsPerPage: limitNum }
     });
   } catch (error) {
@@ -264,10 +268,6 @@ export const getPlants = async (req, res) => {
   }
 };
 
-// =================================================================
-// #6 FUNGSI DAFTAR EVENT (PAGINATION & FILTER)
-// Endpoint: GET /api/events
-// =================================================================
 export const getEvents = async (req, res) => {
   const { page = 1, limit = 5, search } = req.query;
   const pageNum = parseInt(page);
@@ -285,7 +285,7 @@ export const getEvents = async (req, res) => {
     const totalPages = Math.ceil(totalEvents / limitNum);
 
     res.json({
-      data: eventsFromDb.map(item => transformImageUrls(req, item)),
+      data: transformImageUrls(req, eventsFromDb),
       pagination: { totalItems: totalEvents, totalPages, currentPage: pageNum, itemsPerPage: limitNum }
     });
   } catch (error) {
@@ -294,10 +294,6 @@ export const getEvents = async (req, res) => {
   }
 };
 
-// =================================================================
-// #7 FUNGSI DETAIL ARTIKEL (UNTUK PUBLIK)
-// Endpoint: GET /api/articles/:id
-// =================================================================
 export const getArticleById = async (req, res) => {
   const { id } = req.params;
   try {
@@ -314,37 +310,35 @@ export const getArticleById = async (req, res) => {
   }
 };
 
-// =================================================================
-// #8 FUNGSI LIKE / UNLIKE ARTIKEL (UNTUK PUBLIK)
-// Endpoint: POST /api/articles/:id/like
-// =================================================================
 export const toggleArticleLike = async (req, res) => {
     const { id } = req.params;
     const articleId = parseInt(id);
-    const userId = req.user.userId;
 
-    if (isNaN(articleId) || !userId) return res.status(400).json({ error: 'Invalid Article ID or user not authenticated' });
+    if (isNaN(articleId)) {
+        return res.status(400).json({ error: 'Invalid Article ID' });
+    }
 
     try {
-        const likeId = { userId, articleId };
-        const existingLike = await prisma.like.findUnique({ where: { userId_articleId: likeId } });
-
-        if (existingLike) {
-            await prisma.like.delete({ where: { userId_articleId: likeId } });
-            res.json({ message: 'Article unliked' });
-        } else {
-            await prisma.like.create({ data: likeId });
-            res.json({ message: 'Article liked' });
-        }
+        const updatedArticle = await prisma.article.update({
+            where: { id: articleId },
+            data: {
+                likeCount: {
+                    increment: 1
+                }
+            },
+            select: {
+                likeCount: true
+            }
+        });
+        res.json({ message: 'Article liked successfully', likeCount: updatedArticle.likeCount });
     } catch (error) {
+        if (error.code === 'P2025') {
+            return res.status(404).json({ error: 'Article not found' });
+        }
         res.status(500).json({ error: 'Could not process like action.' });
     }
 };
 
-// =================================================================
-// #9 FUNGSI DETAIL TANAMAN (UNTUK PUBLIK)
-// Endpoint: GET /api/plants/:id
-// =================================================================
 export const getPlantById = async (req, res) => {
   const { id } = req.params;
   const plantId = parseInt(id);
@@ -362,10 +356,6 @@ export const getPlantById = async (req, res) => {
   }
 };
 
-// =================================================================
-// #10 FUNGSI DETAIL EVENT (UNTUK PUBLIK)
-// Endpoint: GET /api/events/:id
-// =================================================================
 export const getEventById = async (req, res) => {
   const { id } = req.params;
   const eventId = parseInt(id);
@@ -382,10 +372,6 @@ export const getEventById = async (req, res) => {
   }
 };
 
-// =================================================================
-// #11 FUNGSI MELACAK KLIK LINK EKSTERNAL EVENT (UNTUK PUBLIK)
-// Endpoint: POST /api/events/:id/track-click
-// =================================================================
 export const trackEventClick = async (req, res) => {
   const { id } = req.params;
   try {
@@ -399,10 +385,6 @@ export const trackEventClick = async (req, res) => {
   }
 };
 
-// =================================================================
-// #12 FUNGSI DATA HALAMAN TENTANG KAMI (ABOUT)
-// Endpoint: GET /api/about
-// =================================================================
 export const getAboutPageData = async (req, res) => {
     try {
         const aboutData = await prisma.siteSettings.findUnique({
@@ -429,5 +411,45 @@ export const getAboutPageData = async (req, res) => {
     } catch (error) {
         console.error("Error fetching about page data:", error);
         res.status(500).json({ error: 'Gagal mengambil data halaman Tentang Kami.' });
+    }
+};
+
+// --- CONTROLLER BARU UNTUK MENGAMBIL IKLAN ---
+export const getAdPlacementsByType = async (req, res) => {
+    const { type } = req.params; // 'VERTICAL', 'HORIZONTAL', atau 'BANNER'
+
+    // Validasi tipe
+    if (!['VERTICAL', 'HORIZONTAL', 'BANNER'].includes(type.toUpperCase())) {
+        return res.status(400).json({ error: 'Tipe iklan tidak valid.' });
+    }
+
+    try {
+        // Cari semua placement yang aktif dengan tipe yang sesuai
+        const placements = await prisma.adPlacement.findMany({
+            where: {
+                type: type.toUpperCase(),
+                isActive: true
+            },
+            include: {
+                // Sertakan hanya konten iklan yang juga aktif
+                ads: {
+                    where: {
+                        isActive: true
+                    },
+                    select: {
+                        imageUrl: true,
+                        linkUrl: true
+                    }
+                }
+            }
+        });
+
+        // Gabungkan semua konten iklan dari semua placement yang ditemukan menjadi satu array
+        const allAds = placements.flatMap(placement => placement.ads);
+
+        res.json(transformImageUrls(req, allAds));
+    } catch (error) {
+        console.error(`Error fetching ${type} ads:`, error);
+        res.status(500).json({ error: 'Gagal mengambil data iklan.' });
     }
 };

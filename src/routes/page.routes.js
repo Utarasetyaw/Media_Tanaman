@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken } from '../middlewares/auth.middleware.js'; // Pastikan path ini benar
+import { authenticateToken } from '../middlewares/auth.middleware.js';
 
 // Impor semua fungsi dari satu controller terpadu
 import { 
@@ -14,7 +14,8 @@ import {
     getEvents, 
     getEventById, 
     trackEventClick,
-    getAboutPageData
+    getAboutPageData,
+    getAdPlacementsByType // <-- Impor controller baru
 } from '../controllers/page.controller.js';
 
 const router = Router();
@@ -41,5 +42,10 @@ router.get('/plants/:id', getPlantById);
 router.get('/events', getEvents);
 router.get('/events/:id', getEventById);
 router.post('/events/:id/track-click', trackEventClick);
+
+// Rute Baru untuk Iklan
+// Endpoint ini akan merespons pada /api/page/ads/vertical, /api/page/ads/horizontal, dll.
+router.get('/ads/:type', getAdPlacementsByType);
+
 
 export default router;

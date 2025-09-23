@@ -1,3 +1,5 @@
+// File: prisma/schema.prisma
+
 // datasource db mendefinisikan koneksi database Anda
 datasource db {
   provider = "postgresql"
@@ -23,7 +25,7 @@ model PlantType {
   id       Int       @id @default(autoincrement())
   name     Json
   articles Article[]
-  plants   Plant[]   @relation("PlantFamily")
+  plants   Plant[]   @relation("PlantToPlantType")
 }
 
 // =================================================================
@@ -31,44 +33,68 @@ model PlantType {
 // =================================================================
 
 model User {
-  id          Int               @id @default(autoincrement())
-  email       String            @unique
-  name        String
-  password    String
-  role        Role              @default(USER)
-  articles    Article[]
-  likes       Like[]
-  submissions EventSubmission[]
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-
-  // --- Detail Profil Pengguna ---
-  address     String?
-  phoneNumber String?
-  socialMedia Json?
+  id              Int               @id @default(autoincrement())
+  email           String            @unique
+  name            String
+  password        String
+  role            Role              @default(USER)
+  articles        Article[]
+  submissions     EventSubmission[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  address         String?
+  phoneNumber     String?
+  socialMedia     Json?
 }
 
 model Article {
-  id               Int                    @id @default(autoincrement())
-  title            Json
-  excerpt          Json
-  content          Json
-  imageUrl         String
-  author           User                   @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  authorId         Int
-  status           ArticleStatus          @default(DRAFT)
-  feedback         String?                @db.Text
-  seo              Json?
-  viewCount        Int                    @default(0)
-  likes            Like[]
-  adminEditRequest AdminEditRequestStatus @default(NONE)
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
+  id                 Int                    @id @default(autoincrement())
+  title              Json
+  excerpt            Json
+  content            Json
+  imageUrl           String
+  author             User                   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId           Int
+  status             ArticleStatus          @default(DRAFT)
+  feedback           String?                @db.Text
+  viewCount          Int                    @default(0)
+  likeCount          Int                    @default(0)
+  adminEditRequest   AdminEditRequestStatus @default(NONE)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
 
   category    Category  @relation(fields: [categoryId], references: [id])
   categoryId  Int
   plantType   PlantType? @relation(fields: [plantTypeId], references: [id])
   plantTypeId Int?
+  
+  seo ArticleSeo?
+}
+
+model ArticleSeo {
+  id              Int      @id @default(autoincrement())
+  article         Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId       Int      @unique
+
+  metaTitle       Json?
+  metaDescription Json?
+  keywords        String?
+  canonicalUrl    String?
+  metaRobots      String?  @default("index, follow")
+  ogTitle         Json?
+  ogDescription   Json?
+  ogImageUrl      String?
+  ogType          String?  @default("article")
+  ogUrl           String?
+  ogSiteName      String?
+  twitterCard     String?  @default("summary_large_image")
+  twitterTitle    Json?
+  twitterDescription Json?
+  twitterImageUrl String?
+  twitterSite     String?
+  twitterCreator  String?
+  structuredData  Json?
+  updatedAt       DateTime @updatedAt
 }
 
 model Plant {
@@ -77,13 +103,12 @@ model Plant {
   scientificName String
   description    Json
   imageUrl       String
-  careLevel      CareLevel
-  size           PlantSize
   stores         Json
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
-  family     PlantType @relation("PlantFamily", fields: [familyId], references: [id])
-  familyId   Int
+
+  plantType   PlantType? @relation("PlantToPlantType", fields: [plantTypeId], references: [id])
+  plantTypeId Int?
 }
 
 model Event {
@@ -115,22 +140,12 @@ model EventSubmission {
   placement       Int?
 }
 
-model Like {
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    Int
-  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  articleId Int
-  createdAt DateTime @default(now())
-
-  @@id([userId, articleId])
-}
-
 // =================================================================
 // MODEL UNTUK PENGATURAN SITUS
 // =================================================================
 
 model SiteSettings {
-  id                  Int      @id @default(1)
+  id                  Int           @id @default(1)
   name                String?
   logoUrl             String?
   faviconUrl          String?
@@ -139,22 +154,72 @@ model SiteSettings {
   faqs                Json?
   companyValues       Json?
   privacyPolicy       Json?
-  seo                 Json?
+  
+  // ID Pelacakan (non-SEO)
   googleAnalyticsId   String?
-  googleAdsId         String?
+  googleAdsId         String? // ID untuk skrip Google Ads
   metaPixelId         String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  bannerTagline       Json? // <-- Tagline utama untuk semua banner
+  
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  bannerTagline       Json?
   bannerImages        BannerImage[]
+
+  seo                 SiteSeo?
+}
+
+model SiteSeo {
+  id                  Int          @id @default(autoincrement())
+  siteSettings        SiteSettings @relation(fields: [siteSettingsId], references: [id], onDelete: Cascade)
+  siteSettingsId      Int          @unique
+  metaTitle           Json?
+  metaDescription     Json?
+  metaKeywords        String?
+  ogDefaultTitle      Json?
+  ogDefaultDescription Json?
+  ogDefaultImageUrl   String?
+  twitterSite         String?
+  googleSiteVerificationId String?
+  updatedAt           DateTime @updatedAt
 }
 
 model BannerImage {
   id             Int          @id @default(autoincrement())
   imageUrl       String
-  // tagline dihapus dari sini
   siteSettings   SiteSettings @relation(fields: [siteSettingsId], references: [id], onDelete: Cascade)
   siteSettingsId Int
+}
+
+model JournalistMessage {
+  id        Int      @id @default(1)
+  title     Json
+  content   Json
+  updatedAt DateTime @updatedAt
+}
+
+// =================================================================
+// MODEL-MODEL BARU UNTUK MANAJEMEN IKLAN
+// =================================================================
+
+model AdPlacement {
+  id        Int         @id @default(autoincrement())
+  name      String      @unique // Contoh: "Sidebar Vertikal", "Header Horizontal"
+  type      AdType      // Tipe iklan: VERTICAL, HORIZONTAL, BANNER
+  isActive  Boolean     @default(true) // Untuk mengaktifkan/menonaktifkan seluruh grup iklan
+  ads       AdContent[] // Daftar konten iklan di dalam placement ini
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model AdContent {
+  id          Int         @id @default(autoincrement())
+  imageUrl    String      // URL gambar iklan
+  linkUrl     String      // URL tujuan saat iklan diklik
+  isActive    Boolean     @default(true) // Untuk mengaktifkan/menonaktifkan iklan individual
+  placement   AdPlacement @relation(fields: [placementId], references: [id], onDelete: Cascade)
+  placementId Int
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 }
 
 // =================================================================
@@ -184,19 +249,13 @@ enum AdminEditRequestStatus {
   DENIED
 }
 
-enum CareLevel {
-  Mudah
-  Sedang
-  Sulit
-}
-
-enum PlantSize {
-  Kecil
-  Sedang
-  Besar
-}
-
 enum EventType {
   INTERNAL
   EXTERNAL
+}
+
+enum AdType {
+  VERTICAL
+  HORIZONTAL
+  BANNER
 }
