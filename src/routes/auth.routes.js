@@ -1,41 +1,30 @@
 // routes/auth.routes.js
 
-import { Router } from 'express';
-import { 
-  registerParticipant,
-  registerJournalist,
-  loginAdmin,
-  loginJournalist,
-  loginParticipant,
-  getProfile,
-  logout
-} from '../controllers/auth.controller.js';
-import { authenticateToken } from '../middlewares/auth.middleware.js';
+import { Router } from "express";
+import {
+	registerUser, // Nama diubah untuk konsistensi
+	registerJournalist,
+	loginAdmin,
+	loginJournalist,
+	loginUser, // Nama diubah untuk konsistensi
+	getProfile,
+	logout,
+} from "../controllers/auth.controller.js";
+import { authenticateToken } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
-// =================================================================
-// RUTE PUBLIK (Tidak Perlu Login)
-// =================================================================
+// Rute Registrasi
+router.post("/register/user", registerUser); // Direvisi
+router.post("/register/journalist", registerJournalist);
 
-// --- Rute Registrasi ---
-router.post('/register/participant', registerParticipant);
-router.post('/register/journalist', registerJournalist);
+// Rute Login
+router.post("/login/admin", loginAdmin);
+router.post("/login/journalist", loginJournalist);
+router.post("/login/user", loginUser); // Direvisi
 
-// --- Rute Login ---
-router.post('/login/admin', loginAdmin);
-router.post('/login/journalist', loginJournalist);
-router.post('/login/participant', loginParticipant);
-
-// =================================================================
-// RUTE TERPROTEKSI (Wajib Login / Menggunakan Token)
-// =================================================================
-
-// Mendapatkan profil pengguna yang sedang login
-router.get('/profile', authenticateToken, getProfile);
-
-// Logout
-router.post('/logout', authenticateToken, logout);
-
+// Rute Terproteksi
+router.get("/me", authenticateToken, getProfile); // Direvisi
+router.post("/logout", authenticateToken, logout);
 
 export default router;
