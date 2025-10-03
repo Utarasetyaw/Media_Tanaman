@@ -1,71 +1,19 @@
-// useLayoutData.ts
+// src/hooks/useLayoutData.ts
 
-import { useQuery } from '@tanstack/react-query';
-import api from '../services/apiService';
-
-// --- Tipe Data Umum ---
-interface LocalizedString {
-  id: string;
-  en: string;
-}
-
-export interface Category {
-  id: number;
-  name: LocalizedString;
-}
-
-// Interface untuk data SEO umum dari backend
-interface SiteSeo {
-  id: number;
-  metaTitle?: LocalizedString | null;
-  metaDescription?: LocalizedString | null;
-  metaKeywords?: string | null;
-  ogDefaultTitle?: LocalizedString | null;
-  ogDefaultDescription?: LocalizedString | null;
-  ogDefaultImageUrl?: string | null;
-  twitterSite?: string | null;
-  googleSiteVerificationId?: string | null;
-}
-
-// Interface untuk data settings utama
-interface SiteSettings {
-  name: string;
-  logoUrl: string;
-  faviconUrl: string;
-  businessDescription: LocalizedString;
-  contactInfo: {
-    email?: string;
-    phone?: string;
-    address?: string;
-    socialMedia?: {
-        instagram?: string;
-        facebook?: string;
-        tiktok?: string;
-    }
-  };
-  googleAdsId?: string | null;
-  seo: SiteSeo | null; 
-}
-
-// Tipe data utama dari API /api/layout
-export interface LayoutData {
-  settings: SiteSettings;
-  categories: Category[];
-  plantTypes: Category[];
-}
-
-// --- Fungsi Fetching & Custom Hook ---
-
-const fetchLayoutData = async (): Promise<LayoutData> => {
-  const { data } = await api.get('/layout');
-  return data;
-};
+import { useQuery } from "@tanstack/react-query";
+import { fetchLayoutData } from "../services/apiLayout.service"; // <-- Impor service
+import type { LayoutData } from "../types/layout.types"; // <-- Impor tipe
 
 export const useLayoutData = () => {
-  return useQuery<LayoutData, Error>({
-    queryKey: ['layoutData'],
-    queryFn: fetchLayoutData,
-    staleTime: 1000 * 60 * 5, // 5 menit
-    refetchOnWindowFocus: false,
-  });
+	return useQuery<LayoutData, Error>({
+		// Kunci query untuk caching data di React Query
+		queryKey: ["layoutData"],
+
+		// Fungsi yang dijalankan untuk mengambil data, sekarang dari service
+		queryFn: fetchLayoutData,
+
+		// Opsi untuk React Query:
+		staleTime: 1000 * 60 * 5, // Data dianggap fresh selama 5 menit
+		refetchOnWindowFocus: false, // Tidak perlu re-fetch saat user kembali ke tab
+	});
 };
