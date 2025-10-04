@@ -21,14 +21,18 @@ const formatRemainingTime = (endDate: string) => {
 
 // --- Sub-Komponen ---
 const StatCard: React.FC<{ count: number; label: string; icon: React.ElementType }> = ({ count, label, icon: Icon }) => (
-    <div className="bg-black/20 p-4 sm:p-6 rounded-lg border border-green-400/20 flex items-center gap-4 transition-colors hover:border-green-400/50">
+    // ▼▼▼ PERUBAHAN DI SINI ▼▼▼
+    <div className="bg-black/20 p-4 rounded-lg border border-green-400/20 flex items-center gap-4 transition-colors hover:border-green-400/50">
         <Icon className="w-8 h-8 text-green-400 shrink-0" />
         <div>
-            <p className="text-2xl sm:text-3xl font-bold text-white">{count}</p>
-            <p className="text-sm text-gray-400">{label}</p>
+            {/* Ukuran teks diubah agar responsif */}
+            <p className="text-2xl md:text-xl lg:text-3xl font-bold text-white">{count}</p>
+            <p className="text-sm md:text-xs lg:text-sm text-gray-400">{label}</p>
         </div>
     </div>
 );
+// ▲▲▲ AKHIR PERUBAHAN ▲▲▲
+
 
 const EventCard: React.FC<{ 
     event: EventDashboard; 
@@ -143,7 +147,13 @@ export const UserDashboardPage: React.FC = () => {
                         <div className="p-4 flex justify-between items-center border-b border-gray-700 flex-shrink-0"><h3 className="text-xl font-bold text-white">{modalMode === 'upload' ? 'Unggah/Ubah Karya' : 'Lihat Karya'}</h3><button onClick={closeModal} className="text-gray-400 hover:text-white"><X /></button></div>
                         <div className="p-6 space-y-4 overflow-y-auto">
                             <div className="w-full aspect-video rounded-md bg-black/20 flex items-center justify-center border-2 border-dashed border-gray-600">{displayImageUrl ? (<img src={displayImageUrl} alt="Pratinjau Karya" className="max-w-full max-h-full object-contain"/>) : (<p className="text-gray-500">Pratinjau Gambar</p>)}</div>
-                            {modalMode === 'upload' && (<><button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-600 rounded-lg p-4 text-center hover:border-green-400 hover:bg-black/20 transition-colors">{selectedFile ? <span className="text-green-300 font-semibold">{selectedFile.name}</span> : <span className="text-gray-400">Pilih Berkas...</span>}</button><input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" /></>)}
+                            {modalMode === 'upload' && (
+                                <div>
+                                    <button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-600 rounded-lg p-4 text-center hover:border-green-400 hover:bg-black/20 transition-colors">{selectedFile ? <span className="text-green-300 font-semibold">{selectedFile.name}</span> : <span className="text-gray-400">Pilih Berkas...</span>}</button>
+                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" id="submission-file-input" />
+                                    <p className="text-xs text-gray-400 mt-2 text-center">Rekomendasi rasio 16:9 (Contoh: 1280x720 piksel).</p>
+                                </div>
+                            )}
                             {modalMode === 'view' && selectedEvent.submission?.submissionUrl && (<a href={selectedEvent.submission.submissionUrl} download target="_blank" rel="noopener noreferrer" className="w-full inline-flex items-center justify-center gap-2 bg-gray-600/80 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors text-sm"><Download size={16}/> Unduh Karya</a>)}
                             <div><label htmlFor="caption" className="block text-sm font-medium text-gray-300 mb-2">Keterangan (Caption)</label><textarea id="caption" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Tulis keterangan..." className="w-full bg-black/20 border border-gray-600 rounded-md p-2 focus:ring-green-500 focus:border-green-500" rows={4} readOnly={modalMode === 'view'} /></div>
                         </div>
