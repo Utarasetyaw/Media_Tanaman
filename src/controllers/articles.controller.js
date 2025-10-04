@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Helper untuk mengubah path gambar relatif menjadi URL lengkap
+// Helper #1: Mengubah path gambar menjadi URL lengkap
 const transformArticleImage = (req, article) => {
   if (article && article.imageUrl && article.imageUrl.startsWith('/')) {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -17,21 +17,29 @@ const transformArticleImage = (req, article) => {
   return article;
 };
 
-// Obyek `include` yang bisa dipakai ulang untuk konsistensi
+// Helper #2: Fungsi gabungan untuk mengubah gambar dan menambahkan objek _count
+const transformArticleForResponse = (req, article) => {
+  if (!article) return null;
+  const articleWithImageUrl = transformArticleImage(req, article);
+  return {
+    ...articleWithImageUrl,
+    _count: {
+      likes: articleWithImageUrl.likeCount || 0
+    }
+  };
+};
+
+// Objek `include` yang sudah diperbaiki
 const articleInclude = {
   author: { select: { name: true, role: true } }, 
   category: { select: { id: true, name: true } },
   plantType: { select: { id: true, name: true } },
-  _count: {
-    select: { likes: true },
-  },
+  seo: true,
 };
-
 
 // === Endpoint untuk Pengguna Terautentikasi (Jurnalis & Admin) ===
 
 export const createArticle = async (req, res) => {
-  // Ambil juga 'status' dari request body, beri nama alias 'requestedStatus'
   const { title, excerpt, content, imageUrl, categoryId, plantTypeId, seo, status: requestedStatus } = req.body;
   const authorId = req.user.userId;
 
@@ -40,14 +48,11 @@ export const createArticle = async (req, res) => {
   }
 
   const userRole = req.user.role;
-  let finalStatus; // Variabel untuk menyimpan status final
+  let finalStatus;
 
-  // --- LOGIKA BARU YANG SUDAH DIPERBAIKI ---
-  // Jika user adalah ADMIN dan mengirim status yang valid ('PUBLISHED' atau 'DRAFT'), gunakan status itu.
   if (userRole === 'ADMIN' && (requestedStatus === 'PUBLISHED' || requestedStatus === 'DRAFT')) {
     finalStatus = requestedStatus;
   } else {
-    // Jika tidak (misalnya user adalah JURNALIS), selalu default ke 'DRAFT'.
     finalStatus = 'DRAFT';
   }
 
@@ -57,10 +62,10 @@ export const createArticle = async (req, res) => {
     content, 
     imageUrl,
     authorId, 
-    status: finalStatus, // Gunakan status final yang sudah ditentukan
+    status: finalStatus,
     categoryId: parseInt(categoryId),
     plantTypeId: plantTypeId ? parseInt(plantTypeId) : null,
-    seo: userRole === 'ADMIN' ? seo : undefined,
+    seo: userRole === 'ADMIN' && seo ? { create: seo } : undefined,
   };
 
   try {
@@ -68,7 +73,7 @@ export const createArticle = async (req, res) => {
         data,
         include: articleInclude
     });
-    res.status(201).json(transformArticleImage(req, articleFromDb));
+    res.status(201).json(transformArticleForResponse(req, articleFromDb));
   } catch (error) {
     console.error("Create article error:", error);
     res.status(500).json({ error: 'Could not create article.' });
@@ -85,14 +90,14 @@ export const getMyArticles = async (req, res) => {
     include: articleInclude,
     orderBy: { updatedAt: 'desc' },
   });
-  const articles = articlesFromDb.map(article => transformArticleImage(req, article));
+  const articles = articlesFromDb.map(article => transformArticleForResponse(req, article));
   res.json(articles);
 };
 
 export const getMyArticleAnalytics = async (req, res) => {
   const { id } = req.params;
   const articleId = parseInt(id);
-  const user = req.user; // Ambil info user dari token
+  const user = req.user;
 
   if (isNaN(articleId)) {
     return res.status(400).json({ error: 'Invalid Article ID' });
@@ -100,7 +105,6 @@ export const getMyArticleAnalytics = async (req, res) => {
 
   try {
     const whereClause = { id: articleId };
-
     if (user.role !== 'ADMIN') {
       whereClause.authorId = user.userId;
     }
@@ -114,8 +118,7 @@ export const getMyArticleAnalytics = async (req, res) => {
       return res.status(404).json({ error: 'Article not found or you do not have access.' });
     }
     
-    const article = transformArticleImage(req, articleFromDb);
-    res.json(article);
+    res.json(transformArticleForResponse(req, articleFromDb));
   } catch (error) {
     console.error("Error fetching article analytics:", error);
     res.status(500).json({ error: 'Could not fetch article analytics.' });
@@ -125,7 +128,7 @@ export const getMyArticleAnalytics = async (req, res) => {
 export const updateArticle = async (req, res) => {
   const { id } = req.params;
   const articleId = parseInt(id);
-  const dataToUpdate = req.body;
+  const { seo, ...dataToUpdate } = req.body;
   const user = req.user;
 
   if (isNaN(articleId)) {
@@ -149,6 +152,15 @@ export const updateArticle = async (req, res) => {
       return res.status(403).json({ error: 'You do not have permission to edit this article at its current state.' });
   }
   
+  if (seo) {
+    dataToUpdate.seo = {
+      upsert: {
+        create: seo,
+        update: seo,
+      },
+    };
+  }
+
   try {
     if (dataToUpdate.imageUrl && article.imageUrl && dataToUpdate.imageUrl !== article.imageUrl && !article.imageUrl.startsWith('http')) {
         const oldImageName = article.imageUrl.split('/').pop();
@@ -163,7 +175,7 @@ export const updateArticle = async (req, res) => {
       data: dataToUpdate,
       include: articleInclude
     });
-    res.json(transformArticleImage(req, updatedArticleFromDb));
+    res.json(transformArticleForResponse(req, updatedArticleFromDb));
   } catch (error) {
     console.error("Update article error:", error);
     res.status(500).json({ error: 'Could not update article.' });
@@ -174,34 +186,19 @@ export const deleteMyArticle = async (req, res) => {
     const { id } = req.params;
     const articleId = parseInt(id);
     const userId = req.user.userId;
-
-    if (isNaN(articleId)) {
-        return res.status(400).json({ error: 'Invalid Article ID' });
-    }
-
+    if (isNaN(articleId)) return res.status(400).json({ error: 'Invalid Article ID' });
     try {
         const article = await prisma.article.findUnique({ where: { id: articleId } });
-
-        if (!article) { return res.status(404).json({ error: 'Article not found' }); }
-        if (article.authorId !== userId) { return res.status(403).json({ error: 'You are not authorized to delete this article.' }); }
-
-        // REVISI: Tambahkan 'PUBLISHED' ke dalam array ini
+        if (!article) return res.status(404).json({ error: 'Article not found' });
+        if (article.authorId !== userId) return res.status(403).json({ error: 'You are not authorized to delete this article.' });
         const deletableStatuses = ['DRAFT', 'REJECTED', 'NEEDS_REVISION', 'PUBLISHED'];
-        
-        if (!deletableStatuses.includes(article.status)) {
-            return res.status(403).json({ error: `Cannot delete article with status '${article.status}'.` });
-        }
-
+        if (!deletableStatuses.includes(article.status)) return res.status(403).json({ error: `Cannot delete article with status '${article.status}'.` });
         if (article.imageUrl && !article.imageUrl.startsWith('http')) {
             const imageName = article.imageUrl.split('/').pop();
             const imagePath = path.join(__dirname, '..', '..', 'public', 'uploads', 'artikel', imageName);
-            if (fs.existsSync(imagePath)) {
-                fs.unlinkSync(imagePath);
-            }
+            if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
         }
-
         await prisma.article.delete({ where: { id: articleId } });
-
         res.status(204).send();
     } catch (error) {
         console.error("Error deleting article:", error);
@@ -212,23 +209,12 @@ export const deleteMyArticle = async (req, res) => {
 export const submitArticleForReview = async (req, res) => {
     const { id } = req.params;
     const articleId = parseInt(id);
-
     if (isNaN(articleId)) return res.status(400).json({ error: 'Invalid Article ID' });
-
     const article = await prisma.article.findUnique({ where: { id: articleId }});
-
-    if (!article || article.authorId !== req.user.userId) {
-        return res.status(404).json({ error: 'Article not found or you are not the author' });
-    }
+    if (!article || article.authorId !== req.user.userId) return res.status(404).json({ error: 'Article not found or you are not the author' });
+    if (!article.imageUrl) return res.status(400).json({ error: 'An article must have a main image before being submitted for review.' });
+    if (!['DRAFT', 'NEEDS_REVISION', 'REVISED'].includes(article.status)) return res.status(400).json({ error: 'Only drafts or revised articles can be submitted' });
     
-    if (!article.imageUrl) {
-        return res.status(400).json({ error: 'An article must have a main image before being submitted for review.' });
-    }
-    
-    if (!['DRAFT', 'NEEDS_REVISION', 'REVISED'].includes(article.status)) {
-        return res.status(400).json({ error: 'Only drafts or revised articles can be submitted' });
-    }
-
     const updatedArticleFromDb = await prisma.article.update({
         where: { id: articleId },
         data: { status: 'IN_REVIEW' },
@@ -237,23 +223,22 @@ export const submitArticleForReview = async (req, res) => {
 
     res.json({ 
       message: 'Article submitted for review', 
-      article: transformArticleImage(req, updatedArticleFromDb) 
+      article: transformArticleForResponse(req, updatedArticleFromDb) 
     });
 };
 
 export const getJournalistDashboardStats = async (req, res) => {
   const authorId = req.user.userId;
-
   if (!authorId) {
     return res.status(400).json({ error: "User ID not found in token." });
   }
-  
   try {
     const published = await prisma.article.count({ where: { authorId, status: 'PUBLISHED' } });
     const inReview = await prisma.article.count({ where: { authorId, status: { in: ['IN_REVIEW', 'REVISED'] } } });
     const needsRevision = await prisma.article.count({ where: { authorId, status: { in: ['NEEDS_REVISION', 'JOURNALIST_REVISING'] } } });
     const adminRequest = await prisma.article.count({ where: { authorId, adminEditRequest: 'PENDING' } });
     const rejected = await prisma.article.count({ where: { authorId, status: 'REJECTED' } });
+    const draft = await prisma.article.count({ where: { authorId, status: 'DRAFT' } }); // <-- Data Draf ditambahkan
 
     const recentArticlesFromDb = await prisma.article.findMany({
       where: { authorId },
@@ -262,10 +247,10 @@ export const getJournalistDashboardStats = async (req, res) => {
       include: articleInclude
     });
 
-    const recentArticles = recentArticlesFromDb.map(article => transformArticleImage(req, article));
+    const recentArticles = recentArticlesFromDb.map(article => transformArticleForResponse(req, article));
 
     res.json({
-      stats: { published, inReview, needsRevision, adminRequest, rejected },
+      stats: { published, inReview, needsRevision, adminRequest, rejected, draft }, // <-- draft dikirim dalam respons
       recentArticles,
     });
   } catch (error) {
@@ -277,39 +262,35 @@ export const getJournalistDashboardStats = async (req, res) => {
 // === Endpoint Khusus Admin ===
 
 export const getAllArticlesForAdmin = async (req, res) => {
-  const articlesFromDb = await prisma.article.findMany({
-    include: articleInclude,
-    orderBy: { updatedAt: 'desc' },
-  });
-  const articles = articlesFromDb.map(article => transformArticleImage(req, article));
-  res.json(articles);
+  try {
+    const articlesFromDb = await prisma.article.findMany({
+      include: articleInclude,
+      orderBy: { updatedAt: 'desc' },
+    });
+    const articles = articlesFromDb.map(article => transformArticleForResponse(req, article));
+    res.json(articles);
+  } catch (error) {
+    console.error("Get all articles for admin error:", error);
+    res.status(500).json({ error: 'Could not fetch articles.' });
+  }
 };
 
 export const updateArticleStatus = async (req, res) => {
     const { id } = req.params;
     const articleId = parseInt(id);
     const { status, feedback } = req.body;
-
     if (isNaN(articleId)) return res.status(400).json({ error: 'Invalid Article ID' });
-    
     const validStatuses = ['PUBLISHED', 'NEEDS_REVISION', 'REJECTED'];
-    if (!status || !validStatuses.includes(status)) {
-        return res.status(400).json({ error: 'Invalid status provided for an admin action.' });
-    }
-
+    if (!status || !validStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status provided for an admin action.' });
     try {
         const updatedArticleFromDb = await prisma.article.update({
             where: { id: articleId },
-            data: { 
-                status, 
-                feedback: feedback || null,
-                adminEditRequest: status === 'PUBLISHED' ? 'NONE' : undefined
-            },
+            data: { status, feedback: feedback || null, adminEditRequest: status === 'PUBLISHED' ? 'NONE' : undefined },
             include: articleInclude
         });
         res.json({ 
-          message: `Article status updated to ${status}`, 
-          article: transformArticleImage(req, updatedArticleFromDb) 
+          message: `Article status updated to ${status}`,
+          article: transformArticleForResponse(req, updatedArticleFromDb) 
         });
     } catch (error) {
         res.status(404).json({ error: 'Article not found.' });
@@ -325,11 +306,8 @@ export const deleteArticle = async (req, res) => {
         if (article && article.imageUrl && !article.imageUrl.startsWith('http')) {
             const imageName = article.imageUrl.split('/').pop();
             const imagePath = path.join(__dirname, '..', '..', 'public', 'uploads', 'artikel', imageName);
-             if (fs.existsSync(imagePath)) {
-                fs.unlinkSync(imagePath);
-            }
+             if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
         }
-
         await prisma.article.delete({ where: { id: articleId } });
         res.status(204).send();
     } catch (error) {
@@ -344,16 +322,13 @@ export const getAdminDashboardStats = async (req, res) => {
         const needsRevision = await prisma.article.count({ where: { status: { in: ['NEEDS_REVISION', 'JOURNALIST_REVISING', 'REVISED'] } } });
         const adminEditPending = await prisma.article.count({ where: { adminEditRequest: 'PENDING' } });
         const totalRejected = await prisma.article.count({ where: { status: 'REJECTED' } });
-
         const recentActivityFromDb = await prisma.article.findMany({
             where: { OR: [ { status: 'IN_REVIEW' }, { status: 'NEEDS_REVISION' }, { adminEditRequest: 'PENDING' } ] },
             take: 5,
             orderBy: { updatedAt: 'desc' },
             include: articleInclude
         });
-
-        const recentActivity = recentActivityFromDb.map(act => transformArticleImage(req, act));
-
+        const recentActivity = recentActivityFromDb.map(act => transformArticleForResponse(req, act));
         res.json({
             stats: { totalPublished, journalistRequests, needsRevision, adminEditPending, totalRejected },
             recentActivity
@@ -363,139 +338,30 @@ export const getAdminDashboardStats = async (req, res) => {
     }
 };
 
-
 // --- Alur Kerja Edit, & Revisi Jurnalis ---
-
-export const requestEditAccess = async (req, res) => {
-    const { id } = req.params;
-    const articleId = parseInt(id);
-    if (isNaN(articleId)) return res.status(400).json({ error: 'Invalid Article ID' });
+const genericArticleUpdate = async (req, res, where, data, successMessage) => {
     try {
         const articleFromDb = await prisma.article.update({
-            where: { id: articleId },
-            data: { adminEditRequest: 'PENDING' },
-            include: articleInclude
-        });
-        res.json({ 
-          message: 'Edit access requested.', 
-          article: transformArticleImage(req, articleFromDb) 
-        });
-    } catch (error) {
-        res.status(404).json({ error: 'Article not found.' });
-    }
-};
-
-export const cancelAdminEditRequest = async (req, res) => {
-    const { id } = req.params;
-    try {
-        const article = await prisma.article.update({
-            where: { id: parseInt(id), adminEditRequest: 'PENDING' },
-            data: { adminEditRequest: 'NONE' },
+            where,
+            data,
             include: articleInclude,
         });
-        res.json(transformArticleImage(req, article));
+        res.json({ 
+          message: successMessage, 
+          article: transformArticleForResponse(req, articleFromDb) 
+        });
     } catch (error) {
-        res.status(404).json({ error: 'Permintaan tidak ditemukan atau tidak dapat dibatalkan.' });
+        res.status(404).json({ error: 'Article not found or action is not permitted.' });
     }
 };
 
-export const respondToEditRequest = async (req, res) => {
-    const { id } = req.params;
-    const articleId = parseInt(id);
+export const requestEditAccess = (req, res) => genericArticleUpdate(req, res, { id: parseInt(req.params.id) }, { adminEditRequest: 'PENDING' }, 'Edit access requested.');
+export const cancelAdminEditRequest = (req, res) => genericArticleUpdate(req, res, { id: parseInt(req.params.id), adminEditRequest: 'PENDING' }, { adminEditRequest: 'NONE' }, 'Edit request cancelled.');
+export const respondToEditRequest = (req, res) => {
     const { response } = req.body;
-    const userId = req.user.userId;
-
-    if (isNaN(articleId)) return res.status(400).json({ error: 'Invalid Article ID' });
-
-    if (!response || !['APPROVED', 'DENIED'].includes(response)) {
-        return res.status(400).json({ error: "Response must be 'APPROVED' or 'DENIED'." });
-    }
-
-    try {
-        const article = await prisma.article.findUnique({ where: { id: articleId } });
-        if (!article || article.authorId !== userId) {
-            return res.status(403).json({ error: 'You are not the author of this article.' });
-        }
-        const updatedArticleFromDb = await prisma.article.update({
-            where: { id: articleId },
-            data: { adminEditRequest: response },
-            include: articleInclude
-        });
-        res.json({ 
-          message: `Edit request has been ${response.toLowerCase()}.`, 
-          article: transformArticleImage(req, updatedArticleFromDb) 
-        });
-    } catch (error) {
-        res.status(404).json({ error: 'Article not found.' });
-    }
+    if (!['APPROVED', 'DENIED'].includes(response)) return res.status(400).json({ error: "Response must be 'APPROVED' or 'DENIED'." });
+    return genericArticleUpdate(req, res, { id: parseInt(req.params.id), authorId: req.user.userId }, { adminEditRequest: response }, `Edit request has been ${response.toLowerCase()}.`);
 };
-
-export const startRevision = async (req, res) => {
-    const { id } = req.params;
-    const articleId = parseInt(id);
-
-    if (isNaN(articleId)) return res.status(400).json({ error: 'Invalid Article ID' });
-
-    const article = await prisma.article.findUnique({ where: { id: articleId }});
-
-    if (!article || article.authorId !== req.user.userId) {
-        return res.status(404).json({ error: 'Article not found or you are not the author' });
-    }
-    
-    if (article.status !== 'NEEDS_REVISION') {
-        return res.status(400).json({ error: 'Article is not in a state that needs revision.' });
-    }
-
-    const updatedArticleFromDb = await prisma.article.update({
-        where: { id: articleId },
-        data: { status: 'JOURNALIST_REVISING' },
-        include: articleInclude
-    });
-
-    res.json({ 
-      message: 'Article revision started', 
-      article: transformArticleImage(req, updatedArticleFromDb) 
-    });
-};
-
-export const finishRevision = async (req, res) => {
-    const { id } = req.params;
-    const articleId = parseInt(id);
-
-    if (isNaN(articleId)) return res.status(400).json({ error: 'Invalid Article ID' });
-
-    const article = await prisma.article.findUnique({ where: { id: articleId }});
-
-    if (!article || article.authorId !== req.user.userId) {
-        return res.status(404).json({ error: 'Article not found or you are not the author' });
-    }
-    
-    if (article.status !== 'JOURNALIST_REVISING') {
-        return res.status(400).json({ error: 'Article is not currently being revised.' });
-    }
-
-    const updatedArticleFromDb = await prisma.article.update({
-        where: { id: articleId },
-        data: { status: 'REVISED' },
-        include: articleInclude
-    });
-
-    res.json({ 
-      message: 'Article revision finished', 
-      article: transformArticleImage(req, updatedArticleFromDb) 
-    });
-};
-
-export const revertAdminEditApproval = async (req, res) => {
-    const { id } = req.params;
-    try {
-        const article = await prisma.article.update({
-            where: { id: parseInt(id), adminEditRequest: 'APPROVED' },
-            data: { adminEditRequest: 'NONE' },
-            include: articleInclude,
-        });
-        res.json(transformArticleImage(req, article));
-    } catch (error) {
-        res.status(404).json({ error: 'Izin edit tidak ditemukan atau tidak dapat dibatalkan.' });
-    }
-};
+export const startRevision = (req, res) => genericArticleUpdate(req, res, { id: parseInt(req.params.id), authorId: req.user.userId, status: 'NEEDS_REVISION' }, { status: 'JOURNALIST_REVISING' }, 'Article revision started');
+export const finishRevision = (req, res) => genericArticleUpdate(req, res, { id: parseInt(req.params.id), authorId: req.user.userId, status: 'JOURNALIST_REVISING' }, { status: 'REVISED' }, 'Article revision finished');
+export const revertAdminEditApproval = (req, res) => genericArticleUpdate(req, res, { id: parseInt(req.params.id), adminEditRequest: 'APPROVED' }, { adminEditRequest: 'NONE' }, 'Edit approval reverted.');

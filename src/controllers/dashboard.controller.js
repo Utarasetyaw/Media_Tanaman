@@ -23,8 +23,10 @@ export const getAdminDashboardData = async (req, res) => {
             })
         ]);
 
-        // 2. Ambil 5 artikel teratas berdasarkan viewCount
-        const topArticles = await prisma.article.findMany({
+        // ▼▼▼ PERUBAHAN DI SINI ▼▼▼
+
+        // 2. Ambil 5 artikel teratas, ganti _count dengan likeCount dari skema
+        const topArticlesFromDb = await prisma.article.findMany({
             where: { status: 'PUBLISHED' },
             orderBy: { viewCount: 'desc' },
             take: 5,
@@ -32,35 +34,46 @@ export const getAdminDashboardData = async (req, res) => {
                 id: true,
                 title: true,
                 viewCount: true,
-                _count: {
-                    select: { likes: true }
-                }
+                likeCount: true // Ambil field 'likeCount' yang sebenarnya ada di skema
             }
         });
+
+        // 3. Ubah (transformasi) data agar cocok dengan format yang diharapkan frontend
+        const topArticles = topArticlesFromDb.map(article => ({
+            id: article.id,
+            title: article.title,
+            viewCount: article.viewCount,
+            _count: {
+                likes: article.likeCount // Buat objek _count secara manual
+            }
+        }));
         
-        // 3. (Opsional) Data untuk Grafik - Ini adalah contoh sederhana.
-        // Untuk data grafik yang kompleks dan terfilter (harian, bulanan),
-        // biasanya memerlukan model/tabel terpisah untuk mencatat view/like per hari.
-        // Query langsung dari tabel artikel bisa menjadi sangat berat jika datanya besar.
-        // Di sini kita hanya akan mengirim total view dan like sebagai contoh awal.
+        // ▲▲▲ AKHIR PERUBAHAN ▲▲▲
+
+        // 4. Data untuk Grafik
         const totalPerformance = await prisma.article.aggregate({
             where: { status: 'PUBLISHED' },
             _sum: {
                 viewCount: true,
             },
         });
-        const totalLikes = await prisma.like.count();
+        // Note: `prisma.like.count()` akan error jika model `Like` tidak ada.
+        // Jika Anda tidak punya model `Like`, Anda bisa menjumlahkan `likeCount`
+        const totalLikesAggregation = await prisma.article.aggregate({
+            _sum: {
+                likeCount: true,
+            }
+        });
         
-
         res.json({
             stats: {
                 publishedArticles: publishedArticlesCount,
                 journalistRequests: journalistRequestsCount,
                 runningEvents: runningEventsCount,
             },
-            performanceChart: { // Contoh data sederhana untuk grafik
+            performanceChart: {
                 totalViews: totalPerformance._sum.viewCount || 0,
-                totalLikes: totalLikes || 0,
+                totalLikes: totalLikesAggregation._sum.likeCount || 0,
             },
             topArticles,
         });
@@ -83,8 +96,8 @@ export const getJournalistDashboardData = async (req, res) => {
         const [
             publishedCount,
             needsRevisionCount,
-            totalViews,
-            totalLikes
+            totalViewsAggregation, // Diubah nama agar lebih jelas
+            totalLikesAggregation  // Diubah nama agar lebih jelas
         ] = await prisma.$transaction([
             prisma.article.count({ where: { authorId: userId, status: 'PUBLISHED' } }),
             prisma.article.count({ where: { authorId: userId, status: { in: ['NEEDS_REVISION', 'JOURNALIST_REVISING'] } } }),
@@ -92,7 +105,11 @@ export const getJournalistDashboardData = async (req, res) => {
                 where: { authorId: userId, status: 'PUBLISHED' },
                 _sum: { viewCount: true }
             }),
-            prisma.like.count({ where: { article: { authorId: userId } } })
+            // Menggunakan agregasi dari likeCount, bukan dari model Like yang mungkin tidak ada
+            prisma.article.aggregate({
+                where: { authorId: userId },
+                _sum: { likeCount: true }
+            })
         ]);
 
         // 2. Ambil 5 artikel teratas milik jurnalis ini
@@ -111,12 +128,12 @@ export const getJournalistDashboardData = async (req, res) => {
             stats: {
                 published: publishedCount,
                 needsRevision: needsRevisionCount,
-                totalViews: totalViews._sum.viewCount || 0,
-                totalLikes: totalLikes || 0,
+                totalViews: totalViewsAggregation._sum.viewCount || 0,
+                totalLikes: totalLikesAggregation._sum.likeCount || 0,
             },
-            performanceChart: { // Contoh data grafik sederhana
-                 totalViews: totalViews._sum.viewCount || 0,
-                 totalLikes: totalLikes || 0,
+            performanceChart: {
+                 totalViews: totalViewsAggregation._sum.viewCount || 0,
+                 totalLikes: totalLikesAggregation._sum.likeCount || 0,
             },
             topArticles
         });

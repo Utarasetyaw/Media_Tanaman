@@ -1,9 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client'; // <-- PERBAIKAN DI SINI
 
 const prisma = new PrismaClient();
 const SETTINGS_ID = 1; // ID tetap untuk baris pengaturan kita
 
-// REVISI: Tambahkan helper untuk transformasi URL gambar
 const transformImageUrls = (req, data) => {
     if (!data) return data;
     const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -34,6 +33,7 @@ export const getSiteSettings = async (req, res) => {
         bannerImages: {
           orderBy: { id: 'asc' }
         },
+        seo: true // Memastikan data SEO diambil
       },
     });
 
@@ -41,7 +41,6 @@ export const getSiteSettings = async (req, res) => {
         return res.json({});
     }
 
-    // REVISI: Transformasikan URL sebelum mengirim respons
     res.json(transformImageUrls(req, settings));
   } catch (error) {
     console.error("Get Settings Error:", error);
@@ -51,11 +50,12 @@ export const getSiteSettings = async (req, res) => {
 
 // ADMIN: Membuat atau Mengupdate data pengaturan situs
 export const updateSiteSettings = async (req, res) => {
-  const { bannerImages, ...siteSettingsData } = req.body;
+  const { bannerImages, seo, ...siteSettingsData } = req.body;
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
-      const updatedSettings = await tx.siteSettings.upsert({
+    await prisma.$transaction(async (tx) => {
+      // 1. Update atau buat data SiteSettings utama
+      await tx.siteSettings.upsert({
         where: { id: SETTINGS_ID },
         update: siteSettingsData,
         create: {
@@ -64,6 +64,19 @@ export const updateSiteSettings = async (req, res) => {
         },
       });
 
+      // 2. Update atau buat data SiteSeo yang berelasi
+      if (seo) {
+        await tx.siteSeo.upsert({
+          where: { siteSettingsId: SETTINGS_ID },
+          update: seo,
+          create: {
+            ...seo,
+            siteSettingsId: SETTINGS_ID,
+          },
+        });
+      }
+
+      // 3. Hapus banner lama dan buat yang baru
       await tx.bannerImage.deleteMany({
         where: { siteSettingsId: SETTINGS_ID },
       });
@@ -71,22 +84,24 @@ export const updateSiteSettings = async (req, res) => {
       if (bannerImages && bannerImages.length > 0) {
         await tx.bannerImage.createMany({
           data: bannerImages.map((banner) => ({
-            // Pastikan hanya path yang disimpan di database
             imageUrl: new URL(banner.imageUrl).pathname,
             siteSettingsId: SETTINGS_ID,
           })),
         });
       }
-
-      return updatedSettings;
     });
 
+    // 4. Ambil kembali data lengkap untuk dikirim sebagai respons
     const finalSettings = await prisma.siteSettings.findUnique({
         where: { id: SETTINGS_ID },
-        include: { bannerImages: true }
+        include: { 
+            bannerImages: {
+              orderBy: { id: 'asc'}
+            },
+            seo: true // Memastikan data SEO juga dikirim kembali setelah update
+        }
     });
 
-    // REVISI: Transformasikan URL sebelum mengirim respons
     res.json(transformImageUrls(req, finalSettings));
 
   } catch (error) {

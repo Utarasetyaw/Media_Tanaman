@@ -27,9 +27,9 @@ export const getManagementPlants = async (req, res) => {
   try {
     const plants = await prisma.plant.findMany({
       orderBy: { name: 'asc' },
+      // ▼▼▼ PERBAIKAN DI SINI ▼▼▼
       include: {
-        // DIHAPUS: 'category: true'
-        family: true,
+        plantType: true, // Ganti 'family' menjadi 'plantType'
       }
     });
     const transformedPlants = plants.map(plant => transformPlantImage(req, plant));
@@ -44,18 +44,17 @@ export const getManagementPlants = async (req, res) => {
  * ADMIN: Membuat tanaman baru.
  */
 export const createPlant = async (req, res) => {
-  // DIHAPUS: categoryId dari destrukturisasi
-  const { name, scientificName, description, imageUrl, familyId, careLevel, size, stores } = req.body;
-  // DIHAPUS: categoryId dari validasi
-  if (!name || !scientificName || !description || !imageUrl || !familyId || !careLevel || !size || !stores) {
+  // ▼▼▼ PERBAIKAN DI SINI ▼▼▼
+  const { name, scientificName, description, imageUrl, stores, plantTypeId } = req.body;
+  
+  if (!name || !scientificName || !description || !imageUrl || !stores) {
     return res.status(400).json({ error: 'Please provide all required fields.' });
   }
   try {
     const plant = await prisma.plant.create({
       data: {
-        name, scientificName, description, imageUrl, careLevel, size, stores,
-        // DIHAPUS: 'categoryId: parseInt(categoryId)'
-        familyId: parseInt(familyId),
+        name, scientificName, description, imageUrl, stores,
+        plantTypeId: plantTypeId ? parseInt(plantTypeId) : null, // Ganti 'familyId' menjadi 'plantTypeId'
       },
     });
     res.status(201).json(transformPlantImage(req, plant));
@@ -74,8 +73,8 @@ export const updatePlant = async (req, res) => {
   if (isNaN(plantId)) return res.status(400).json({ error: 'Invalid Plant ID.' });
 
   const dataToUpdate = req.body;
-  // DIHAPUS: Logika parsing untuk categoryId
-  if (dataToUpdate.familyId) dataToUpdate.familyId = parseInt(dataToUpdate.familyId);
+  // ▼▼▼ PERBAIKAN DI SINI ▼▼▼
+  if (dataToUpdate.plantTypeId) dataToUpdate.plantTypeId = parseInt(dataToUpdate.plantTypeId); // Ganti 'familyId'
 
   try {
     if (dataToUpdate.imageUrl) {
@@ -134,9 +133,9 @@ export const getPlantByIdForAdmin = async (req, res) => {
   try {
     const plant = await prisma.plant.findUnique({
       where: { id: plantId },
+      // ▼▼▼ PERBAIKAN DI SINI ▼▼▼
       include: {
-        // DIHAPUS: 'category: true'
-        family: true,
+        plantType: true, // Ganti 'family' menjadi 'plantType'
       }
     });
 
