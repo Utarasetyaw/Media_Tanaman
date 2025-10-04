@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '../services/apiService'; 
-import type { SiteSettings } from '../types/settings';
+import api from '../../services/apiService'; 
+import type { SiteSettings } from '../../types/admin/settings';
 // Fungsi upload file kita definisikan di sini agar hook ini mandiri
 const uploadFile = async (folder: string, file: File): Promise<{ imageUrl: string }> => {
     const formData = new FormData();

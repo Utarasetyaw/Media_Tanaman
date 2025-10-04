@@ -3,44 +3,63 @@ import MDEditor from '@uiw/react-md-editor';
 import rehypeSanitize from "rehype-sanitize";
 
 interface MarkdownEditorProps {
-  value: string;
+  value: string | undefined;
   onChange: (value: string | undefined) => void;
+  readOnly?: boolean;
 }
 
-export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ value, onChange }) => {
-  // State untuk menyimpan lebar layar saat ini
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+// ▼▼▼ HOOK BARU UNTUK MENDETEKSI UKURAN LAYAR ▼▼▼
+const useWindowWidth = () => {
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
-  // useEffect untuk memantau perubahan ukuran layar
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-    };
+    useEffect(() => {
+        const handleResize = () => {
+            setWindowWidth(window.innerWidth);
+        };
 
-    window.addEventListener('resize', handleResize);
+        window.addEventListener('resize', handleResize);
+        // Hapus event listener saat komponen tidak lagi digunakan
+        return () => window.removeEventListener('resize', handleResize);
+    }, []); // Array dependensi kosong, efek ini hanya berjalan sekali
 
-    // Fungsi cleanup untuk menghapus event listener saat komponen dibongkar
-    return () => window.removeEventListener('resize', handleResize);
-  }, []); // Array dependensi kosong agar efek ini hanya berjalan sekali saat mount
+    return windowWidth;
+};
 
-  // Tentukan tinggi editor secara dinamis berdasarkan lebar layar
-  // 768px adalah breakpoint 'md' dari Tailwind CSS
-  const editorHeight = windowWidth < 768 ? 250 : 400;
+
+export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ value, onChange, readOnly = false }) => {
+  const windowWidth = useWindowWidth();
+
+  // Tentukan mode pratinjau berdasarkan ukuran layar dan status readOnly
+  const getPreviewMode = () => {
+    if (readOnly) {
+      return 'preview'; // Selalu mode pratinjau jika readOnly
+    }
+    // 768px adalah breakpoint 'md' dari Tailwind CSS
+    if (windowWidth < 768) {
+      return 'edit'; // Di mobile, hanya tampilkan area edit
+    }
+    return 'live'; // Di desktop, tampilkan live preview
+  };
 
   return (
-    <div className="bg-transparent border border-lime-400/60 rounded-lg overflow-hidden" data-color-mode="dark">
+    <div 
+      className={`bg-transparent border border-lime-400/60 rounded-lg overflow-hidden ${readOnly ? 'opacity-70 bg-gray-800/20' : ''}`} 
+      data-color-mode="dark"
+    >
       <MDEditor
-        value={value}
-        onChange={onChange}
-        // Gunakan tinggi yang sudah dinamis
-        height={editorHeight}
+        value={value || ''}
+        onChange={readOnly ? undefined : onChange}
+        preview={getPreviewMode()} // Gunakan mode pratinjau yang dinamis
+        height={windowWidth < 768 ? 300 : 400} // Atur tinggi berbeda untuk mobile & desktop
+        minHeight={300}
         previewOptions={{
           rehypePlugins: [[rehypeSanitize]],
         }}
         style={{
           backgroundColor: 'transparent',
-          border: 'none', // Hilangkan border asli komponen
+          border: 'none',
         }}
+        hideToolbar={readOnly}
       />
     </div>
   );

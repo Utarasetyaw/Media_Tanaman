@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { useSiteSettings } from '../../../hooks/useSiteSettings';
+import React from 'react';
+import { useSiteSettings } from '../../../hooks/admin/useSiteSettings';
 import { Trash2, PlusCircle, UploadCloud } from 'lucide-react';
-import type { BannerImage, FaqItem, CompanyValue, SiteSettings } from '../../../types/settings';
+import type { BannerImage, FaqItem, CompanyValue, SiteSettings } from '../../../types/admin/settings';
 
 // Tipe Data Lokal
 type ArrayField = 'faqs' | 'companyValues';
-type FaqSubField = keyof FaqItem;
-// REVISI: Tentukan field secara eksplisit agar sesuai dengan penggunaan di komponen dan memperbaiki error TipeScript
+type FaqSubField = 'q' | 'a';
 type CompanyValueSubField = 'title' | 'description';
 
 // Komponen UI Kecil (Reusable & Themed)
@@ -44,19 +43,32 @@ const SectionCard: React.FC<{ title: string; children: React.ReactNode; classNam
 export const GeneralSettingsComponent: React.FC = () => {
     const { settings, isLoading, isSaving, updateSettings } = useSiteSettings();
     
-    const [formData, setFormData] = useState<Partial<SiteSettings>>({});
-    const [logoFile, setLogoFile] = useState<File | null>(null);
-    const [faviconFile, setFaviconFile] = useState<File | null>(null);
-    const [newBannerFile, setNewBannerFile] = useState<File | null>(null);
+    const [formData, setFormData] = React.useState<Partial<SiteSettings>>({});
+    const [logoFile, setLogoFile] = React.useState<File | null>(null);
+    const [faviconFile, setFaviconFile] = React.useState<File | null>(null);
+    const [newBannerFile, setNewBannerFile] = React.useState<File | null>(null);
 
-    useEffect(() => {
+    React.useEffect(() => {
         if (settings) {
+            const ensureArray = (data: any): any[] => {
+                if (Array.isArray(data)) return data;
+                if (typeof data === 'string') {
+                    try {
+                        const parsed = JSON.parse(data);
+                        return Array.isArray(parsed) ? parsed : [];
+                    } catch (e) {
+                        return [];
+                    }
+                }
+                return [];
+            };
+
             setFormData({
                 ...settings,
                 contactInfo: settings.contactInfo || {},
                 businessDescription: settings.businessDescription || { id: '', en: '' },
-                faqs: settings.faqs || [],
-                companyValues: settings.companyValues || [],
+                faqs: ensureArray(settings.faqs),
+                companyValues: ensureArray(settings.companyValues),
                 privacyPolicy: settings.privacyPolicy || { id: '', en: '' },
                 bannerTagline: settings.bannerTagline || { id: '', en: '' },
                 bannerImages: settings.bannerImages || [],
@@ -65,6 +77,7 @@ export const GeneralSettingsComponent: React.FC = () => {
         }
     }, [settings]);
 
+    // Handler tidak berubah
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -105,6 +118,13 @@ export const GeneralSettingsComponent: React.FC = () => {
         const newArray = (formData[arrayName] || []).filter((_: any, i: number) => i !== index);
         setFormData(prev => ({ ...prev, [arrayName]: newArray }));
     };
+
+    // ▼▼▼ FUNGSI BARU UNTUK HAPUS GAMBAR ▼▼▼
+    const handleRemoveImage = (fieldName: 'logoUrl' | 'faviconUrl') => {
+        if (!window.confirm(`Yakin ingin menghapus ${fieldName === 'logoUrl' ? 'Logo' : 'Favicon'} ini? Gambar akan terhapus setelah disimpan.`)) return;
+        setFormData(prev => ({ ...prev, [fieldName]: null }));
+    };
+    // ▲▲▲ AKHIR DARI FUNGSI BARU ▲▲▲
     
     const handleSave = () => {
         updateSettings({
@@ -159,31 +179,55 @@ export const GeneralSettingsComponent: React.FC = () => {
                 <div className="md:col-span-2">
                   <TextareaField label="Alamat" name="address" value={formData.contactInfo?.address || ''} onChange={(e) => handleNestedChange('contactInfo', 'address', e.target.value)} />
                 </div>
-                 {/* REVISI: Grup media sosial dibuat dalam satu baris untuk layout yang lebih rapi */}
                 <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
                     <InputField label="URL Instagram" name="instagram" placeholder="https://instagram.com/akunanda" value={formData.contactInfo?.socialMedia?.instagram || ''} onChange={(e) => handleDeeplyNestedChange('contactInfo', 'socialMedia', 'instagram', e.target.value)} />
                     <InputField label="URL Facebook" name="facebook" placeholder="https://facebook.com/akunanda" value={formData.contactInfo?.socialMedia?.facebook || ''} onChange={(e) => handleDeeplyNestedChange('contactInfo', 'socialMedia', 'facebook', e.target.value)} />
                     <InputField label="URL TikTok" name="tiktok" placeholder="https://tiktok.com/@akunanda" value={formData.contactInfo?.socialMedia?.tiktok || ''} onChange={(e) => handleDeeplyNestedChange('contactInfo', 'socialMedia', 'tiktok', e.target.value)} />
                 </div>
             </SectionCard>
-            
             <SectionCard title="Deskripsi Perusahaan" className='md:grid-cols-1'>
                 <TextareaField label="Deskripsi (Indonesia)" name="id" value={formData.businessDescription?.id || ''} onChange={(e) => handleNestedChange('businessDescription', 'id', e.target.value)} />
                 <TextareaField label="Deskripsi (Bahasa Inggris)" name="en" value={formData.businessDescription?.en || ''} onChange={(e) => handleNestedChange('businessDescription', 'en', e.target.value)} />
             </SectionCard>
 
+            {/* ▼▼▼ PERUBAHAN DI BAGIAN ASET VISUAL ▼▼▼ */}
             <SectionCard title="Aset Visual">
                 <div className='flex flex-col gap-2'>
                     <label className="block text-sm font-medium text-gray-300">Logo</label>
-                    {formData.logoUrl && <img src={formData.logoUrl} alt="logo" className="h-16 w-16 object-contain mb-2 bg-white/10 p-1 rounded" />}
+                    <p className="text-xs text-gray-400 -mt-1 mb-2">Rekomendasi rasio 1:1 (kotak). Ukuran ideal 512x512 piksel.</p>
+                    {formData.logoUrl ? (
+                        <div className="relative w-16 h-16 group mb-2">
+                            <img src={formData.logoUrl} alt="logo" className="h-16 w-16 object-contain bg-white/10 p-1 rounded" />
+                            <button
+                                onClick={() => handleRemoveImage('logoUrl')}
+                                className="absolute -top-1 -right-1 bg-red-600/90 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                aria-label="Hapus logo"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
+                    ) : <div className='h-16 w-16 mb-2'></div>}
                     <input id="logo-input" type="file" accept='image/*' onChange={(e) => setLogoFile(e.target.files ? e.target.files[0] : null)} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-lime-200/20 file:text-lime-300 hover:file:bg-lime-200/30 cursor-pointer"/>
                 </div>
                  <div className='flex flex-col gap-2'>
                     <label className="block text-sm font-medium text-gray-300">Favicon</label>
-                    {formData.faviconUrl && <img src={formData.faviconUrl} alt="favicon" className="h-16 w-16 object-contain mb-2 bg-white/10 p-1 rounded" />}
+                    <p className="text-xs text-gray-400 -mt-1 mb-2">Gunakan format .ico atau .png transparan. Ukuran 48x48 piksel.</p>
+                    {formData.faviconUrl ? (
+                        <div className="relative w-16 h-16 group mb-2">
+                            <img src={formData.faviconUrl} alt="favicon" className="h-16 w-16 object-contain bg-white/10 p-1 rounded" />
+                             <button
+                                onClick={() => handleRemoveImage('faviconUrl')}
+                                className="absolute -top-1 -right-1 bg-red-600/90 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                aria-label="Hapus favicon"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
+                    ) : <div className='h-16 w-16 mb-2'></div>}
                     <input id="favicon-input" type="file" accept='image/*' onChange={(e) => setFaviconFile(e.target.files ? e.target.files[0] : null)} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-lime-200/20 file:text-lime-300 hover:file:bg-lime-200/30 cursor-pointer"/>
                 </div>
             </SectionCard>
+            {/* ▲▲▲ AKHIR PERUBAHAN ▲▲▲ */}
 
             <div className="space-y-4">
                  <h4 className='text-lg font-semibold text-lime-300 border-b border-lime-400/30 pb-2'>Banner Halaman Utama</h4>
@@ -203,12 +247,15 @@ export const GeneralSettingsComponent: React.FC = () => {
                     <h5 className="font-semibold text-gray-200">Tambah Gambar Banner Baru</h5>
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-1">Pilih File Gambar</label>
+                        <p className="text-xs text-gray-400 mb-2">
+                            <b>Rasio 3:1.</b> Ukuran ideal <b>1920x640</b> piksel.<br/>
+                            Ukuran minimum yang baik <b>1500x500</b> piksel.
+                        </p>
                         <input id="new-banner-input" type="file" accept='image/*' onChange={(e) => setNewBannerFile(e.target.files ? e.target.files[0] : null)} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-lime-200/20 file:text-lime-300 hover:file:bg-lime-200/30 cursor-pointer"/>
                     </div>
                     <button onClick={handleAddBanner} disabled={isSaving || !newBannerFile} className="bg-lime-400/80 text-gray-900 font-semibold py-2 px-4 rounded-lg hover:bg-lime-500 transition-colors text-sm flex items-center gap-2 disabled:bg-gray-500 disabled:cursor-not-allowed"><UploadCloud size={16}/> Upload & Tambah Gambar</button>
                  </div>
             </div>
-
             <div className="space-y-4">
                  <h4 className='text-lg font-semibold text-lime-300 border-b border-lime-400/30 pb-2'>Nilai Perusahaan</h4>
                 {formData.companyValues?.map((value: CompanyValue, index: number) => (
@@ -224,23 +271,21 @@ export const GeneralSettingsComponent: React.FC = () => {
                     <PlusCircle size={18}/> Tambah Nilai Perusahaan
                 </button>
             </div>
-
             <div className="space-y-4">
                  <h4 className='text-lg font-semibold text-lime-300 border-b border-lime-400/30 pb-2'>Tanya Jawab (FAQ)</h4>
                 {formData.faqs?.map((faq: FaqItem, index: number) => (
                     <div key={index} className="p-4 border border-lime-400/20 rounded-lg space-y-2 relative bg-gray-900/20">
                         <button onClick={() => removeArrayItem('faqs', index)} className="absolute top-2 right-2 text-red-500 hover:text-red-400"><Trash2 size={18}/></button>
-                        <InputField label={`Pertanyaan ${index + 1} (ID)`} name={`faq_q_id_${index}`} value={faq.question?.id || ''} onChange={(e) => handleArrayItemChange('faqs', index, 'question', 'id', e.target.value)}/>
-                        <InputField label={`Pertanyaan ${index + 1} (EN)`} name={`faq_q_en_${index}`} value={faq.question?.en || ''} onChange={(e) => handleArrayItemChange('faqs', index, 'question', 'en', e.target.value)}/>
-                        <TextareaField label={`Jawaban ${index + 1} (ID)`} name={`faq_a_id_${index}`} value={faq.answer?.id || ''} onChange={(e) => handleArrayItemChange('faqs', index, 'answer', 'id', e.target.value)}/>
-                        <TextareaField label={`Jawaban ${index + 1} (EN)`} name={`faq_a_en_${index}`} value={faq.answer?.en || ''} onChange={(e) => handleArrayItemChange('faqs', index, 'answer', 'en', e.target.value)}/>
+                        <InputField label={`Pertanyaan ${index + 1} (ID)`} name={`faq_q_id_${index}`} value={faq.q?.id || ''} onChange={(e) => handleArrayItemChange('faqs', index, 'q', 'id', e.target.value)}/>
+                        <InputField label={`Pertanyaan ${index + 1} (EN)`} name={`faq_q_en_${index}`} value={faq.q?.en || ''} onChange={(e) => handleArrayItemChange('faqs', index, 'q', 'en', e.target.value)}/>
+                        <TextareaField label={`Jawaban ${index + 1} (ID)`} name={`faq_a_id_${index}`} value={faq.a?.id || ''} onChange={(e) => handleArrayItemChange('faqs', index, 'a', 'id', e.target.value)}/>
+                        <TextareaField label={`Jawaban ${index + 1} (EN)`} name={`faq_a_en_${index}`} value={faq.a?.en || ''} onChange={(e) => handleArrayItemChange('faqs', index, 'a', 'en', e.target.value)}/>
                     </div>
                 ))}
-                 <button onClick={() => addArrayItem('faqs', { question: { id: '', en: '' }, answer: { id: '', en: '' } })} className="mt-2 flex items-center gap-2 text-sm font-semibold text-lime-300 hover:text-lime-200">
+                 <button onClick={() => addArrayItem('faqs', { q: { id: '', en: '' }, a: { id: '', en: '' } })} className="mt-2 flex items-center gap-2 text-sm font-semibold text-lime-300 hover:text-lime-200">
                     <PlusCircle size={18}/> Tambah FAQ
                 </button>
             </div>
-            
             <SectionCard title="Kebijakan Privasi" className='md:grid-cols-1'>
                 <TextareaField label="Isi Kebijakan Privasi (Indonesia)" name="privacyPolicy_id" value={formData.privacyPolicy?.id || ''} onChange={(e) => handleNestedChange('privacyPolicy', 'id', e.target.value)} rows={8} />
                 <TextareaField label="Isi Kebijakan Privasi (Bahasa Inggris)" name="privacyPolicy_en" value={formData.privacyPolicy?.en || ''} onChange={(e) => handleNestedChange('privacyPolicy', 'en', e.target.value)} rows={8} />
@@ -254,4 +299,3 @@ export const GeneralSettingsComponent: React.FC = () => {
         </div>
     );
 };
-

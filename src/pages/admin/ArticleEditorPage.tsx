@@ -1,12 +1,13 @@
 import React, { useEffect, useState, Fragment } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Newspaper, ArrowLeft, Save, Send, ChevronDown, CheckCircle } from 'lucide-react';
+import { Newspaper, ArrowLeft, Save, Send, ChevronDown, CheckCircle, Trash2, Download } from 'lucide-react';
 import { Menu, Transition } from '@headlessui/react';
-import { useArticleEditor } from '../../hooks/useArticleEditor';
+import { useArticleEditor } from '../../hooks/admin/useArticleEditor';
 import { MarkdownEditor } from './components/MarkdownEditor';
 import { useAuth } from '../../contexts/AuthContext';
+import type { AdminArticleFormData } from '../../types/admin/adminarticleeditor.types';
 
-const initialFormData = {
+const initialFormData: AdminArticleFormData = {
     title: { id: '', en: '' },
     excerpt: { id: '', en: '' },
     content: { id: '', en: '' },
@@ -16,7 +17,6 @@ const initialFormData = {
 };
 
 // --- Komponen-komponen UI ---
-
 const CustomDropdown: React.FC<{
     options: { id: string | number; name: string }[];
     selectedValue: string | number;
@@ -38,7 +38,6 @@ const CustomDropdown: React.FC<{
         </Menu>
     );
 };
-
 const SuccessModal: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 transition-opacity duration-300">
         <div className="bg-[#004A49] border-2 border-lime-400/50 rounded-lg p-8 text-center shadow-xl transform transition-all duration-300 scale-100">
@@ -49,7 +48,7 @@ const SuccessModal: React.FC<{ message: string; onClose: () => void }> = ({ mess
     </div>
 );
 
-// --- Komponen Halaman Utama ---
+// --- Komponen Halaman Utama (Admin-Only) ---
 
 export const ArticleEditorPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -59,30 +58,43 @@ export const ArticleEditorPage: React.FC = () => {
 
     const { articleData, categories, plantTypes, isLoading, isSaving, handleSaveAction } = useArticleEditor(id);
 
-    const [formData, setFormData] = useState<any>(initialFormData);
+    const [formData, setFormData] = useState<AdminArticleFormData>(initialFormData);
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [successInfo, setSuccessInfo] = useState<{ message: string; path: string } | null>(null);
 
     useEffect(() => {
+        if (user && user.role !== 'ADMIN') {
+            alert('Anda tidak memiliki akses ke halaman ini.');
+            navigate('/admin/dashboard');
+        }
+    }, [user, navigate]);
+
+    useEffect(() => {
         if (isEditMode && articleData) {
             setFormData({
-                title: articleData.title,
-                excerpt: articleData.excerpt,
-                content: articleData.content,
-                imageUrl: articleData.imageUrl,
+                title: articleData.title || { id: '', en: '' },
+                excerpt: articleData.excerpt || { id: '', en: '' },
+                content: articleData.content || { id: '', en: '' },
+                imageUrl: articleData.imageUrl || '',
                 categoryId: articleData.category?.id || 0,
                 plantTypeId: articleData.plantType?.id || 0,
             });
         }
     }, [articleData, isEditMode]);
     
-
     const handleJsonChange = (field: 'title' | 'excerpt' | 'content', lang: 'id' | 'en', value: string | undefined) => {
-        setFormData((prev: any) => ({ ...prev, [field]: { ...prev[field], [lang]: value || '' } }));
+        setFormData(prev => ({ ...prev, [field]: { ...prev[field], [lang]: value || '' } }));
     };
     
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) setImageFile(e.target.files[0]);
+    };
+
+    const handleRemoveImage = () => {
+        setImageFile(null);
+        setFormData(prev => ({ ...prev, imageUrl: '' }));
+        const fileInput = document.getElementById('image-input') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
     };
 
     const handleAction = async (action: 'save' | 'publish') => {
@@ -92,18 +104,13 @@ export const ArticleEditorPage: React.FC = () => {
         }
         try {
             const savedArticle = await handleSaveAction({ formData, imageFile, action });
-            const backLinkUrl = window.location.pathname.includes('/admin') ? '/admin/articles' : '/jurnalis/articles';
-            
             let message = '';
-            let path = backLinkUrl;
-
+            let path = '/admin/articles';
             if (action === 'publish') {
                 message = 'Artikel berhasil diterbitkan!';
-            } else { // 'save' action
+            } else {
                 message = isEditMode ? 'Perubahan berhasil disimpan!' : 'Draf berhasil disimpan!';
-                if (!isEditMode) {
-                    path = `/admin/articles/edit/${savedArticle.id}`;
-                }
+                if (!isEditMode) path = `/admin/articles/edit/${savedArticle.id}`;
             }
             setSuccessInfo({ message, path });
         } catch (error) {
@@ -111,58 +118,63 @@ export const ArticleEditorPage: React.FC = () => {
         }
     };
 
-    if (isLoading) return <div className="text-white p-8 text-center">Memuat editor artikel...</div>;
+    if (isLoading || !user) return <div className="text-white p-8 text-center">Memuat editor artikel...</div>;
+    if (user.role !== 'ADMIN') return null;
 
-    const backLinkUrl = window.location.pathname.includes('/admin') ? '/admin/articles' : '/jurnalis/articles';
     const displayImageUrl = imageFile ? URL.createObjectURL(imageFile) : formData.imageUrl;
 
     return (
         <div>
-            <Link to={backLinkUrl} className="inline-flex items-center gap-2 text-lime-300 hover:text-lime-200 mb-6 transition-colors"><ArrowLeft size={20} /> Kembali ke Manajemen Artikel</Link>
-            
             {successInfo && (
-                <SuccessModal 
-                    message={successInfo.message} 
-                    onClose={() => {
-                        setSuccessInfo(null);
-                        navigate(successInfo.path);
-                    }} 
-                />
+                <SuccessModal message={successInfo.message} onClose={() => { setSuccessInfo(null); navigate(successInfo.path); }} />
             )}
 
-            <h2 className="text-2xl sm:text-3xl font-bold text-lime-200/90 flex items-center gap-3 mb-6"><Newspaper /> {isEditMode ? 'Ubah Artikel' : 'Buat Artikel Baru'}</h2>
+            {/* ▼▼▼ PERUBAHAN TATA LETAK HEADER DI SINI ▼▼▼ */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+                <h2 className="text-2xl sm:text-3xl font-bold text-lime-200/90 flex items-center gap-3">
+                    <Newspaper /> {isEditMode ? 'Ubah Artikel' : 'Buat Artikel Baru'}
+                </h2>
+                <Link to="/admin/articles" className="w-full sm:w-auto text-lime-300 hover:text-lime-100 flex items-center justify-center sm:justify-start gap-2 bg-black/20 px-4 py-2 rounded-lg border border-lime-400/50 transition-colors">
+                    <ArrowLeft size={16} /> Kembali ke Manajemen Artikel
+                </Link>
+            </div>
+            {/* ▲▲▲ AKHIR PERUBAHAN HEADER ▲▲▲ */}
             
             <form onSubmit={(e) => e.preventDefault()} className="bg-[#004A49]/60 border-2 border-lime-400/50 shadow-lg rounded-lg p-4 sm:p-6 space-y-6">
                 <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Judul (Indonesia)</label>
-                        <input value={formData.title.id} onChange={(e) => handleJsonChange('title', 'id', e.target.value)} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200" required/>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Judul (Bahasa Inggris)</label>
-                        <input value={formData.title.en} onChange={(e) => handleJsonChange('title', 'en', e.target.value)} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
-                    </div>
+                    <div><label className="block text-sm font-medium text-gray-300 mb-1">Judul (Indonesia)</label><input value={formData.title.id} onChange={(e) => handleJsonChange('title', 'id', e.target.value)} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200" required/></div>
+                    <div><label className="block text-sm font-medium text-gray-300 mb-1">Judul (Bahasa Inggris)</label><input value={formData.title.en} onChange={(e) => handleJsonChange('title', 'en', e.target.value)} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/></div>
                 </div>
-                
                 <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Kutipan (Indonesia)</label>
-                        <textarea value={formData.excerpt.id} onChange={(e) => handleJsonChange('excerpt', 'id', e.target.value)} rows={3} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Kutipan (Bahasa Inggris)</label>
-                        <textarea value={formData.excerpt.en} onChange={(e) => handleJsonChange('excerpt', 'en', e.target.value)} rows={3} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
-                    </div>
+                    <div><label className="block text-sm font-medium text-gray-300 mb-1">Kutipan (Indonesia)</label><textarea value={formData.excerpt.id} onChange={(e) => handleJsonChange('excerpt', 'id', e.target.value)} rows={3} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/></div>
+                    <div><label className="block text-sm font-medium text-gray-300 mb-1">Kutipan (Bahasa Inggris)</label><textarea value={formData.excerpt.en} onChange={(e) => handleJsonChange('excerpt', 'en', e.target.value)} rows={3} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/></div>
                 </div>
-                
                 <div><label className="block text-sm font-medium text-gray-300 mb-2">Konten (Indonesia)</label><MarkdownEditor value={formData.content.id} onChange={(value) => handleJsonChange('content', 'id', value)} /></div>
                 <div><label className="block text-sm font-medium text-gray-300 mb-2">Konten (Bahasa Inggris)</label><MarkdownEditor value={formData.content.en} onChange={(value) => handleJsonChange('content', 'en', value)} /></div>
 
                 <div className="grid md:grid-cols-2 gap-6 border-t border-lime-400/30 pt-6">
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-1">Gambar Utama</label>
-                        <div className='mb-2 min-h-[1rem]'>{displayImageUrl && <img src={displayImageUrl} alt="Pratinjau" className="max-h-40 rounded-md border p-1 border-lime-400/50" />}</div>
-                        <input type="file" accept="image/*" onChange={handleImageChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-lime-200/20 file:text-lime-300 hover:file:bg-lime-200/30 cursor-pointer"/>
+                        <p className="text-xs text-gray-400 mt-1 mb-2">Rekomendasi rasio 16:9 (Contoh: 1280x720 piksel).</p>
+                        <div className="mt-2">
+                            {displayImageUrl ? (
+                                <div className="relative group w-full max-w-sm aspect-video rounded-lg overflow-hidden border p-1 border-lime-400/50">
+                                    <img src={displayImageUrl} alt="Pratinjau" className="w-full h-full object-cover rounded-md" />
+                                    <button type="button" onClick={handleRemoveImage} className="absolute top-1 right-1 bg-red-600/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Hapus gambar"><Trash2 size={16} /></button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-center w-full max-w-sm h-32 bg-black/20 rounded-md border-2 border-dashed border-lime-400/30">
+                                    <p className="text-gray-400">Pratinjau Gambar</p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-4 mt-3">
+                            <label htmlFor="image-input" className="cursor-pointer bg-lime-200/20 text-lime-300 hover:bg-lime-200/30 font-semibold text-sm py-2 px-4 rounded-full transition-colors">Pilih File</label>
+                            <input id="image-input" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                            {formData.imageUrl && !imageFile && (
+                                <a href={formData.imageUrl} download target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-gray-400 hover:text-white"><Download size={16} /> Unduh</a>
+                            )}
+                        </div>
                     </div>
                     <div className='space-y-4'>
                         <div>
@@ -175,16 +187,13 @@ export const ArticleEditorPage: React.FC = () => {
                         </div>
                     </div>
                 </div>
-
                 <div className="flex flex-col sm:flex-row justify-end pt-6 border-t border-lime-400/30 gap-4">
-                    {user?.role === 'ADMIN' ? (
-                        <>
-                            <button type="button" onClick={() => handleAction('save')} disabled={isSaving} className="w-full sm:w-auto bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600 flex items-center justify-center gap-2 transition-colors disabled:bg-gray-700 disabled:opacity-60"><Save size={18} /> {isSaving ? 'Menyimpan...' : (isEditMode ? 'Simpan Perubahan' : 'Simpan Draf')}</button>
-                            <button type="button" onClick={() => handleAction('publish')} disabled={isSaving} className="w-full sm:w-auto bg-lime-400 text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-lime-500 flex items-center justify-center gap-2 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"><Send size={18} /> {isSaving ? 'Memproses...' : (isEditMode ? 'Terbitkan Perubahan' : 'Terbitkan')}</button>
-                        </>
-                    ) : ( // Untuk Jurnalis
-                        <button type="button" onClick={() => handleAction('save')} disabled={isSaving} className="w-full sm:w-auto bg-lime-400 text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-lime-500 flex items-center justify-center gap-2 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"><Save size={18} /> {isSaving ? 'Menyimpan...' : (isEditMode ? 'Simpan Perubahan' : 'Simpan Artikel')}</button>
-                    )}
+                    <button type="button" onClick={() => handleAction('save')} disabled={isSaving} className="w-full sm:w-auto bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600 flex items-center justify-center gap-2 transition-colors disabled:bg-gray-700 disabled:opacity-60">
+                        <Save size={18} /> {isSaving ? 'Menyimpan...' : (isEditMode ? 'Simpan Perubahan' : 'Simpan Draf')}
+                    </button>
+                    <button type="button" onClick={() => handleAction('publish')} disabled={isSaving} className="w-full sm:w-auto bg-lime-400 text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-lime-500 flex items-center justify-center gap-2 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
+                        <Send size={18} /> {isSaving ? 'Memproses...' : (isEditMode ? 'Terbitkan Perubahan' : 'Terbitkan')}
+                    </button>
                 </div>
             </form>
         </div>

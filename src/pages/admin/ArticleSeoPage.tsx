@@ -1,172 +1,214 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Settings2, ArrowLeft, Save, PlusCircle, Trash2 } from 'lucide-react';
-import type { SEO, Backlink } from '../../types';
-import { useArticleSeo } from '../../hooks/useArticleSeo';
+import { Settings2, ArrowLeft, Save } from 'lucide-react';
+import type { ArticleSeo } from '../../types/admin/adminarticleseo.types';
+import { useArticleSeo } from '../../hooks/admin/useArticleSeo';
 
-const initialSeoData: Partial<SEO> = {
+// Helper komponen
+const Input = (props: React.ComponentProps<'input'>) => (
+    <input {...props} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-lime-400" />
+);
+
+const Textarea = (props: React.ComponentProps<'textarea'>) => (
+    <textarea {...props} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-lime-400 font-mono" />
+);
+
+const Select = (props: React.ComponentProps<'select'>) => (
+    <select {...props} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 focus:outline-none focus:ring-1 focus:ring-lime-400" />
+);
+
+const Section: React.FC<{ title: string, children: React.ReactNode }> = ({ title, children }) => (
+    <div className="pt-4 border-t border-lime-400/30">
+        <h3 className="text-lg font-semibold text-gray-200 mb-4">{title}</h3>
+        <div className="space-y-4">{children}</div>
+    </div>
+);
+
+
+const initialSeoData: Partial<ArticleSeo> = {
     metaTitle: { id: '', en: '' },
     metaDescription: { id: '', en: '' },
     keywords: '',
-    metaRobots: '',
-    structuredData: '',
-    metaViewport: '',
-    canonicalURL: '',
+    canonicalUrl: '',
+    metaRobots: 'index, follow',
     ogTitle: { id: '', en: '' },
     ogDescription: { id: '', en: '' },
     ogImageUrl: '',
-    twitterHandle: '',
-    backlinks: [],
+    ogType: 'article',
+    ogUrl: '',
+    ogSiteName: '',
+    twitterCard: 'summary_large_image',
+    twitterTitle: { id: '', en: '' },
+    twitterDescription: { id: '', en: '' },
+    twitterImageUrl: '',
+    twitterSite: '',
+    twitterCreator: '',
+    structuredData: '',
 };
 
 export const ArticleSeoPage: React.FC = () => {
     const { articleData, isLoading, isSaving, saveSeo } = useArticleSeo();
-
-    const [seoData, setSeoData] = useState<Partial<SEO>>(initialSeoData);
+    const [seoData, setSeoData] = useState<Partial<ArticleSeo>>(initialSeoData);
 
     useEffect(() => {
         if (articleData?.seo) {
-            setSeoData({
-                metaTitle: articleData.seo.metaTitle || { id: '', en: '' },
-                metaDescription: articleData.seo.metaDescription || { id: '', en: '' },
-                keywords: articleData.seo.keywords || '',
-                metaRobots: articleData.seo.metaRobots || '',
-                structuredData: articleData.seo.structuredData || '',
-                metaViewport: articleData.seo.metaViewport || '',
-                canonicalURL: articleData.seo.canonicalURL || '',
-                ogTitle: articleData.seo.ogTitle || { id: '', en: '' },
-                ogDescription: articleData.seo.ogDescription || { id: '', en: '' },
-                ogImageUrl: articleData.seo.ogImageUrl || '',
-                twitterHandle: articleData.seo.twitterHandle || '',
-                backlinks: articleData.seo.backlinks?.map((b: any, i: number) => ({ ...b, id: i })) || [],
-            });
+            setSeoData(prev => ({ ...prev, ...articleData.seo }));
         }
     }, [articleData]);
     
-    const handleSeoChange = (field: keyof Omit<SEO, 'backlinks'>, lang: 'id' | 'en', value: string) => {
-        setSeoData(prev => ({ ...prev, [field]: { ...(prev[field] as object), [lang]: value } }));
-    };
-
-    const handleSimpleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        setSeoData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    };
-    
-    const handleBacklinkChange = (index: number, field: keyof Omit<Backlink, 'id'>, value: string) => {
-        const newBacklinks = [...(seoData.backlinks || [])];
-        newBacklinks[index] = { ...newBacklinks[index], [field]: value };
-        setSeoData(prev => ({ ...prev, backlinks: newBacklinks }));
-    };
-
-    const addBacklink = () => {
-        const newBacklink: Backlink = { id: Date.now(), sourceUrl: '', anchorText: '', status: 'Pending' };
-        setSeoData(prev => ({ ...prev, backlinks: [...(prev.backlinks || []), newBacklink] }));
-    };
-
-    const removeBacklink = (indexToRemove: number) => {
+    const handleLocalizedChange = (field: keyof ArticleSeo, lang: 'id' | 'en', value: string) => {
         setSeoData(prev => ({
             ...prev,
-            backlinks: (prev.backlinks || []).filter((_, index) => index !== indexToRemove),
+            [field]: { ...(prev[field] as object), [lang]: value }
         }));
     };
 
+    const handleSimpleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        setSeoData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+    
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const finalSeoData = {
-            ...seoData,
-            backlinks: seoData.backlinks
-        };
-        saveSeo(finalSeoData);
+        const { id, articleId, ...cleanedSeoData } = seoData;
+        if (typeof cleanedSeoData.structuredData === 'string' && cleanedSeoData.structuredData.trim().startsWith('{')) {
+            try {
+                cleanedSeoData.structuredData = JSON.parse(cleanedSeoData.structuredData);
+            } catch (error) {
+                alert('Format JSON pada Data Terstruktur tidak valid.');
+                return;
+            }
+        }
+        saveSeo(cleanedSeoData);
     };
 
     if (isLoading) { return <div className="text-white p-8 text-center">Memuat data SEO...</div>; }
 
     return (
-        // REVISI: Padding utama dibuat responsif
         <div className="p-4 sm:p-6 lg:p-8">
-            <Link to="/admin/articles" className="inline-flex items-center gap-2 text-lime-300 hover:text-lime-200 mb-6 transition-colors">
-                <ArrowLeft size={20} />
-                Kembali ke Manajemen Artikel
-            </Link>
-            {/* REVISI: Ukuran judul dibuat responsif */}
-            <h2 className="text-2xl sm:text-3xl font-bold text-lime-200/90 flex items-center gap-3 mb-2">
-                <Settings2 /> Pengaturan SEO
-            </h2>
-            <p className="text-gray-300 mb-6">
-                Untuk artikel: <span className="font-bold text-white">{articleData?.title.id}</span>
-            </p>
+            {/* ▼▼▼ PERUBAHAN TATA LETAK HEADER DI SINI ▼▼▼ */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+                <div>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-lime-200/90 flex items-center gap-3">
+                        <Settings2 /> Pengaturan SEO
+                    </h2>
+                    <p className="text-gray-300 mt-1">
+                        Untuk artikel: <span className="font-bold text-white">{articleData?.title.id}</span>
+                    </p>
+                </div>
+                <Link to="/admin/articles" className="w-full sm:w-auto text-lime-300 hover:text-lime-100 flex items-center justify-center sm:justify-start gap-2 bg-black/20 px-4 py-2 rounded-lg border border-lime-400/50 transition-colors">
+                    <ArrowLeft size={16} /> Kembali ke Manajemen Artikel
+                </Link>
+            </div>
+            {/* ▲▲▲ AKHIR PERUBAHAN HEADER ▲▲▲ */}
+
 
             <form onSubmit={handleSubmit} className="bg-[#004A49]/60 border-2 border-lime-400/50 shadow-lg rounded-lg p-4 sm:p-6 space-y-6">
-                <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Meta Judul (Indonesia)</label>
-                        <input value={seoData.metaTitle?.id} onChange={(e) => handleSeoChange('metaTitle', 'id', e.target.value)} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Meta Judul (Bahasa Inggris)</label>
-                        <input value={seoData.metaTitle?.en} onChange={(e) => handleSeoChange('metaTitle', 'en', e.target.value)} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
-                    </div>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Meta Deskripsi (Indonesia)</label>
-                    <textarea value={seoData.metaDescription?.id} onChange={(e) => handleSeoChange('metaDescription', 'id', e.target.value)} rows={3} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Meta Deskripsi (Bahasa Inggris)</label>
-                    <textarea value={seoData.metaDescription?.en} onChange={(e) => handleSeoChange('metaDescription', 'en', e.target.value)} rows={3} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Kata Kunci</label>
-                    <input name="keywords" value={seoData.keywords} onChange={handleSimpleInputChange} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
-                    <p className="text-xs text-gray-400 mt-1">Pisahkan dengan koma, contoh: tanaman hias, monstera, tips merawat.</p>
-                </div>
-
-                <div className="pt-4 border-t border-lime-400/30">
-                    <h3 className="text-lg font-semibold text-gray-200 mb-4">Pengaturan SEO Lanjutan</h3>
-                    <div className="space-y-4">
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <div><label className="block text-sm font-medium text-gray-300 mb-1">Meta Robots</label><input name="metaRobots" value={seoData.metaRobots} onChange={handleSimpleInputChange} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200" placeholder="index, follow"/></div>
-                            <div><label className="block text-sm font-medium text-gray-300 mb-1">URL Kanonis</label><input name="canonicalURL" type="url" value={seoData.canonicalURL} onChange={handleSimpleInputChange} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200" placeholder="https://..."/></div>
+                
+                <Section title="Meta Tags Utama">
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-1">Meta Judul (ID)</label>
+                            <Input value={seoData.metaTitle?.id || ''} onChange={(e) => handleLocalizedChange('metaTitle', 'id', e.target.value)} />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-1">Data Terstruktur (JSON-LD)</label>
-                            <textarea name="structuredData" value={seoData.structuredData} onChange={handleSimpleInputChange} rows={5} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 font-mono" placeholder='{ "@context": "https://schema.org", ... }'/>
+                            <label className="block text-sm font-medium text-gray-300 mb-1">Meta Judul (EN)</label>
+                            <Input value={seoData.metaTitle?.en || ''} onChange={(e) => handleLocalizedChange('metaTitle', 'en', e.target.value)} />
                         </div>
                     </div>
-                </div>
-
-                <div className="pt-4 border-t border-lime-400/30">
-                    <h3 className="text-lg font-semibold text-gray-200 mb-4">Manajemen Tautan Balik (Backlink)</h3>
-                    <div className="space-y-4">
-                        {(seoData.backlinks || []).map((backlink, index) => (
-                            <div key={backlink.id} className="p-4 border border-lime-400/20 rounded-lg space-y-3 relative bg-gray-900/20">
-                                <button type="button" onClick={() => removeBacklink(index)} className="absolute top-2 right-2 text-red-500 hover:text-red-400"><Trash2 size={18}/></button>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-1">URL Sumber</label>
-                                    <input value={backlink.sourceUrl} onChange={(e) => handleBacklinkChange(index, 'sourceUrl', e.target.value)} type="url" placeholder="https://websitecontoh.com/artikel" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-1">Teks Jangkar (Anchor Text)</label>
-                                        <input value={backlink.anchorText} onChange={(e) => handleBacklinkChange(index, 'anchorText', e.target.value)} placeholder="Teks yang diberi tautan" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-1">Status</label>
-                                        <select value={backlink.status} onChange={(e) => handleBacklinkChange(index, 'status', e.target.value)} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200">
-                                            <option value="Pending">Menunggu</option>
-                                            <option value="Live">Aktif</option>
-                                            <option value="Broken">Rusak</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                        <button type="button" onClick={addBacklink} className="mt-2 flex items-center gap-2 text-sm font-semibold text-lime-300 hover:text-lime-200">
-                            <PlusCircle size={18}/> Tambah Tautan Balik
-                        </button>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Meta Deskripsi (ID)</label>
+                        <Textarea value={seoData.metaDescription?.id || ''} onChange={(e) => handleLocalizedChange('metaDescription', 'id', e.target.value)} rows={3} />
                     </div>
-                </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Meta Deskripsi (EN)</label>
+                        <Textarea value={seoData.metaDescription?.en || ''} onChange={(e) => handleLocalizedChange('metaDescription', 'en', e.target.value)} rows={3} />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Kata Kunci</label>
+                        <Input name="keywords" value={seoData.keywords || ''} onChange={handleSimpleInputChange} />
+                        <p className="text-xs text-gray-400 mt-1">Pisahkan dengan koma, contoh: tanaman hias, monstera.</p>
+                    </div>
+                </Section>
+                
+                <Section title="Open Graph (Untuk Sharing Media Sosial)">
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-1">OG Judul (ID)</label>
+                            <Input value={seoData.ogTitle?.id || ''} onChange={(e) => handleLocalizedChange('ogTitle', 'id', e.target.value)} />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-1">OG Judul (EN)</label>
+                            <Input value={seoData.ogTitle?.en || ''} onChange={(e) => handleLocalizedChange('ogTitle', 'en', e.target.value)} />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">OG Deskripsi (ID)</label>
+                        <Textarea value={seoData.ogDescription?.id || ''} onChange={(e) => handleLocalizedChange('ogDescription', 'id', e.target.value)} rows={3} />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">OG Deskripsi (EN)</label>
+                        <Textarea value={seoData.ogDescription?.en || ''} onChange={(e) => handleLocalizedChange('ogDescription', 'en', e.target.value)} rows={3} />
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div><label className="block text-sm font-medium text-gray-300 mb-1">OG URL Gambar</label><Input name="ogImageUrl" type="url" value={seoData.ogImageUrl || ''} onChange={handleSimpleInputChange} placeholder="https://..."/></div>
+                        <div><label className="block text-sm font-medium text-gray-300 mb-1">OG Tipe</label><Input name="ogType" value={seoData.ogType || ''} onChange={handleSimpleInputChange} /></div>
+                        <div><label className="block text-sm font-medium text-gray-300 mb-1">OG URL</label><Input name="ogUrl" type="url" value={seoData.ogUrl || ''} onChange={handleSimpleInputChange} placeholder="https://..."/></div>
+                        <div><label className="block text-sm font-medium text-gray-300 mb-1">OG Nama Situs</label><Input name="ogSiteName" value={seoData.ogSiteName || ''} onChange={handleSimpleInputChange} /></div>
+                    </div>
+                </Section>
 
-                {/* REVISI: Tombol dibuat responsif (full-width di mobile) */}
+                <Section title="Twitter Card (Untuk Sharing Twitter)">
+                     <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-1">Twitter Judul (ID)</label>
+                            <Input value={seoData.twitterTitle?.id || ''} onChange={(e) => handleLocalizedChange('twitterTitle', 'id', e.target.value)} />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-1">Twitter Judul (EN)</label>
+                            <Input value={seoData.twitterTitle?.en || ''} onChange={(e) => handleLocalizedChange('twitterTitle', 'en', e.target.value)} />
+                        </div>
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Twitter Deskripsi (ID)</label>
+                        <Textarea value={seoData.twitterDescription?.id || ''} onChange={(e) => handleLocalizedChange('twitterDescription', 'id', e.target.value)} rows={3} />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Twitter Deskripsi (EN)</label>
+                        <Textarea value={seoData.twitterDescription?.en || ''} onChange={(e) => handleLocalizedChange('twitterDescription', 'en', e.target.value)} rows={3} />
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div><label className="block text-sm font-medium text-gray-300 mb-1">Twitter URL Gambar</label><Input name="twitterImageUrl" type="url" value={seoData.twitterImageUrl || ''} onChange={handleSimpleInputChange} placeholder="https://..."/></div>
+                        <div><label className="block text-sm font-medium text-gray-300 mb-1">Twitter Card Type</label>
+                            <Select name="twitterCard" value={seoData.twitterCard || ''} onChange={handleSimpleInputChange}>
+                                <option value="summary_large_image">Summary with Large Image</option>
+                                <option value="summary">Summary</option>
+                                <option value="app">App</option>
+                                <option value="player">Player</option>
+                            </Select>
+                        </div>
+                        <div><label className="block text-sm font-medium text-gray-300 mb-1">Twitter Site (@username)</label><Input name="twitterSite" value={seoData.twitterSite || ''} onChange={handleSimpleInputChange} placeholder="@namasitus"/></div>
+                        <div><label className="block text-sm font-medium text-gray-300 mb-1">Twitter Creator (@username)</label><Input name="twitterCreator" value={seoData.twitterCreator || ''} onChange={handleSimpleInputChange} placeholder="@namaauthor"/></div>
+                    </div>
+                </Section>
+
+                <Section title="Pengaturan Lanjutan">
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div><label className="block text-sm font-medium text-gray-300 mb-1">Meta Robots</label>
+                            <Select name="metaRobots" value={seoData.metaRobots || ''} onChange={handleSimpleInputChange}>
+                                <option value="index, follow">Index, Follow</option>
+                                <option value="noindex, follow">No Index, Follow</option>
+                                <option value="index, nofollow">Index, No Follow</option>
+                                <option value="noindex, nofollow">No Index, No Follow</option>
+                            </Select>
+                        </div>
+                        <div><label className="block text-sm font-medium text-gray-300 mb-1">URL Kanonis</label><Input name="canonicalUrl" type="url" value={seoData.canonicalUrl || ''} onChange={handleSimpleInputChange} placeholder="https://..."/></div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Data Terstruktur (JSON-LD)</label>
+                        <Textarea name="structuredData" value={typeof seoData.structuredData === 'object' ? JSON.stringify(seoData.structuredData, null, 2) : seoData.structuredData || ''} onChange={handleSimpleInputChange} rows={8} placeholder='{ "@context": "https://schema.org", ... }'/>
+                    </div>
+                </Section>
+
                 <div className="flex flex-col sm:flex-row justify-end pt-4 border-t border-lime-400/30">
                     <button type="submit" disabled={isSaving} className="w-full sm:w-auto bg-lime-400 text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-lime-500 flex items-center justify-center gap-2 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
                         <Save size={18} /> {isSaving ? 'Menyimpan...' : 'Simpan SEO'}

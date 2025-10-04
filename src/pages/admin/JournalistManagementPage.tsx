@@ -30,10 +30,12 @@ export const JournalistManagementPage: FC = () => {
                 <h2 className="text-2xl sm:text-3xl font-bold text-lime-200/90 flex items-center gap-3">
                     <Users /> Manajemen Jurnalis
                 </h2>
+                {/* ▼▼▼ PERUBAHAN DI SINI ▼▼▼ */}
                 <button
                     onClick={() => openModal()}
-                    className="bg-lime-400 text-lime-900 font-bold py-2 px-4 rounded-lg hover:bg-lime-500 flex items-center gap-2 transition-colors w-full sm:w-auto"
+                    className="bg-lime-400 text-lime-900 font-bold py-2 px-4 rounded-lg hover:bg-lime-500 flex items-center justify-center gap-2 transition-colors w-full sm:w-auto"
                 >
+                {/* ▲▲▲ AKHIR PERUBAHAN ('justify-center' ditambahkan) ▲▲▲ */}
                     <Plus size={20} /> Tambah Jurnalis
                 </button>
             </div>

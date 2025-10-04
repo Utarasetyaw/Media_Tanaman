@@ -1,6 +1,6 @@
 import React from 'react';
-import { useDashboard } from '../../hooks/useDashboard';
-import type { AdminDashboardData, JournalistDashboardData } from '../../hooks/useDashboard';
+import { useDashboard } from '../../hooks/admin/useDashboard';
+import type { AdminDashboardData, JournalistDashboardData } from '../../hooks/admin/useDashboard';
 import { Calendar, Eye, CheckCircle, Edit, Heart, TrendingUp, BarChart as BarChartIcon } from 'lucide-react';
 // Impor BarChart dan komponen lain yang dibutuhkan dari recharts
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';

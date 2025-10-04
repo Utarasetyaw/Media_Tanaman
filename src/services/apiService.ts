@@ -3,7 +3,7 @@ import axios from "axios";
 import type {
 	AdminDashboardData,
 	JournalistDashboardData,
-} from "../hooks/useDashboard";
+} from "../hooks/admin/useDashboard";
 
 const api = axios.create({
 	baseURL: import.meta.env.VITE_API_URL || "http://localhost:3009/api",

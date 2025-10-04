@@ -2,9 +2,9 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { format } from 'date-fns';
-import api from '../services/apiService';
+import api from '../../services/apiService';
 
-// ... TIPE DATA DAN FUNGSI API (tidak ada perubahan) ...
+// --- TIPE DATA DAN FUNGSI API ---
 export interface Event {
     id: number;
     title: { id: string; en: string };
@@ -21,7 +21,9 @@ export interface Event {
     createdAt: string;
     updatedAt: string;
 }
+
 type EventFilter = 'ALL' | 'INTERNAL' | 'EXTERNAL';
+
 const initialFormData: Omit<Event, 'id' | 'submissions' | 'externalLinkClicks' | 'createdAt' | 'updatedAt'> = {
     title: { id: '', en: '' },
     description: { id: '', en: '' },
@@ -130,6 +132,13 @@ export const useEventManager = () => {
         if (e.target.files?.[0]) setImageFile(e.target.files[0]);
     };
 
+    const handleRemoveImage = () => {
+        setImageFile(null);
+        setFormData((prev: any) => ({ ...prev, imageUrl: '' }));
+        const fileInput = document.getElementById('event-image-input') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+    };
+
     const handleSave = async () => {
         if (!formData.title.id || !formData.startDate || !formData.endDate) {
             alert("Judul (ID), Tanggal Mulai, dan Tanggal Selesai wajib diisi.");
@@ -137,21 +146,16 @@ export const useEventManager = () => {
         }
         
         try {
-            // REVISI LOGIKA PENENTUAN URL GAMBAR
-            let imageUrlForPayload = '';
+            let imageUrlForPayload = formData.imageUrl || '';
 
             if (imageFile) {
-                // Jika ada file baru, unggah dan dapatkan path relatifnya.
                 const uploadRes = await uploadFile('events', imageFile);
                 imageUrlForPayload = uploadRes.imageUrl;
-            } else if (editingEvent) {
-                // Jika tidak ada file baru saat mengedit, ambil path relatif dari URL yang sudah ada.
+            } else if (editingEvent?.imageUrl) {
                 try {
-                    const url = new URL(editingEvent.imageUrl);
-                    imageUrlForPayload = url.pathname; // Mengambil path seperti "/uploads/events/namafile.webp"
-                } catch (e) {
-                    console.error("URL gambar tidak valid, menggunakan URL lama:", editingEvent.imageUrl);
-                    imageUrlForPayload = editingEvent.imageUrl; // fallback jika parsing gagal
+                    imageUrlForPayload = new URL(editingEvent.imageUrl).pathname;
+                } catch {
+                    imageUrlForPayload = editingEvent.imageUrl;
                 }
             }
 
@@ -162,7 +166,7 @@ export const useEventManager = () => {
 
             const payload = {
                 ...formData,
-                imageUrl: imageUrlForPayload, // Gunakan URL yang sudah pasti relatif
+                imageUrl: imageUrlForPayload,
             };
 
             const fieldsToDelete = ['id', 'submissions', 'createdAt', 'updatedAt', 'externalLinkClicks'];
@@ -207,5 +211,6 @@ export const useEventManager = () => {
         editingEvent, formData, imageFile, openModal, closeModal,
         handleInputChange, handleJsonChange, handleImageChange, handleSave, handleDelete,
         event: detailEvent, isLoadingDetail, isErrorDetail, handleSetPlacement, isMutating,
+        handleRemoveImage,
     };
 };

@@ -1,18 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../services/apiService';
-import type { Article, SEO } from '../types';
+import api from '../../services/apiService';
+import type { Article } from '../../types';
+import type { ArticleSeo } from '../../types/admin/adminarticleseo.types'; // <-- Perbarui impor ini
 
 // --- Definisi Fungsi-fungsi API (Self-contained) ---
 
+// Nama tipe diubah dari SEO menjadi ArticleSeo
 const getArticleById = async (id: number): Promise<Article> => {
-  // REVISI: Tambahkan '/management'
+  // Endpoint ini sudah benar, karena /management ditambahkan di server.js
   const { data } = await api.get(`/articles/management/analytics/${id}`);
   return data;
 };
 
-const updateArticleSeo = async (payload: { articleId: number, seoData: Partial<SEO> }) => {
-  // REVISI: Tambahkan '/management'
+// Nama tipe diubah dari SEO menjadi ArticleSeo
+const updateArticleSeo = async (payload: { articleId: number, seoData: Partial<ArticleSeo> }) => {
+  // Endpoint ini sudah benar, karena /management ditambahkan di server.js
   const { data } = await api.put(`/articles/management/${payload.articleId}`, { seo: payload.seoData });
   return data;
 };
@@ -33,11 +36,15 @@ export const useArticleSeo = () => {
 
   // Mutation untuk menyimpan perubahan data SEO
   const saveSeoMutation = useMutation({
-    mutationFn: (seoData: Partial<SEO>) => updateArticleSeo({ articleId: articleId!, seoData }),
-    onSuccess: () => {
-      // Invalidate query agar data di halaman lain (seperti list) juga update
+    // Nama tipe diubah dari SEO menjadi ArticleSeo
+    mutationFn: (seoData: Partial<ArticleSeo>) => updateArticleSeo({ articleId: articleId!, seoData }),
+    onSuccess: (updatedArticle) => {
+      // Perbarui cache untuk query ini dengan data yang baru saja disimpan
+      queryClient.setQueryData(['articleSeo', articleId], updatedArticle);
+      
+      // Invalidate query lain agar data di halaman daftar juga diperbarui
       queryClient.invalidateQueries({ queryKey: ['allAdminArticles'] });
-      queryClient.invalidateQueries({ queryKey: ['articleSeo', articleId] });
+      
       alert('Pengaturan SEO berhasil disimpan!');
       navigate('/admin/articles'); // Arahkan kembali ke halaman manajemen
     },

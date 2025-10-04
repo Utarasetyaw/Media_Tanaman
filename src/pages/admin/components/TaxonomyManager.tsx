@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Trash2, PlusCircle, Save, LoaderCircle, Edit } from 'lucide-react';
-import { useTaxonomyManager } from '../../../hooks/useTaxonomyManager';
-import type { TaxonomyItem } from '../../../hooks/useTaxonomyManager';
+import { useTaxonomyManager } from '../../../hooks/admin/useTaxonomyManager';
+import type { TaxonomyItem } from '../../../hooks/admin/useTaxonomyManager';
 
 interface TaxonomyManagerProps {
   queryKey: string;
@@ -43,7 +43,7 @@ export const TaxonomyManager: React.FC<TaxonomyManagerProps> = ({ queryKey, titl
   };
   
   const handleCreate = async () => {
-    if (!newItemName.id) { // Cukup validasi satu bahasa untuk tambah cepat
+    if (!newItemName.id) {
         alert(`${itemName} dalam Bahasa Indonesia wajib diisi.`);
         return;
     }
@@ -83,21 +83,30 @@ export const TaxonomyManager: React.FC<TaxonomyManagerProps> = ({ queryKey, titl
     <div className="bg-[#0b5351]/30 p-4 sm:p-6 rounded-lg border border-lime-400/50">
       <h3 className="text-xl font-bold text-gray-200 mb-4">{title}</h3>
       
-      {/* REVISI: Form Tambah Cepat dibuat lebih responsif */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 border border-lime-400/20 rounded-md">
-        <div className="w-full md:w-1/3">
+      {/* ▼▼▼ PERUBAHAN DI SINI ▼▼▼ */}
+      <div className="flex flex-col gap-4 mb-6 p-4 border border-lime-400/20 rounded-md">
+        <h4 className="font-semibold text-gray-200">Tambah {itemName} Baru</h4>
+        <div>
+          {/* Label untuk input Indonesia */}
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {itemName} (ID)
+          </label>
           <input
             type="text"
-            placeholder={`${itemName} (Indonesia)`}
+            placeholder={`${itemName} dalam Bahasa Indonesia`}
             value={newItemName.id}
             onChange={(e) => setNewItemName(prev => ({ ...prev, id: e.target.value }))}
             className={inputClassName}
           />
         </div>
-        <div className="w-full md:w-1/3">
+        <div>
+          {/* Label untuk input English */}
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            {itemName} (EN)
+          </label>
            <input
             type="text"
-            placeholder={`${itemName} (English - Opsional)`}
+            placeholder={`${itemName} dalam Bahasa Inggris (Opsional)`}
             value={newItemName.en}
             onChange={(e) => setNewItemName(prev => ({ ...prev, en: e.target.value }))}
             className={inputClassName}
@@ -106,18 +115,19 @@ export const TaxonomyManager: React.FC<TaxonomyManagerProps> = ({ queryKey, titl
         <button 
             onClick={handleCreate}
             disabled={isMutating}
-            className="w-full md:w-auto bg-lime-400 text-gray-900 font-bold px-4 py-2 rounded-lg hover:bg-lime-500 flex items-center justify-center gap-2 shrink-0 transition-colors disabled:bg-gray-500 disabled:cursor-wait"
+            className="w-full bg-lime-400 text-gray-900 font-bold px-4 py-2 rounded-lg hover:bg-lime-500 flex items-center justify-center gap-2 shrink-0 transition-colors disabled:bg-gray-500 disabled:cursor-wait mt-2"
         >
           {isMutating ? <LoaderCircle size={18} className="animate-spin" /> : <PlusCircle size={18} />}
           <span>Tambah</span>
         </button>
       </div>
+      {/* ▲▲▲ AKHIR PERUBAHAN ▲▲▲ */}
 
       {isMutating && <div className="text-sm text-lime-300 text-center mb-2">Memproses...</div>}
 
-      <div className="space-y-3">
+      <div className="divide-y divide-lime-400/30 border border-lime-400/30 rounded-md">
         {items.map((item) => (
-          <div key={item.id} className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center p-3 border border-gray-700/50 rounded-md">
+          <div key={item.id} className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center p-3 transition-colors hover:bg-lime-500/10">
             <div className="flex-grow">
                 <p className="text-gray-200 font-medium">{item.name.id}</p>
                 <p className="text-gray-400 text-sm">{item.name.en}</p>
@@ -138,20 +148,30 @@ export const TaxonomyManager: React.FC<TaxonomyManagerProps> = ({ queryKey, titl
               <h3 className="text-xl font-bold text-white">Ubah {itemName}</h3>
             </div>
             <div className="p-6 space-y-4">
-              <input
-                type="text"
-                placeholder={`${itemName} (Indonesia)`}
-                value={formData.id}
-                onChange={(e) => setFormData(prev => ({ ...prev, id: e.target.value }))}
-                className={inputClassName}
-              />
-              <input
-                type="text"
-                placeholder={`${itemName} (English)`}
-                value={formData.en}
-                onChange={(e) => setFormData(prev => ({ ...prev, en: e.target.value }))}
-                className={inputClassName}
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  {itemName} (ID)
+                </label>
+                <input
+                  type="text"
+                  placeholder={`${itemName} (Indonesia)`}
+                  value={formData.id}
+                  onChange={(e) => setFormData(prev => ({ ...prev, id: e.target.value }))}
+                  className={inputClassName}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  {itemName} (EN)
+                </label>
+                <input
+                  type="text"
+                  placeholder={`${itemName} (English)`}
+                  value={formData.en}
+                  onChange={(e) => setFormData(prev => ({ ...prev, en: e.target.value }))}
+                  className={inputClassName}
+                />
+              </div>
             </div>
             <div className="p-4 flex justify-end gap-3 bg-black/20 rounded-b-lg">
               <button onClick={handleCloseModal} disabled={isMutating} className="bg-gray-600 text-gray-200 font-bold py-2 px-4 rounded-lg hover:bg-gray-500 disabled:opacity-70">Batal</button>

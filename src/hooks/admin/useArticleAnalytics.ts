@@ -1,11 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
-import api from '../services/apiService';
-import type { Article } from '../types';
+import api from '../../services/apiService';
+import type { ArticleAnalyticsData } from '../../types/admin/adminarticleanalytics.types'; // <-- Gunakan tipe baru
 
-// Definisikan fungsi API di sini
-const getArticleById = async (id: number): Promise<Article> => {
-  // REVISI: Tambahkan '/management' agar cocok dengan server.js
+// Definisikan fungsi API
+const getArticleById = async (id: number): Promise<ArticleAnalyticsData> => {
   const { data } = await api.get(`/articles/management/analytics/${id}`);
   return data;
 };
@@ -16,11 +15,9 @@ export const useArticleAnalytics = () => {
   const articleId = id ? Number(id) : undefined;
 
   // Query untuk mengambil data artikel tunggal
-  const { data: article, isLoading, error } = useQuery<Article, Error>({
-    // Query key diubah agar tidak bentrok dengan cache jurnalis
+  const { data: article, isLoading, error } = useQuery<ArticleAnalyticsData, Error>({
     queryKey: ['articleAnalytics', articleId],
     queryFn: () => getArticleById(articleId!),
-    // Query hanya akan berjalan jika articleId ada (valid)
     enabled: !!articleId,
   });
 
