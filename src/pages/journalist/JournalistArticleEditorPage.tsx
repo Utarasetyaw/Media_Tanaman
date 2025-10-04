@@ -1,18 +1,10 @@
 import React, { useEffect, useState, Fragment } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Send, Loader2, AlertTriangle, CheckCircle, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Save, Send, Loader2, AlertTriangle, CheckCircle, ChevronDown, Trash2, Download, Newspaper } from 'lucide-react';
 import { Menu, Transition } from '@headlessui/react';
-import { useJournalistArticleEditor } from '../../hooks/useJournalistArticleEditor';
+import { useJournalistArticleEditor } from '../../hooks/jurnalist/useJournalistArticleEditor';
 import { MarkdownEditor } from '../admin/components/MarkdownEditor';
-
-type JournalistArticleFormData = {
-    title: { id: string; en: string };
-    excerpt: { id: string; en: string };
-    content: { id: string; en: string };
-    imageUrl: string;
-    categoryId: number;
-    plantTypeId: number;
-};
+import type { JournalistArticleFormData } from '../../types/jurnalist/journalistArticleEditor.types';
 
 const initialFormData: JournalistArticleFormData = {
     title: { id: '', en: '' },
@@ -28,11 +20,20 @@ const CustomDropdown: React.FC<{
     selectedValue: string | number;
     onSelect: (value: string) => void;
     placeholder: string;
-}> = ({ options, selectedValue, onSelect, placeholder }) => {
+    readOnly?: boolean;
+}> = ({ options, selectedValue, onSelect, placeholder, readOnly }) => {
     const selectedLabel = options.find(opt => opt.id.toString() === selectedValue.toString())?.name || placeholder;
     return (
         <Menu as="div" className="relative inline-block text-left w-full">
-            <div><Menu.Button className="inline-flex w-full justify-between items-center rounded-lg bg-transparent border border-lime-400/60 px-4 py-2 text-sm font-medium text-gray-200 hover:bg-[#004A49]/50 focus:outline-none"><>{selectedLabel} <ChevronDown className="ml-2 -mr-1 h-5 w-5 text-lime-200/70" aria-hidden="true" /></></Menu.Button></div>
+            <div>
+                <Menu.Button 
+                    disabled={readOnly}
+                    className="inline-flex w-full justify-between items-center rounded-lg bg-transparent border border-lime-400/60 px-4 py-2 text-sm font-medium text-gray-200 hover:bg-[#004A49]/50 focus:outline-none read-only:bg-gray-700/30 read-only:cursor-not-allowed"
+                >
+                    {selectedLabel}
+                    <ChevronDown className="ml-2 -mr-1 h-5 w-5 text-lime-200/70" aria-hidden="true" />
+                </Menu.Button>
+            </div>
             <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
                 <Menu.Items className="absolute left-0 mt-2 w-full origin-top-right rounded-md bg-[#003938] border-2 border-lime-400/50 shadow-lg ring-1 ring-black/5 focus:outline-none z-10">
                     <div className="px-1 py-1 max-h-60 overflow-y-auto">
@@ -65,9 +66,8 @@ export const JournalistArticleEditorPage: React.FC = () => {
         isSaving, saveArticleAsync, finishRevision 
     } = useJournalistArticleEditor();
 
-    const [formData, setFormData] = useState<any>(initialFormData);
+    const [formData, setFormData] = useState<JournalistArticleFormData>(initialFormData);
     const [imageFile, setImageFile] = useState<File | null>(null);
-    // REVISI 1: State notifikasi sekarang menyimpan pesan & tujuan redirect
     const [successInfo, setSuccessInfo] = useState<{ message: string; path: string } | null>(null);
 
     useEffect(() => {
@@ -85,14 +85,20 @@ export const JournalistArticleEditorPage: React.FC = () => {
     
 
     const handleJsonChange = (field: 'title' | 'excerpt' | 'content', lang: 'id' | 'en', value: string | undefined) => {
-        setFormData((prev: JournalistArticleFormData) => ({ ...prev, [field]: { ...prev[field], [lang]: value || '' } }));
+        setFormData(prev => ({ ...prev, [field]: { ...prev[field], [lang]: value || '' } }));
     };
     
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) setImageFile(e.target.files[0]);
     };
 
-    // REVISI 2: Ubah fungsi `handleSaveDraft` menjadi async
+    const handleRemoveImage = () => {
+        setImageFile(null);
+        setFormData(prev => ({ ...prev, imageUrl: '' }));
+        const fileInput = document.getElementById('image-input') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+    };
+    
     const handleSaveDraft = async () => {
         if (!formData.title.id || !formData.categoryId) {
             alert('Judul (Indonesia) dan Kategori wajib diisi.');
@@ -100,7 +106,6 @@ export const JournalistArticleEditorPage: React.FC = () => {
         }
         try {
             const savedArticle = await saveArticleAsync({ formData, imageFile, action: 'save' });
-            // Tentukan pesan dan tujuan redirect berdasarkan mode (baru atau edit)
             const redirectPath = isEditMode ? '/jurnalis/articles' : `/jurnalis/articles/edit/${savedArticle.id}`;
             const message = isEditMode ? 'Draf berhasil diperbarui!' : 'Draf berhasil disimpan!';
             setSuccessInfo({ message, path: redirectPath });
@@ -141,10 +146,18 @@ export const JournalistArticleEditorPage: React.FC = () => {
     if (isLoading) return <div className="text-white p-8 text-center">Memuat editor...</div>;
 
     const displayImageUrl = imageFile ? URL.createObjectURL(imageFile) : formData.imageUrl;
+    const isEditable = !isEditMode || ['DRAFT', 'NEEDS_REVISION', 'JOURNALIST_REVISING'].includes(articleData?.status || 'DRAFT');
 
     return (
         <div className="p-4 sm:p-6 lg:p-8">
-            <Link to="/jurnalis/articles" className="inline-flex items-center gap-2 text-lime-300 hover:text-lime-200 mb-6 transition-colors"><ArrowLeft size={20} /> Kembali ke Artikel Saya</Link>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+                <h2 className="text-2xl sm:text-3xl font-bold text-lime-200/90 flex items-center gap-3">
+                    <Newspaper /> {isEditMode ? 'Ubah Artikel' : 'Tulis Artikel Baru'}
+                </h2>
+                <Link to="/jurnalis/articles" className="w-full sm:w-auto text-lime-300 hover:text-lime-100 flex items-center justify-center sm:justify-start gap-2 bg-black/20 px-4 py-2 rounded-lg border border-lime-400/50 transition-colors">
+                    <ArrowLeft size={16} /> Kembali ke Artikel Saya
+                </Link>
+            </div>
             
             {successInfo && (
                 <SuccessModal 
@@ -169,48 +182,74 @@ export const JournalistArticleEditorPage: React.FC = () => {
             )}
             
             <form onSubmit={(e) => e.preventDefault()} className="bg-[#004A49]/60 border-2 border-lime-400/50 shadow-lg rounded-lg p-4 sm:p-6 space-y-6">
-                 {/* ... sisa form tidak berubah ... */}
-                 <div className="grid md:grid-cols-2 gap-4">
-                    <input value={formData.title.id} onChange={(e) => handleJsonChange('title', 'id', e.target.value)} placeholder="Judul (Indonesia)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200" required/>
-                    <input value={formData.title.en} onChange={(e) => handleJsonChange('title', 'en', e.target.value)} placeholder="Judul (Bahasa Inggris)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
-                    <textarea value={formData.excerpt.id} onChange={(e) => handleJsonChange('excerpt', 'id', e.target.value)} rows={3} placeholder="Kutipan (Indonesia)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
-                    <textarea value={formData.excerpt.en} onChange={(e) => handleJsonChange('excerpt', 'en', e.target.value)} rows={3} placeholder="Kutipan (Bahasa Inggris)" className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200"/>
+                <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Judul (Indonesia)</label>
+                        <input readOnly={!isEditable} value={formData.title.id} onChange={(e) => handleJsonChange('title', 'id', e.target.value)} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 read-only:bg-gray-700/30 read-only:cursor-not-allowed" required/>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Judul (Bahasa Inggris)</label>
+                        <input readOnly={!isEditable} value={formData.title.en} onChange={(e) => handleJsonChange('title', 'en', e.target.value)} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 read-only:bg-gray-700/30 read-only:cursor-not-allowed"/>
+                    </div>
                 </div>
                 
-                <div><label className="block text-sm font-medium text-gray-300 mb-2">Konten (Indonesia)</label><MarkdownEditor value={formData.content.id} onChange={(value) => handleJsonChange('content', 'id', value)} /></div>
-                <div><label className="block text-sm font-medium text-gray-300 mb-2">Konten (Bahasa Inggris)</label><MarkdownEditor value={formData.content.en} onChange={(value) => handleJsonChange('content', 'en', value)} /></div>
+                <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Kutipan (Indonesia)</label>
+                        <textarea readOnly={!isEditable} value={formData.excerpt.id} onChange={(e) => handleJsonChange('excerpt', 'id', e.target.value)} rows={3} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 read-only:bg-gray-700/30 read-only:cursor-not-allowed"/>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Kutipan (Bahasa Inggris)</label>
+                        <textarea readOnly={!isEditable} value={formData.excerpt.en} onChange={(e) => handleJsonChange('excerpt', 'en', e.target.value)} rows={3} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 read-only:bg-gray-700/30 read-only:cursor-not-allowed"/>
+                    </div>
+                </div>
+                
+                <div><label className="block text-sm font-medium text-gray-300 mb-2">Konten (Indonesia)</label><MarkdownEditor readOnly={!isEditable} value={formData.content.id} onChange={(value) => handleJsonChange('content', 'id', value)} /></div>
+                <div><label className="block text-sm font-medium text-gray-300 mb-2">Konten (Bahasa Inggris)</label><MarkdownEditor readOnly={!isEditable} value={formData.content.en} onChange={(value) => handleJsonChange('content', 'en', value)} /></div>
 
                 <div className="grid md:grid-cols-2 gap-6 border-t border-lime-400/30 pt-6">
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-1">Gambar Utama</label>
-                        <div className='mb-2 min-h-[1rem]'>{displayImageUrl && <img src={displayImageUrl} alt="Pratinjau" className="max-h-40 rounded-md border p-1 border-lime-400/50" />}</div>
-                        <input type="file" accept="image/*" onChange={handleImageChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-lime-200/20 file:text-lime-300 hover:file:bg-lime-200/30 cursor-pointer"/>
+                        <p className="text-xs text-gray-400 mt-1 mb-2">Rekomendasi rasio 16:9 (Contoh: 1280x720 piksel).</p>
+                        <div className="mt-2">
+                            {displayImageUrl ? (
+                                <div className="relative group w-full max-w-sm aspect-video rounded-lg overflow-hidden border p-1 border-lime-400/50">
+                                    <img src={displayImageUrl} alt="Pratinjau" className="w-full h-full object-cover rounded-md" />
+                                    {isEditable && <button type="button" onClick={handleRemoveImage} className="absolute top-1 right-1 bg-red-600/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Hapus gambar"><Trash2 size={16} /></button>}
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-center w-full max-w-sm h-32 bg-black/20 rounded-md border-2 border-dashed border-lime-400/30"><p className="text-gray-400">Pratinjau Gambar</p></div>
+                            )}
+                        </div>
+                        {isEditable && (
+                            <div className="flex items-center gap-4 mt-3">
+                                <label htmlFor="image-input" className="cursor-pointer bg-lime-200/20 text-lime-300 hover:bg-lime-200/30 font-semibold text-sm py-2 px-4 rounded-full transition-colors">Pilih File</label>
+                                <input id="image-input" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                                {formData.imageUrl && !imageFile && (<a href={formData.imageUrl} download target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-gray-400 hover:text-white"><Download size={16} /> Unduh</a>)}
+                            </div>
+                        )}
                     </div>
                     <div className='space-y-4'>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-1">Kategori</label>
-                            <CustomDropdown placeholder="Pilih Kategori" selectedValue={formData.categoryId} onSelect={(value) => setFormData({ ...formData, categoryId: parseInt(value, 10) })} options={categories.map(cat => ({ id: cat.id, name: cat.name.id }))}/>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-1">Tipe Tanaman (Opsional)</label>
-                            <CustomDropdown placeholder="Tidak ada" selectedValue={formData.plantTypeId} onSelect={(value) => setFormData({ ...formData, plantTypeId: parseInt(value, 10) || 0 })} options={plantTypes.map(pt => ({ id: pt.id, name: pt.name.id }))} />
-                        </div>
+                        <div><label className="block text-sm font-medium text-gray-300 mb-1">Kategori</label><CustomDropdown readOnly={!isEditable} placeholder="Pilih Kategori" selectedValue={formData.categoryId} onSelect={(value) => setFormData({ ...formData, categoryId: parseInt(value, 10) })} options={categories.map(cat => ({ id: cat.id, name: cat.name.id }))}/></div>
+                        <div><label className="block text-sm font-medium text-gray-300 mb-1">Tipe Tanaman (Opsional)</label><CustomDropdown readOnly={!isEditable} placeholder="Tidak ada" selectedValue={formData.plantTypeId} onSelect={(value) => setFormData({ ...formData, plantTypeId: parseInt(value, 10) || 0 })} options={plantTypes.map(pt => ({ id: pt.id, name: pt.name.id }))} /></div>
                     </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t border-lime-400/30">
-                    {isEditMode && ['NEEDS_REVISION', 'JOURNALIST_REVISING'].includes(articleData?.status || '') ? (
-                        <>
-                            <button type="button" onClick={handleSaveDraft} disabled={isSaving} className="w-full sm:w-auto bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600 disabled:bg-gray-700 disabled:opacity-60 flex items-center justify-center gap-2">{isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={16} />} Simpan Perubahan</button>
-                            <button type="button" onClick={handleFinishRevision} disabled={isSaving} className="w-full sm:w-auto bg-green-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-600 disabled:bg-green-700 disabled:opacity-60 flex items-center justify-center gap-2">{isSaving ? <Loader2 className="animate-spin" size={20}/> : <CheckCircle size={16} />} Revisi Selesai</button>
-                        </>
-                    ) : (
-                        <>
-                            <button type="button" onClick={handleSaveDraft} disabled={isSaving} className="w-full sm:w-auto bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600 disabled:bg-gray-700 disabled:opacity-60 flex items-center justify-center gap-2">{isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={16} />} Simpan Draf</button>
-                            <button type="button" onClick={handleSubmitForReview} disabled={isSaving} className="w-full sm:w-auto bg-lime-400 text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-lime-500 disabled:bg-lime-700 disabled:opacity-60 flex items-center justify-center gap-2">{isSaving ? <Loader2 className="animate-spin" size={20}/> : <Send size={16} />} Kirim untuk Tinjauan</button>
-                        </>
-                    )}
-                </div>
+                {isEditable && (
+                    <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t border-lime-400/30">
+                        {isEditMode && ['NEEDS_REVISION', 'JOURNALIST_REVISING'].includes(articleData?.status || '') ? (
+                            <>
+                                <button type="button" onClick={handleSaveDraft} disabled={isSaving} className="w-full sm:w-auto bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600 disabled:bg-gray-700 disabled:opacity-60 flex items-center justify-center gap-2">{isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={16} />} Simpan Perubahan</button>
+                                <button type="button" onClick={handleFinishRevision} disabled={isSaving} className="w-full sm:w-auto bg-green-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-600 disabled:bg-green-700 disabled:opacity-60 flex items-center justify-center gap-2">{isSaving ? <Loader2 className="animate-spin" size={20}/> : <CheckCircle size={16} />} Revisi Selesai</button>
+                            </>
+                        ) : (
+                            <>
+                                <button type="button" onClick={handleSaveDraft} disabled={isSaving} className="w-full sm:w-auto bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600 disabled:bg-gray-700 disabled:opacity-60 flex items-center justify-center gap-2">{isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={16} />} Simpan Draf</button>
+                                <button type="button" onClick={handleSubmitForReview} disabled={isSaving} className="w-full sm:w-auto bg-lime-400 text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-lime-500 disabled:bg-lime-700 disabled:opacity-60 flex items-center justify-center gap-2">{isSaving ? <Loader2 className="animate-spin" size={20}/> : <Send size={16} />} Kirim untuk Tinjauan</button>
+                            </>
+                        )}
+                    </div>
+                )}
             </form>
         </div>
     );

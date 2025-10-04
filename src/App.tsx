@@ -55,11 +55,25 @@ const ProtectedRoute: React.FC<{ allowedRoles: string[] }> = ({ allowedRoles }) 
     return <div className="flex items-center justify-center h-screen bg-[#003938] text-white">Memeriksa sesi...</div>;
   }
 
-  // Arahkan ke halaman login yang paling umum jika tidak terautentikasi
+  // Cek jika user tidak ada atau perannya tidak diizinkan
   if (!user || !allowedRoles.includes(user.role)) {
-    return <Navigate to="/participant/login" replace />;
+    // Tentukan halaman login tujuan berdasarkan peran yang diharapkan
+    const expectedRole = allowedRoles[0]; 
+    let loginPath = '/participant/login'; // Default
+
+    if (expectedRole === 'ADMIN') {
+      loginPath = '/admin/login';
+    } else if (expectedRole === 'JOURNALIST') {
+      loginPath = '/journalist/login';
+    } else if (expectedRole === 'USER') {
+      loginPath = '/participant/login';
+    }
+    
+    // Arahkan ke halaman login yang sesuai
+    return <Navigate to={loginPath} replace />;
   }
 
+  // Jika otentikasi dan otorisasi berhasil, tampilkan konten halaman
   return <Outlet />;
 };
 
@@ -134,4 +148,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-

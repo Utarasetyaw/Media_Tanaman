@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
+// Update the import path if your AuthContext is located elsewhere, for example:
 import { useAuth } from '../../contexts/AuthContext';
+// If the file is actually at src/contexts/AuthContext.tsx, use '../../contexts/AuthContext'
 
-// Komponen UI Form Login yang bisa dipakai ulang
+// Definisikan tipe LoginRole di sini agar bisa digunakan di komponen
+type LoginRole = 'admin' | 'journalist' | 'user';
+
+// Komponen UI Form Login (Tidak ada perubahan)
 const LoginForm: React.FC<any> = ({ title, email, setEmail, password, setPassword, error, isLoggingIn, handleSubmit }) => (
   <div className="flex items-center justify-center min-h-screen bg-[#003938] p-4 font-sans">
     <div className="relative w-full max-w-md p-6 sm:p-8 space-y-4 bg-[#004A49]/80 rounded-lg shadow-2xl border-2 border-lime-400">
@@ -41,14 +46,54 @@ const LoginForm: React.FC<any> = ({ title, email, setEmail, password, setPasswor
   </div>
 );
 
+// Komponen baru untuk menampilkan opsi beralih sesi
+const SwitchSessionPrompt: React.FC<{ targetRole: LoginRole, targetRoleName: string }> = ({ targetRole, targetRoleName }) => {
+    const { user, switchSession, isLoading } = useAuth();
+    
+    const handleSwitch = async () => {
+        await switchSession(targetRole);
+    };
+
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-[#003938] p-4 font-sans">
+            <div className="w-full max-w-md p-8 space-y-6 text-center bg-[#004A49]/80 rounded-lg shadow-2xl border-2 border-lime-400">
+                <h2 className="text-2xl font-bold text-white">Sesi Ditemukan</h2>
+                <p className="text-gray-200">
+                    Anda sedang login sebagai <span className="font-bold text-lime-300">{user?.role}</span>. <br/>
+                    Apakah Anda ingin beralih ke sesi {targetRoleName}?
+                </p>
+                <button
+                    onClick={handleSwitch}
+                    disabled={isLoading}
+                    className="w-full py-3 px-4 bg-lime-300 text-lime-900 font-bold rounded-lg hover:bg-lime-400 transition-colors disabled:bg-lime-200"
+                >
+                    {isLoading ? "Beralih..." : `Ya, Masuk sebagai ${targetRoleName}`}
+                </button>
+                 <Link to="/" className="block mt-4 text-sm font-medium text-gray-300 hover:text-lime-300 hover:underline transition-colors">
+                    Kembali ke Beranda
+                </Link>
+            </div>
+        </div>
+    );
+};
+
+
 export const ParticipantLoginPage: React.FC = () => {
-  const { user, login } = useAuth();
+  const { user, login, availableSessions, isLoading } = useAuth();
   const [email, setEmail] = useState('peserta@narapati.com');
   const [password, setPassword] = useState('password123');
   const [error, setError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Pengecekan role peserta
+  const isUserSessionAvailable = availableSessions.includes('user');
+  const isOtherUserActive = user && user.role !== 'USER';
+
+  // Kondisi 1: Jika user lain aktif TAPI sesi peserta (user) tersedia
+  if (isOtherUserActive && isUserSessionAvailable) {
+    return <SwitchSessionPrompt targetRole="user" targetRoleName="Peserta" />;
+  }
+
+  // Kondisi 2: Jika pengguna sudah login sebagai peserta (user), alihkan.
   if (user?.role === 'USER') {
     return <Navigate to="/dashboard" replace />;
   }
@@ -58,7 +103,6 @@ export const ParticipantLoginPage: React.FC = () => {
     setError(null);
     setIsLoggingIn(true);
     try {
-      // Pemanggilan login tetap menggunakan 'participant' sebagai penanda endpoint
       await login({ email, password }, 'user');
     } catch (err: any) {
       setError(err.response?.data?.error || "Login gagal, periksa kembali data Anda.");
@@ -67,6 +111,7 @@ export const ParticipantLoginPage: React.FC = () => {
     }
   };
 
+  // Kondisi 3: Jika tidak ada kondisi di atas, tampilkan form login
   return (
     <LoginForm
       title="Participant Login"
@@ -75,8 +120,9 @@ export const ParticipantLoginPage: React.FC = () => {
       password={password}
       setPassword={setPassword}
       error={error}
-      isLoggingIn={isLoggingIn}
+      isLoggingIn={isLoggingIn || isLoading}
       handleSubmit={handleSubmit}
     />
   );
 };
+

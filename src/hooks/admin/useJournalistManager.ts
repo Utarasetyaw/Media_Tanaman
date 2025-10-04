@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Journalist, Article } from '../types/journalist';
-import api from '../services/apiService'; // Kita tetap butuh 'api' dasar
+import type { Journalist, Article } from '../../types/journalist';
+import api from '../../services/apiService'; // Kita tetap butuh 'api' dasar
 
 type ArticleStatus = Article['status'];
 

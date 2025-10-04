@@ -1,42 +1,38 @@
-import axios from "axios";
+// src/services/apiAuth.ts
 
-// Menggunakan environment variable untuk base URL, dengan fallback
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3009/api";
+import api from './apiService';
 
-const api = axios.create({
-	baseURL: API_URL,
-	withCredentials: true, // Opsional: jika Anda menggunakan cookie
-});
-
+// ▼▼▼ FUNGSI YANG HILANG SUDAH DITAMBAHKAN DI SINI ▼▼▼
+/**
+ * Mengatur atau menghapus header Otorisasi global untuk semua permintaan API.
+ * @param {string | null} token - Token JWT untuk otentikasi. Jika null, header akan dihapus.
+ */
 export const setAuthHeader = (token: string | null) => {
-	if (token) {
-		api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-	} else {
-		delete api.defaults.headers.common["Authorization"];
-	}
+    if (token) {
+        // Atur header Authorization dengan Bearer token jika token ada
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else {
+        // Hapus header Authorization jika token null (saat logout)
+        delete api.defaults.headers.common['Authorization'];
+    }
 };
 
 // --- FUNGSI LOGIN ---
 export const loginAdmin = (credentials: any) =>
-	api.post("/auth/login/admin", credentials);
+    api.post("/auth/login/admin", credentials);
 export const loginJournalist = (credentials: any) =>
-	api.post("/auth/login/journalist", credentials);
+    api.post("/auth/login/journalist", credentials);
 export const loginParticipant = (credentials: any) =>
-	api.post("/auth/login/user", credentials); // Endpoint disesuaikan
+    api.post("/auth/login/user", credentials);
 
 // --- FUNGSI REGISTRASI ---
 export const registerParticipant = (userData: any) =>
-	api.post("/auth/register/user", userData); // Endpoint disesuaikan
+    api.post("/auth/register/user", userData);
 export const registerJournalist = (userData: any) =>
-	api.post("/auth/register/journalist", userData);
+    api.post("/auth/register/journalist", userData);
 
 // --- FUNGSI LAINNYA ---
-export const getMyProfile = async () => {
-	// Endpoint ini harus sesuai dengan API Anda untuk mendapatkan data pengguna yang sedang login
-	const response = await api.get("/auth/me");
-	return response.data;
+export const getMyProfile = () => {
+    return api.get("/auth/me");
 };
 export const logoutUser = () => api.post("/auth/logout");
-
-// Jangan lupa untuk mengekspor 'api' jika digunakan di tempat lain
-export default api;

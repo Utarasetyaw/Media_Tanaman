@@ -1,5 +1,5 @@
 import type { FC } from 'react';
-import { useJournalistManager } from '../../hooks/useJournalistManager';
+import { useJournalistManager } from '../../hooks/admin/useJournalistManager';
 import { Plus, X, Users, LoaderCircle } from 'lucide-react';
 
 // Helper untuk menerjemahkan status dan memberikan warna

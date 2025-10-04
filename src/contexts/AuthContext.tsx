@@ -1,39 +1,43 @@
 // src/contexts/AuthContext.tsx
 
 import React, {
-	createContext,
-	useState,
-	useContext,
-	useEffect,
-	useCallback,
+    createContext,
+    useState,
+    useContext,
+    useEffect,
+    useCallback,
 } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-// ▼▼▼ PERUBAHAN 1: Impor dari `apiAuth` dan tambahkan `setAuthHeader` ▼▼▼
 import {
-	setAuthHeader,
-	loginAdmin,
-	loginJournalist,
-	loginParticipant,
-	getMyProfile,
-	logoutUser,
-} from "../services/apiAuth"; // Diarahkan ke file baru
+    setAuthHeader,
+    loginAdmin,
+    loginJournalist,
+    loginParticipant,
+    getMyProfile,
+    logoutUser,
+} from "../services/apiAuth"; // REVISI: Jalur impor diperbaiki
+import { toast } from "react-toastify";
 
 // --- Tipe Data & Interface ---
 interface User {
-	id: number;
-	name: string;
-	email: string;
-	role: "ADMIN" | "JOURNALIST" | "USER";
+    id: number;
+    name: string;
+    email: string;
+    role: "ADMIN" | "JOURNALIST" | "USER";
 }
 type LoginCredentials = { email: string; password: string };
 type LoginRole = "admin" | "journalist" | "user";
+
+// ▼▼▼ REVISI 1: Perbarui ContextType untuk fitur baru ▼▼▼
 interface AuthContextType {
-	user: User | null;
-	login: (credentials: LoginCredentials, role: LoginRole) => Promise<void>;
-	logout: () => void;
-	isLoading: boolean;
-	isAuthenticated: boolean;
+    user: User | null;
+    login: (credentials: LoginCredentials, role: LoginRole) => Promise<void>;
+    logout: () => void;
+    isLoading: boolean;
+    isAuthenticated: boolean;
+    availableSessions: LoginRole[]; // Untuk menyimpan sesi yang tersedia
+    switchSession: (role: LoginRole) => Promise<void>; // Fungsi untuk ganti sesi
 }
 
 // --- Context ---
@@ -41,120 +45,175 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // --- Komponen Splash Screen ---
 const SplashScreen: React.FC = () => (
-	<div className="flex items-center justify-center h-screen bg-[#003938] text-white">
-		<div className="text-center">
-			<h2 className="font-serif text-3xl font-bold">Narapati Flora</h2>
-			<p className="text-gray-300 animate-pulse">Memverifikasi sesi...</p>
-		</div>
-	</div>
+    <div className="flex items-center justify-center h-screen bg-[#003938] text-white">
+        <div className="text-center">
+            <h2 className="font-serif text-3xl font-bold">Narapati Flora</h2>
+            <p className="text-gray-300 animate-pulse">Memverifikasi sesi...</p>
+        </div>
+    </div>
 );
 
-const TOKEN_KEY = "narapati_auth_token";
+// --- Kunci localStorage ---
+const ACTIVE_ROLE_KEY = 'narapati_active_role';
+const TOKEN_KEYS: { [key in LoginRole]: string } = {
+    admin: 'admin_narapati_auth_token',
+    journalist: 'journalist_narapati_auth_token',
+    user: 'user_narapati_auth_token',
+};
 
 // --- Provider Utama ---
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
-	children,
+    children,
 }) => {
-	const [user, setUser] = useState<User | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
-	const navigate = useNavigate();
+    const [user, setUser] = useState<User | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    // ▼▼▼ REVISI 2: State baru untuk melacak semua sesi yang valid ▼▼▼
+    const [availableSessions, setAvailableSessions] = useState<LoginRole[]>([]);
+    const navigate = useNavigate();
 
-	// Efek untuk inisialisasi sesi saat aplikasi dimuat
-	useEffect(() => {
-		const initializeSession = async () => {
-			const storedToken = localStorage.getItem(TOKEN_KEY);
-			if (storedToken) {
-				try {
-					// ▼▼▼ PERUBAHAN 2: Set header terlebih dahulu sebelum membuat request ▼▼▼
-					setAuthHeader(storedToken);
-					const profile = await getMyProfile();
-					setUser(profile);
-				} catch (error) {
-					console.error("Sesi tidak valid, membersihkan token...", error);
-					localStorage.removeItem(TOKEN_KEY);
-					setAuthHeader(null); // Pastikan header juga dibersihkan
-				}
-			}
-			setIsLoading(false);
-		};
+    const initializeSession = useCallback(async () => {
+        setIsLoading(true);
+        const sessions: LoginRole[] = [];
+        // Cek semua kemungkinan token
+        for (const role of Object.keys(TOKEN_KEYS) as LoginRole[]) {
+            if (localStorage.getItem(TOKEN_KEYS[role])) {
+                sessions.push(role);
+            }
+        }
+        setAvailableSessions(sessions);
 
-		initializeSession();
-	}, []);
+        const activeRole = localStorage.getItem(ACTIVE_ROLE_KEY) as LoginRole | null;
+        if (activeRole && sessions.includes(activeRole)) {
+            const storedToken = localStorage.getItem(TOKEN_KEYS[activeRole]);
+            if (storedToken) {
+                try {
+                    setAuthHeader(storedToken);
+                    const profileResponse = await getMyProfile();
+                    setUser(profileResponse.data);
+                } catch (error) {
+                    console.error("Sesi aktif tidak valid, membersihkan...", error);
+                    localStorage.removeItem(TOKEN_KEYS[activeRole]);
+                    localStorage.removeItem(ACTIVE_ROLE_KEY);
+                    setAuthHeader(null);
+                    setAvailableSessions(prev => prev.filter(r => r !== activeRole));
+                }
+            }
+        } else {
+            // Jika tidak ada peran aktif, pastikan user null
+            setUser(null);
+        }
+        setIsLoading(false);
+    }, []);
 
-	// Fungsi untuk login
-	const login = async (credentials: LoginCredentials, role: LoginRole) => {
-		let response;
-		// ... (switch case untuk login tetap sama)
-		switch (role) {
-			case "admin":
-				response = await loginAdmin(credentials);
-				break;
-			case "journalist":
-				response = await loginJournalist(credentials);
-				break;
-			case "user":
-				response = await loginParticipant(credentials);
-				break;
-			default:
-				throw new Error("Peran login tidak valid");
-		}
+    useEffect(() => {
+        initializeSession();
+    }, [initializeSession]);
 
-		const { user: loggedInUser, token: newToken } = response.data;
+    // ▼▼▼ REVISI 3: Buat fungsi untuk berganti sesi ▼▼▼
+    const switchSession = async (role: LoginRole) => {
+        const token = localStorage.getItem(TOKEN_KEYS[role]);
+        if (!token) {
+            toast.error("Sesi tidak ditemukan, silakan login kembali.");
+            return;
+        }
 
-		localStorage.setItem(TOKEN_KEY, newToken);
-		// ▼▼▼ PERUBAHAN 3: Set header setelah berhasil login ▼▼▼
-		setAuthHeader(newToken);
-		setUser(loggedInUser);
+        setIsLoading(true);
+        try {
+            localStorage.setItem(ACTIVE_ROLE_KEY, role);
+            setAuthHeader(token);
+            const profile = await getMyProfile();
+            setUser(profile.data);
+            
+            // Arahkan ke dashboard yang sesuai
+            if (profile.data.role === "ADMIN") navigate("/admin");
+            if (profile.data.role === "JOURNALIST") navigate("/jurnalis");
+            if (profile.data.role === "USER") navigate("/dashboard");
 
-		// ... (navigasi berdasarkan peran tetap sama)
-		if (loggedInUser.role === "ADMIN") navigate("/admin");
-		if (loggedInUser.role === "JOURNALIST") navigate("/jurnalis");
-		if (loggedInUser.role === "USER") navigate("/dashboard");
-	};
+        } catch (error) {
+            toast.error("Gagal berganti sesi.");
+            // Jika gagal, kembalikan ke kondisi awal
+            initializeSession();
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-	// Fungsi untuk logout
-	const logout = useCallback(async () => {
-		try {
-			await logoutUser();
-		} catch (err) {
-			console.error(
-				"Panggilan API logout gagal, tetap logout di sisi klien.",
-				err
-			);
-		} finally {
-			localStorage.removeItem(TOKEN_KEY);
-			// ▼▼▼ PERUBAHAN 4: Hapus header saat logout ▼▼▼
-			setAuthHeader(null);
-			setUser(null);
-			navigate("/");
-		}
-	}, [navigate]);
+    const login = async (credentials: LoginCredentials, role: LoginRole) => {
+        // ... Logika login tidak berubah ...
+        let response;
+        switch (role) {
+            case "admin": response = await loginAdmin(credentials); break;
+            case "journalist": response = await loginJournalist(credentials); break;
+            case "user": response = await loginParticipant(credentials); break;
+            default: throw new Error("Peran login tidak valid");
+        }
+        const { user: loggedInUser, token: newToken } = response.data;
+        
+        localStorage.setItem(TOKEN_KEYS[role], newToken);
+        localStorage.setItem(ACTIVE_ROLE_KEY, role);
+        setAuthHeader(newToken);
+        setUser(loggedInUser);
 
-	// Tampilkan splash screen saat sesi sedang diverifikasi
-	if (isLoading) {
-		return <SplashScreen />;
-	}
+        // Tambahkan sesi baru ke daftar sesi yang tersedia
+        setAvailableSessions(prev => [...new Set([...prev, role])]);
 
-	return (
-		<AuthContext.Provider
-			value={{
-				user,
-				login,
-				logout,
-				isLoading,
-				isAuthenticated: !!user,
-			}}
-		>
-			{children}
-		</AuthContext.Provider>
-	);
+        if (loggedInUser.role === "ADMIN") navigate("/admin");
+        if (loggedInUser.role === "JOURNALIST") navigate("/jurnalis");
+        if (loggedInUser.role === "USER") navigate("/dashboard");
+    };
+    
+    const logout = useCallback(async () => {
+        if (!user) return;
+        const roleToLogout = user.role.toLowerCase() as LoginRole;
+
+        try {
+            await logoutUser();
+        } catch (err) {
+            console.error("API logout gagal", err);
+        } finally {
+            localStorage.removeItem(TOKEN_KEYS[roleToLogout]);
+            localStorage.removeItem(ACTIVE_ROLE_KEY);
+            setAuthHeader(null);
+            setUser(null);
+            
+            // Hapus dari daftar sesi & set sesi aktif baru jika ada
+            const remainingSessions = availableSessions.filter(r => r !== roleToLogout);
+            setAvailableSessions(remainingSessions);
+            if (remainingSessions.length > 0) {
+                // Jika masih ada sesi lain, jadikan yang pertama sebagai sesi aktif
+                localStorage.setItem(ACTIVE_ROLE_KEY, remainingSessions[0]);
+            }
+            
+            navigate("/");
+        }
+    }, [user, navigate, availableSessions]);
+
+    if (isLoading) {
+        return <SplashScreen />;
+    }
+
+    return (
+        <AuthContext.Provider
+            value={{
+                user,
+                login,
+                logout,
+                isLoading,
+                isAuthenticated: !!user,
+                availableSessions, // Kirim ke provider
+                switchSession,     // Kirim ke provider
+            }}
+        >
+            {children}
+        </AuthContext.Provider>
+    );
 };
 
-// --- Hook Custom ---
 export const useAuth = () => {
-	const context = useContext(AuthContext);
-	if (context === undefined) {
-		throw new Error("useAuth harus digunakan di dalam AuthProvider");
-	}
-	return context;
+    const context = useContext(AuthContext);
+    if (context === undefined) {
+        throw new Error("useAuth harus digunakan di dalam AuthProvider");
+    }
+    return context;
 };
+

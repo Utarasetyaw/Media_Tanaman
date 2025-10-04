@@ -1,9 +1,10 @@
 import React from 'react';
-import { CheckCircle, Clock, Edit, ShieldAlert, XCircle, FileText, MessageSquare } from 'lucide-react';
-import type { Article, ArticleStatus, AdminEditRequestStatus } from '../../types';
-import { useJournalistDashboard } from '../../hooks/useJournalistDashboard';
+import { Link } from 'react-router-dom';
+import { CheckCircle, Clock, Edit, ShieldAlert, XCircle, FileText, MessageSquare, Edit3 } from 'lucide-react';
+import type { RecentArticle, ArticleStatus, AdminEditRequestStatus } from '../../types/jurnalist/journalistDashboard.types';
+import { useJournalistDashboard } from '../../hooks/jurnalist/useJournalistDashboard';
 
-// Komponen Card Statistik yang sudah responsif
+// Komponen Card Statistik
 const StatCard: React.FC<{ icon: React.ElementType; title: string; value: number; color: string }> = ({ icon: Icon, title, value, color }) => (
     <div className="bg-black/20 border-2 border-lime-400/30 p-4 sm:p-6 rounded-lg shadow-md flex items-center transition-all hover:border-lime-400 hover:bg-black/40">
         <div className={`p-3 rounded-full bg-${color}-500/20`}>
@@ -16,11 +17,10 @@ const StatCard: React.FC<{ icon: React.ElementType; title: string; value: number
     </div>
 );
 
-// Helper untuk menerjemahkan status dan memberikan warna
-const getStatusChip = (article: Article) => {
+// Helper untuk status chip
+const getStatusChip = (article: RecentArticle) => {
     let displayStatus: ArticleStatus | AdminEditRequestStatus = article.status;
     let statusText = '';
-
     if (article.adminEditRequest === 'PENDING') {
         displayStatus = 'PENDING';
         statusText = 'Req. Akses Edit';
@@ -35,7 +35,6 @@ const getStatusChip = (article: Article) => {
             default: statusText = 'Draf';
         }
     }
-    
     const styles: Record<ArticleStatus | AdminEditRequestStatus | 'NONE', string> = {
         PUBLISHED: 'bg-green-500/20 text-green-300',
         IN_REVIEW: 'bg-blue-500/20 text-blue-300',
@@ -52,7 +51,6 @@ const getStatusChip = (article: Article) => {
     return <span className={`text-xs font-bold px-2 py-1 rounded-full ${styles[displayStatus]}`}>{statusText}</span>;
 };
 
-
 export const JournalistDashboardPage: React.FC = () => {
     const { data, isLoading, error } = useJournalistDashboard();
 
@@ -66,12 +64,13 @@ export const JournalistDashboardPage: React.FC = () => {
         <div className="p-4 sm:p-6 lg:p-8">
             <h2 className="text-2xl sm:text-3xl font-bold text-lime-200/90 mb-6">Dashboard Jurnalis</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <StatCard icon={CheckCircle} title="Diterbitkan" value={stats?.published ?? 0} color="green" />
                 <StatCard icon={Clock} title="Menunggu Tinjauan" value={stats?.inReview ?? 0} color="blue" />
                 <StatCard icon={Edit} title="Perlu Revisi" value={stats?.needsRevision ?? 0} color="yellow" />
                 <StatCard icon={ShieldAlert} title="Permintaan Admin" value={stats?.adminRequest ?? 0} color="purple" />
                 <StatCard icon={XCircle} title="Ditolak" value={stats?.rejected ?? 0} color="red" />
+                <StatCard icon={Edit3} title="Draf" value={stats?.draft ?? 0} color="gray" />
             </div>
 
             <div className="mt-10 bg-[#004A49]/60 border-2 border-lime-400 p-4 sm:p-6 rounded-lg shadow-md">
@@ -81,22 +80,23 @@ export const JournalistDashboardPage: React.FC = () => {
                  {recentArticles.length > 0 ? (
                     <ul className="space-y-2">
                         {recentArticles.map((article) => (
-                            <li key={article.id} className="p-3 hover:bg-black/20 rounded-md transition-colors border-b-2 border-lime-400/20 last:border-b-0">
-                                {/* REVISI: Tata letak dibuat responsif (vertikal di mobile) */}
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                                    <p className="font-semibold text-white flex items-center gap-2">
-                                        <FileText size={16} className="text-gray-400 flex-shrink-0"/>
-                                        <span className="break-words">{article.title.id}</span>
-                                    </p>
-                                    <div className="self-end sm:self-center flex-shrink-0">
-                                        {getStatusChip(article)}
+                            <li key={article.id}>
+                                <Link to={`/jurnalis/articles/edit/${article.id}`} className="block p-3 rounded-md transition-colors border-b-2 border-lime-400/20 last:border-b-0 hover:bg-black/20">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                                        <p className="font-semibold text-white flex items-center gap-2">
+                                            <FileText size={16} className="text-gray-400 flex-shrink-0"/>
+                                            <span className="break-words">{article.title.id}</span>
+                                        </p>
+                                        <div className="self-end sm:self-center flex-shrink-0">
+                                            {getStatusChip(article)}
+                                        </div>
                                     </div>
-                                </div>
-                                {(article.status === 'NEEDS_REVISION' || article.status === 'REJECTED') && article.feedback && 
-                                    <p className="text-xs text-yellow-400 mt-2 italic pl-6 sm:pl-8">
-                                        <MessageSquare size={12} className="inline mr-1.5"/> Umpan Balik: "{article.feedback}"
-                                    </p>
-                                }
+                                    {(article.status === 'NEEDS_REVISION' || article.status === 'REJECTED') && article.feedback && 
+                                        <p className="text-xs text-yellow-400 mt-2 italic pl-6 sm:pl-8">
+                                            <MessageSquare size={12} className="inline mr-1.5"/> Umpan Balik: "{article.feedback}"
+                                        </p>
+                                    }
+                                </Link>
                             </li>
                         ))}
                     </ul>

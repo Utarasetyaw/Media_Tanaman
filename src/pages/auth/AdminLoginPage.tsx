@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
-// Komponen UI Form Login yang bisa dipakai ulang
+// Definisikan tipe LoginRole di sini agar bisa digunakan di komponen
+type LoginRole = 'admin' | 'journalist' | 'user';
+
+// Komponen UI Form Login (Tidak ada perubahan)
 const LoginForm: React.FC<any> = ({ title, email, setEmail, password, setPassword, error, isLoggingIn, handleSubmit }) => (
   <div className="flex items-center justify-center min-h-screen bg-[#003938] p-4 font-sans">
     <div className="relative w-full max-w-md p-6 sm:p-8 space-y-4 bg-[#004A49]/80 rounded-lg shadow-2xl border-2 border-lime-400">
@@ -35,14 +38,56 @@ const LoginForm: React.FC<any> = ({ title, email, setEmail, password, setPasswor
   </div>
 );
 
+// Komponen baru untuk menampilkan opsi beralih sesi
+const SwitchSessionPrompt: React.FC<{ targetRole: LoginRole, targetRoleName: string }> = ({ targetRole, targetRoleName }) => {
+    const { user, switchSession, isLoading } = useAuth();
+    
+    const handleSwitch = async () => {
+        await switchSession(targetRole);
+    };
+
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-[#003938] p-4 font-sans">
+            <div className="w-full max-w-md p-8 space-y-6 text-center bg-[#004A49]/80 rounded-lg shadow-2xl border-2 border-lime-400">
+                <h2 className="text-2xl font-bold text-white">Sesi Ditemukan</h2>
+                <p className="text-gray-200">
+                    Anda sedang login sebagai <span className="font-bold text-lime-300">{user?.role}</span>. <br/>
+                    Apakah Anda ingin beralih ke sesi {targetRoleName}?
+                </p>
+                <button
+                    onClick={handleSwitch}
+                    disabled={isLoading}
+                    className="w-full py-3 px-4 bg-lime-300 text-lime-900 font-bold rounded-lg hover:bg-lime-400 transition-colors disabled:bg-lime-200"
+                >
+                    {isLoading ? "Beralih..." : `Ya, Masuk sebagai ${targetRoleName}`}
+                </button>
+                 <Link to="/" className="block mt-4 text-sm font-medium text-gray-300 hover:text-lime-300 hover:underline transition-colors">
+                    Kembali ke Beranda
+                </Link>
+            </div>
+        </div>
+    );
+};
+
+
 export const AdminLoginPage: React.FC = () => {
-  const { user, login } = useAuth(); 
+  // Ambil fungsi dan state baru dari context
+  const { user, login, availableSessions, isLoading } = useAuth(); 
   const [email, setEmail] = useState('admin@narapati.com');
   const [password, setPassword] = useState('password123');
   const [error, setError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Jika pengguna sudah login sebagai admin, langsung alihkan ke dashboard admin.
+  // Logika baru untuk menampilkan opsi ganti sesi
+  const isAdminSessionAvailable = availableSessions.includes('admin');
+  const isOtherUserActive = user && user.role !== 'ADMIN';
+
+  // Kondisi 1: Jika user lain aktif TAPI sesi admin tersedia (tokennya ada)
+  if (isOtherUserActive && isAdminSessionAvailable) {
+    return <SwitchSessionPrompt targetRole="admin" targetRoleName="Admin" />;
+  }
+
+  // Kondisi 2: Jika pengguna sudah login sebagai admin, langsung alihkan.
   if (user?.role === 'ADMIN') {
     return <Navigate to="/admin" replace />;
   }
@@ -52,10 +97,7 @@ export const AdminLoginPage: React.FC = () => {
     setError(null);
     setIsLoggingIn(true);
     try {
-      // Panggil fungsi login dari context dengan peran 'admin'
       await login({ email, password }, 'admin');
-      // Pengalihan halaman akan ditangani secara otomatis oleh kondisi di atas
-      // setelah state 'user' diperbarui.
     } catch (err: any) {
       setError(err.response?.data?.error || "Login gagal, periksa kembali data Anda.");
     } finally {
@@ -63,6 +105,7 @@ export const AdminLoginPage: React.FC = () => {
     }
   };
 
+  // Kondisi 3: Jika tidak ada kondisi di atas, tampilkan form login
   return (
     <LoginForm
       title="Admin Login"
@@ -71,8 +114,9 @@ export const AdminLoginPage: React.FC = () => {
       password={password}
       setPassword={setPassword}
       error={error}
-      isLoggingIn={isLoggingIn}
+      isLoggingIn={isLoggingIn || isLoading} // disable form saat sesi sedang dicek
       handleSubmit={handleSubmit}
     />
   );
 };
+
