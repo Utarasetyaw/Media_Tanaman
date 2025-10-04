@@ -1,43 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '../services/apiService';
-
-// --- Type Definitions ---
-
-interface SubmissionInfo {
-    id: number;
-    submissionUrl: string;
-    submissionNotes?: string | null;
-    placement?: number | null;
-}
-
-export interface EventDashboard {
-    id: number;
-    title: { id: string; en: string };
-    imageUrl: string;
-    startDate: string;
-    endDate: string;
-    submission?: SubmissionInfo | null;
-}
-
-interface UserProfile {
-    address: string | null;
-    phoneNumber: string | null;
-    socialMedia?: string | null;
-}
-
-interface DashboardData {
-    stats: {
-        participated: number;
-        open: number;
-        upcoming: number;
-    };
-    openForSubmission: EventDashboard[];
-    upcomingEvents: EventDashboard[];
-    pastEventsHistory: EventDashboard[];
-    isProfileComplete: boolean;
-    currentUserProfile: UserProfile;
-}
-
+import api from '../../services/apiService';
+import type { DashboardData, UserProfile } from '../../types/user/userDashboard.types';
 
 // --- API Functions ---
 
@@ -46,7 +9,7 @@ const getDashboardData = async (): Promise<DashboardData> => {
     return data;
 };
 
-const updateUserProfile = async (profileData: UserProfile) => {
+const updateUserProfile = async (profileData: Partial<UserProfile>) => {
     const { data } = await api.put('/users/me/profile', profileData);
     return data;
 };
@@ -69,7 +32,6 @@ const uploadFile = async (folder: string, file: File): Promise<{ imageUrl: strin
 // --- Main Custom Hook ---
 export const useUserDashboard = () => {
     const queryClient = useQueryClient();
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
     const { data, isLoading, isError, error } = useQuery<DashboardData, Error>({
         queryKey: ['userDashboard'],
@@ -89,16 +51,9 @@ export const useUserDashboard = () => {
                 throw new Error("Gambar wajib diunggah untuk pengiriman pertama.");
             }
 
-            // REVISI: Ubah kembali menjadi path relatif sebelum dikirim ke backend
-            let relativeImageUrl = finalImageUrl;
-            if (relativeImageUrl.startsWith(API_BASE_URL)) {
-                // Ini akan menghapus "http://localhost:5000" dari URL
-                relativeImageUrl = relativeImageUrl.substring(API_BASE_URL.length);
-            }
-
             return submitOrUpdateEvent({ 
                 eventId: variables.eventId, 
-                submissionUrl: relativeImageUrl, // Kirim path relatif
+                submissionUrl: finalImageUrl,
                 submissionNotes: variables.caption 
             });
         },

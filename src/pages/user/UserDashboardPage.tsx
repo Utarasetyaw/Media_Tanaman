@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useUserDashboard } from '../../hooks/useUserDashboard';
-import type { EventDashboard } from '../../hooks/useUserDashboard';
-import { Award, Calendar, CheckCircle, Clock, Upload, X, Image as ImageIcon, AlertTriangle, User, Phone, Globe, Edit } from 'lucide-react';
+import { useUserDashboard } from '../../hooks/user/useUserDashboard';
+import type { EventDashboard, UserProfile } from '../../types/user/userDashboard.types';
+import { Award, Calendar, CheckCircle, Clock, Upload, X, Image as ImageIcon, AlertTriangle, User, Phone, Globe, Edit, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
@@ -93,84 +93,48 @@ export const UserDashboardPage: React.FC = () => {
     const [caption, setCaption] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-    const [profileData, setProfileData] = useState({ address: '', phoneNumber: '', socialMedia: '' });
+    const [profileData, setProfileData] = useState<Partial<UserProfile>>({ address: '', phoneNumber: '', socialMedia: '' });
     
     useEffect(() => { setCaption(selectedEvent?.submission?.submissionNotes || ''); }, [selectedEvent]);
-    useEffect(() => {
-        if (dashboardData?.currentUserProfile) {
-            setProfileData({
-                address: dashboardData.currentUserProfile.address || '',
-                phoneNumber: dashboardData.currentUserProfile.phoneNumber || '',
-                socialMedia: dashboardData.currentUserProfile.socialMedia || '',
-            });
-        }
-    }, [dashboardData?.currentUserProfile, isProfileModalOpen]);
+    useEffect(() => { if (dashboardData?.currentUserProfile) setProfileData({ address: dashboardData.currentUserProfile.address || '', phoneNumber: dashboardData.currentUserProfile.phoneNumber || '', socialMedia: dashboardData.currentUserProfile.socialMedia || '', }); }, [dashboardData?.currentUserProfile, isProfileModalOpen]);
     
     const openModal = (event: EventDashboard, mode: 'upload' | 'view') => { setSelectedEvent(event); setModalMode(mode); setSelectedFile(null); };
     const closeModal = () => { setModalMode(null); setSelectedEvent(null); };
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) setSelectedFile(e.target.files[0]); };
-    const handleSubmit = () => {
-        if (!selectedEvent) return;
-        if (!selectedEvent.submission && !selectedFile) { alert("Silakan pilih file untuk diunggah."); return; }
-        submitMutation.mutate({ eventId: selectedEvent.id, file: selectedFile, caption: caption, currentImageUrl: selectedEvent.submission?.submissionUrl }, { onSuccess: () => closeModal() });
-    };
+    const handleSubmit = () => { if (!selectedEvent) return; if (!selectedEvent.submission && !selectedFile) { alert("Silakan pilih file untuk diunggah."); return; } submitMutation.mutate({ eventId: selectedEvent.id, file: selectedFile, caption: caption, currentImageUrl: selectedEvent.submission?.submissionUrl }, { onSuccess: () => closeModal() }); };
     const handleProfileInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => { setProfileData(prev => ({ ...prev, [e.target.name]: e.target.value })); };
-    const handleProfileSubmit = () => { updateProfileMutation.mutate(profileData, { onSuccess: () => setIsProfileModalOpen(false) }); };
+    const handleProfileSubmit = () => { updateProfileMutation.mutate(profileData as UserProfile, { onSuccess: () => setIsProfileModalOpen(false) }); };
     
     if (isLoading) return <div className="text-center p-8 text-gray-400">Memuat dashboard Anda...</div>;
     if (isError) return <div className="text-center p-8 text-red-400">Gagal memuat data. Error: {error?.message}</div>;
 
     const { stats, openForSubmission, upcomingEvents, pastEventsHistory, isProfileComplete } = dashboardData!;
+    const displayImageUrl = selectedFile ? URL.createObjectURL(selectedFile) : selectedEvent?.submission?.submissionUrl;
     
     return (
         <div className="container mx-auto p-4 sm:p-6 md:p-8">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-8 gap-4">
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">Dashboard Peserta</h1>
-                {isProfileComplete && (
-                    <button onClick={() => setIsProfileModalOpen(true)} className="flex items-center justify-center gap-2 bg-gray-800/60 border border-gray-600 hover:bg-gray-700/60 text-gray-300 font-semibold py-2 px-4 rounded-lg transition-colors w-full sm:w-auto" title="Ubah Profil Anda">
-                        <Edit size={16} /> <span className="sm:inline">Ubah Profil</span>
-                    </button>
-                )}
+                {isProfileComplete && (<button onClick={() => setIsProfileModalOpen(true)} className="w-full sm:w-auto text-lime-300 hover:text-lime-100 flex items-center justify-center sm:justify-start gap-2 bg-black/20 px-4 py-2 rounded-lg border border-lime-400/50 transition-colors" title="Ubah Profil"><Edit size={16} /> <span className="sm:inline">Ubah Profil</span></button>)}
             </div>
 
-            {!isProfileComplete && (
-                <div className="bg-yellow-900/50 border border-yellow-500 text-yellow-300 p-4 rounded-lg mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-3"><AlertTriangle className="w-6 h-6 shrink-0" /><p className="font-semibold text-center sm:text-left">Profil Anda belum lengkap untuk mengikuti event.</p></div>
-                    <button onClick={() => setIsProfileModalOpen(true)} className="bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 whitespace-nowrap transition-colors flex-shrink-0">Lengkapi Profil</button>
-                </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                <StatCard count={stats.open} label="Event Sedang Dibuka" icon={Upload} />
-                <StatCard count={stats.participated} label="Event Telah Diikuti" icon={CheckCircle} />
-                <StatCard count={stats.upcoming} label="Event Akan Datang" icon={Clock} />
-            </div>
+            {!isProfileComplete && (<div className="bg-yellow-900/50 border border-yellow-500 text-yellow-300 p-4 rounded-lg mb-8 flex flex-col sm:flex-row items-center justify-between gap-4"><div className="flex items-center gap-3"><AlertTriangle className="w-6 h-6 shrink-0" /><p className="font-semibold text-center sm:text-left">Profil Anda belum lengkap untuk mengikuti event.</p></div><button onClick={() => setIsProfileModalOpen(true)} className="bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 whitespace-nowrap transition-colors flex-shrink-0">Lengkapi Profil</button></div>)}
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10"><StatCard count={stats.open} label="Event Sedang Dibuka" icon={Upload} /><StatCard count={stats.participated} label="Event Telah Diikuti" icon={CheckCircle} /><StatCard count={stats.upcoming} label="Event Akan Datang" icon={Clock} /></div>
 
             <section className="mb-12">
                 <h2 className="text-2xl font-bold text-gray-200 mb-4 border-l-4 border-green-400 pl-3">Event yang Sedang Terbuka</h2>
-                {openForSubmission.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {openForSubmission.map(event => <EventCard key={event.id} event={event} type="open" onUploadClick={() => openModal(event, 'upload')} onViewClick={() => openModal(event, 'view')} isProfileComplete={isProfileComplete}/>)}
-                    </div>
-                ) : <p className="text-gray-400 bg-black/20 border border-gray-700 p-6 rounded-lg">Saat ini tidak ada event yang dibuka untuk pengiriman karya.</p>}
+                {openForSubmission.length > 0 ? (<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{openForSubmission.map(event => <EventCard key={event.id} event={event} type="open" onUploadClick={() => openModal(event, 'upload')} onViewClick={() => openModal(event, 'view')} isProfileComplete={isProfileComplete}/>)}</div>) : <p className="text-gray-400 bg-black/20 border border-gray-700 p-6 rounded-lg">Saat ini tidak ada event yang dibuka untuk pengiriman karya.</p>}
             </section>
 
             <section className="mb-12">
                 <h2 className="text-2xl font-bold text-gray-200 mb-4 border-l-4 border-orange-400 pl-3">Event Akan Datang</h2>
-                {upcomingEvents.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {upcomingEvents.map(event => <EventCard key={event.id} event={event} type="upcoming" onUploadClick={() => {}} onViewClick={() => {}} isProfileComplete={isProfileComplete}/>)}
-                    </div>
-                ) : <p className="text-gray-400 bg-black/20 border border-gray-700 p-6 rounded-lg">Tidak ada event yang dijadwalkan dalam waktu dekat.</p>}
+                {upcomingEvents.length > 0 ? (<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{upcomingEvents.map(event => <EventCard key={event.id} event={event} type="upcoming" onUploadClick={() => {}} onViewClick={() => {}} isProfileComplete={isProfileComplete}/>)}</div>) : <p className="text-gray-400 bg-black/20 border border-gray-700 p-6 rounded-lg">Tidak ada event yang dijadwalkan dalam waktu dekat.</p>}
             </section>
 
             <section>
                 <h2 className="text-2xl font-bold text-gray-200 mb-4 border-l-4 border-blue-400 pl-3">Riwayat Event yang Diikuti</h2>
-                 {pastEventsHistory.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {pastEventsHistory.map(event => <EventCard key={event.id} event={event} type="past" onUploadClick={() => {}} onViewClick={() => openModal(event, 'view')} isProfileComplete={isProfileComplete}/>)}
-                    </div>
-                ) : <p className="text-gray-400 bg-black/20 border border-gray-700 p-6 rounded-lg">Anda belum pernah mengikuti dan menyelesaikan event.</p>}
+                 {pastEventsHistory.length > 0 ? (<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{pastEventsHistory.map(event => <EventCard key={event.id} event={event} type="past" onUploadClick={() => {}} onViewClick={() => openModal(event, 'view')} isProfileComplete={isProfileComplete}/>)}</div>) : <p className="text-gray-400 bg-black/20 border border-gray-700 p-6 rounded-lg">Anda belum pernah mengikuti dan menyelesaikan event.</p>}
             </section>
 
             {modalMode && selectedEvent && (
@@ -178,12 +142,10 @@ export const UserDashboardPage: React.FC = () => {
                     <div className="bg-[#073f3d] text-gray-200 rounded-lg shadow-xl w-full max-w-lg border border-green-400/50 flex flex-col max-h-[90vh]">
                         <div className="p-4 flex justify-between items-center border-b border-gray-700 flex-shrink-0"><h3 className="text-xl font-bold text-white">{modalMode === 'upload' ? 'Unggah/Ubah Karya' : 'Lihat Karya'}</h3><button onClick={closeModal} className="text-gray-400 hover:text-white"><X /></button></div>
                         <div className="p-6 space-y-4 overflow-y-auto">
-                            <div className="w-full h-64 rounded-md bg-black/20 flex items-center justify-center">
-                                {/* REVISI DI SINI: Hapus ${API_BASE_URL} */}
-                                <img src={selectedFile ? URL.createObjectURL(selectedFile) : selectedEvent.submission?.submissionUrl} alt="Pratinjau Karya" className="max-w-full max-h-full object-contain" />
-                            </div>
-                            {modalMode === 'upload' && (<><button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-600 rounded-lg p-4 text-center hover:border-green-400 hover:bg-black/20 transition-colors">{selectedFile ? <span className="text-green-300 font-semibold">{selectedFile.name}</span> : <span className="text-gray-400">Ganti Berkas (Opsional)</span>}</button><input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" /></>)}
-                            <div><label htmlFor="caption" className="block text-sm font-medium text-gray-300 mb-2">Keterangan (Caption)</label><textarea id="caption" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Tulis keterangan atau deskripsi singkat karyamu..." className="w-full bg-black/20 border border-gray-600 rounded-md p-2 focus:ring-green-500 focus:border-green-500" rows={4} readOnly={modalMode === 'view'} /></div>
+                            <div className="w-full aspect-video rounded-md bg-black/20 flex items-center justify-center border-2 border-dashed border-gray-600">{displayImageUrl ? (<img src={displayImageUrl} alt="Pratinjau Karya" className="max-w-full max-h-full object-contain"/>) : (<p className="text-gray-500">Pratinjau Gambar</p>)}</div>
+                            {modalMode === 'upload' && (<><button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-600 rounded-lg p-4 text-center hover:border-green-400 hover:bg-black/20 transition-colors">{selectedFile ? <span className="text-green-300 font-semibold">{selectedFile.name}</span> : <span className="text-gray-400">Pilih Berkas...</span>}</button><input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" /></>)}
+                            {modalMode === 'view' && selectedEvent.submission?.submissionUrl && (<a href={selectedEvent.submission.submissionUrl} download target="_blank" rel="noopener noreferrer" className="w-full inline-flex items-center justify-center gap-2 bg-gray-600/80 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors text-sm"><Download size={16}/> Unduh Karya</a>)}
+                            <div><label htmlFor="caption" className="block text-sm font-medium text-gray-300 mb-2">Keterangan (Caption)</label><textarea id="caption" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Tulis keterangan..." className="w-full bg-black/20 border border-gray-600 rounded-md p-2 focus:ring-green-500 focus:border-green-500" rows={4} readOnly={modalMode === 'view'} /></div>
                         </div>
                         {modalMode === 'upload' && (<div className="p-4 flex justify-end gap-3 bg-black/20 rounded-b-lg flex-shrink-0"><button onClick={closeModal} disabled={submitMutation.isPending} className="bg-gray-600 text-gray-200 font-bold py-2 px-4 rounded-lg hover:bg-gray-500 disabled:opacity-70">Batal</button><button onClick={handleSubmit} disabled={submitMutation.isPending} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 disabled:opacity-50">{submitMutation.isPending ? 'Menyimpan...' : 'Simpan Perubahan'}</button></div>)}
                     </div>
@@ -196,9 +158,9 @@ export const UserDashboardPage: React.FC = () => {
                         <div className="p-4 flex justify-between items-center border-b border-gray-700 flex-shrink-0"><h3 className="text-xl font-bold text-white">{isProfileComplete ? 'Ubah Profil Anda' : 'Lengkapi Profil Anda'}</h3><button onClick={() => setIsProfileModalOpen(false)} className="text-gray-400 hover:text-white"><X /></button></div>
                         <div className="p-6 space-y-5 overflow-y-auto">
                             {!isProfileComplete && (<p className="text-sm text-gray-400">Anda harus mengisi Alamat dan No. Telepon untuk dapat berpartisipasi dalam event.</p>)}
-                             <div><label htmlFor="address" className="block text-sm font-medium text-gray-300 mb-2">Alamat Lengkap</label><div className="relative"><User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><textarea id="address" name="address" rows={3} value={profileData.address} onChange={handleProfileInputChange} placeholder="Contoh: Jl. Narapati No. 10, Jakarta" className="w-full bg-black/20 border border-gray-600 rounded-md p-2 pl-10 focus:ring-yellow-500 focus:border-yellow-500" /></div></div>
-                             <div><label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-300 mb-2">No. Telepon (WhatsApp)</label><div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><input id="phoneNumber" name="phoneNumber" type="tel" value={profileData.phoneNumber} onChange={handleProfileInputChange} placeholder="Contoh: 081234567890" className="w-full bg-black/20 border border-gray-600 rounded-md p-2 pl-10 focus:ring-yellow-500 focus:border-yellow-500" /></div></div>
-                             <div><label htmlFor="socialMedia" className="block text-sm font-medium text-gray-300 mb-2">Instagram (Opsional)</label><div className="relative"><Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><input id="socialMedia" name="socialMedia" type="text" value={profileData.socialMedia} onChange={handleProfileInputChange} placeholder="Contoh: @narapatiflora" className="w-full bg-black/20 border border-gray-600 rounded-md p-2 pl-10 focus:ring-yellow-500 focus:border-yellow-500" /></div></div>
+                             <div><label htmlFor="address" className="block text-sm font-medium text-gray-300 mb-2">Alamat Lengkap</label><div className="relative"><User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><textarea id="address" name="address" rows={3} value={profileData.address || ''} onChange={handleProfileInputChange} placeholder="Contoh: Jl. Narapati No. 10, Jakarta" className="w-full bg-black/20 border border-gray-600 rounded-md p-2 pl-10 focus:ring-yellow-500 focus:border-yellow-500" /></div></div>
+                             <div><label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-300 mb-2">No. Telepon (WhatsApp)</label><div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><input id="phoneNumber" name="phoneNumber" type="tel" value={profileData.phoneNumber || ''} onChange={handleProfileInputChange} placeholder="Contoh: 081234567890" className="w-full bg-black/20 border border-gray-600 rounded-md p-2 pl-10 focus:ring-yellow-500 focus:border-yellow-500" /></div></div>
+                             <div><label htmlFor="socialMedia" className="block text-sm font-medium text-gray-300 mb-2">Instagram (Opsional)</label><div className="relative"><Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><input id="socialMedia" name="socialMedia" type="text" value={profileData.socialMedia || ''} onChange={handleProfileInputChange} placeholder="Contoh: @narapatiflora" className="w-full bg-black/20 border border-gray-600 rounded-md p-2 pl-10 focus:ring-yellow-500 focus:border-yellow-500" /></div></div>
                         </div>
                         <div className="p-4 flex justify-end gap-3 bg-black/20 rounded-b-lg flex-shrink-0"><button onClick={() => setIsProfileModalOpen(false)} disabled={updateProfileMutation.isPending} className="bg-gray-600 text-gray-200 font-bold py-2 px-4 rounded-lg hover:bg-gray-500 disabled:opacity-70">Batal</button><button onClick={handleProfileSubmit} disabled={updateProfileMutation.isPending} className="bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 disabled:opacity-50">{updateProfileMutation.isPending ? 'Menyimpan...' : 'Simpan Profil'}</button></div>
                     </div>

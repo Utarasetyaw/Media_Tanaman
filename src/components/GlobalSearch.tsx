@@ -4,21 +4,17 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Book, Leaf, Calendar, X } from 'lucide-react';
 import api from '../services/apiService';
-import type { LocalizedString } from '../types/article';
+import type { SearchResult } from '../types/globalSearch.types';
 import { navTranslations } from '../assets/nav.i18n';
 
-// --- Tipe Data (REVISI DI SINI) ---
-interface SearchResultItem { id: number; title: LocalizedString; imageUrl: string; }
-// Tipe baru untuk tanaman yang menggunakan properti "name"
-interface PlantSearchResultItem { id: number; name: LocalizedString; imageUrl: string; }
-
-interface SearchResult {
-  articles: SearchResultItem[];
-  // Menggunakan tipe baru untuk tanaman
-  plants: PlantSearchResultItem[];
-  events: SearchResultItem[];
+// --- Tipe Data Lokal untuk Komponen ---
+interface ResultItemProps {
+  to: string;
+  imageUrl: string;
+  title: string;
+  icon: React.ReactNode;
+  onClick: () => void;
 }
-interface ResultItemProps { to: string; imageUrl: string; title: string; icon: React.ReactNode; onClick: () => void; }
 interface GlobalSearchProps {
   lang: 'id' | 'en';
   t: (key: keyof typeof navTranslations.id) => string;
@@ -93,8 +89,6 @@ const GlobalSearch: FC<GlobalSearchProps> = ({ lang, t }) => {
                 
                 {data.articles.length > 0 && (<div><h4 className="font-bold text-lime-400 text-sm mb-1 px-2">{t('articles_section')}</h4>{data.articles.map(item => <ResultItem key={`article-${item.id}`} to={`/articles/${item.id}`} imageUrl={item.imageUrl} title={item.title[lang]} icon={<Book size={16}/>} onClick={closeResults} />)}</div>)}
                 
-                {/* --- BAGIAN RENDER TANAMAN DIPERBAIKI DI SINI --- */}
-                {/* Menggunakan "item.name" bukan "item.title" */}
                 {data.plants.length > 0 && (<div><h4 className="font-bold text-lime-400 text-sm mb-1 px-2">{t('plants_section')}</h4>{data.plants.map(item => <ResultItem key={`plant-${item.id}`} to={`/plants/${item.id}`} imageUrl={item.imageUrl} title={item.name[lang]} icon={<Leaf size={16}/>} onClick={closeResults} />)}</div>)}
                 
                 {data.events.length > 0 && (<div><h4 className="font-bold text-lime-400 text-sm mb-1 px-2">{t('events_section')}</h4>{data.events.map(item => <ResultItem key={`event-${item.id}`} to={`/events/${item.id}`} imageUrl={item.imageUrl} title={item.title[lang]} icon={<Calendar size={16}/>} onClick={closeResults} />)}</div>)}

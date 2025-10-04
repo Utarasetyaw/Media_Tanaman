@@ -1,15 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import api from '../services/apiService';
-import { useIsMobile } from './useIsMobile';
+import api from '../../services/apiService';
+import { useIsMobile } from '../useIsMobile';
 
-// --- PERBAIKAN: Impor semua tipe dari file terpusat ---
-import type { Article } from '../types/article';
-import type { HomePageData, HomeFilters } from '../types/home';
-
-// --- DIHAPUS ---
-// Semua 'interface' yang didefinisikan di sini sebelumnya telah dihapus
-// karena sudah ada di file types/home.ts atau types/article.ts
+// Impor semua tipe data yang dibutuhkan dari file terpusat
+import type { Article, HomePageData, HomeFilters } from '../../types/public/home.types';
 
 // Tipe ini spesifik untuk respons API artikel, jadi bisa tetap di sini
 interface FilteredArticlesApiResponse {
@@ -36,10 +31,9 @@ const fetchFilteredArticles = async (filters: HomeFilters, limit: number): Promi
 };
 
 export const useHomePage = () => {
-  // --- PERBAIKAN: Menggunakan tipe HomeFilters yang diimpor ---
   const [filters, setFilters] = useState<HomeFilters>({ categoryId: 'all', plantTypeId: 'all' });
   const [isScrollButtonVisible, setScrollButtonVisible] = useState(false);
-  const [articleLimit, setArticleLimit] = useState(16);
+  const [articleLimit, setArticleLimit] = useState(12); // Default ke 12
   
   const isMobile = useIsMobile();
 
@@ -61,12 +55,12 @@ export const useHomePage = () => {
   useEffect(() => {
     const getLimitForScreen = () => {
       const screenWidth = window.innerWidth;
-      if (screenWidth >= 1024) return 12; // Desktop
-      if (screenWidth >= 768) return 8;  // Tablet
-      return 4; // Mobile
+      if (screenWidth >= 1024) return 12; // lg
+      if (screenWidth >= 768) return 8;  // md
+      return 4; // sm
     };
     const handleResize = () => setArticleLimit(getLimitForScreen());
-    handleResize();
+    handleResize(); // Panggil sekali saat inisialisasi
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -92,9 +86,7 @@ export const useHomePage = () => {
       chunks.push(moreArticles.slice(i, i + chunkSize)); 
     }
 
-    const allLoaded = !!staticData && !!filteredData;
-
-    return { moreForYouChunks: chunks, allArticlesLoaded: allLoaded };
+    return { moreForYouChunks: chunks, allArticlesLoaded: !!staticData && !!filteredData };
   }, [staticData, filteredData, isMobile]); 
 
   const handleFilterChange = (newFilters: Partial<HomeFilters>) => {

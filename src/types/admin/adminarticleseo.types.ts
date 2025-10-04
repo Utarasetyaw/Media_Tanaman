@@ -29,5 +29,13 @@ export interface ArticleSeo {
   twitterSite?: string;
   twitterCreator?: string;
 
-  structuredData?: any; // Menggunakan 'any' karena bisa berupa string atau objek JSON
+  structuredData?: any;
+}
+
+// ▼▼▼ TIPE 'Article' DITAMBAHKAN DI SINI ▼▼▼
+// Tipe ini mendefinisikan data artikel yang dibutuhkan oleh halaman SEO
+export interface Article {
+  id: number;
+  title: LocalizedString;
+  seo: ArticleSeo | null;
 }

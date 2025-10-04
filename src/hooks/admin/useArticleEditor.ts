@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/apiService';
-import type { Article, Category, PlantType } from '../../types';
-import type { AdminArticleFormData } from '../../types/admin/adminarticleeditor.types'; // <-- Gunakan tipe spesifik
+import type { Article, Category, PlantType, AdminArticleFormData } from '../../types/admin/adminarticleeditor.types';
 
 // --- Definisi Fungsi-fungsi API ---
 
@@ -29,13 +28,11 @@ const uploadFile = async (folder: string, file: File): Promise<{ imageUrl: strin
     return data;
 };
 
-// Gunakan tipe yang lebih spesifik
 const createArticle = async (payload: AdminArticleFormData & { status: string }): Promise<Article> => {
     const { data } = await api.post('/articles/management', payload);
     return data;
 };
 
-// Gunakan tipe yang lebih spesifik
 const updateArticle = async (payload: { id: number } & Partial<AdminArticleFormData> & { status?: string }): Promise<Article> => {
     const { id, ...dataToUpdate } = payload;
     const { data } = await api.put(`/articles/management/${id}`, dataToUpdate);
@@ -75,7 +72,6 @@ export const useArticleEditor = (id?: string) => {
             finalImageUrl = uploadRes.imageUrl;
         }
 
-        // Validasi gambar jika ingin mempublikasikan
         if (!finalImageUrl && action === 'publish') {
             throw new Error('Gambar utama wajib diunggah untuk publikasi.');
         }
@@ -83,31 +79,23 @@ export const useArticleEditor = (id?: string) => {
         const payload = { ...formData, imageUrl: finalImageUrl };
 
         if (isEditMode) {
-            // Untuk mode edit, selalu kirim status jika 'publish'
             const dataToUpdate: { id: number } & Partial<AdminArticleFormData> & { status?: string } = { id: articleId!, ...payload };
             if (action === 'publish') {
                 dataToUpdate.status = 'PUBLISHED';
             }
             return updateArticle(dataToUpdate);
         } else {
-            // Untuk mode buat baru, status ditentukan oleh aksi
             const status = action === 'publish' ? 'PUBLISHED' : 'DRAFT';
             return createArticle({ ...payload, status });
         }
     },
     onSuccess: (savedArticle) => {
-        // Hapus cache lama agar data baru selalu diambil dari server
         queryClient.invalidateQueries({ queryKey: ['allAdminArticles'] });
-
-        // Secara proaktif perbarui cache untuk halaman editor ini
-        // Ini membuat data langsung ter-update jika pengguna tidak langsung redirect
         queryClient.setQueryData(['articleEditor', savedArticle.id], savedArticle);
     },
     onError: (error: any) => {
-        // Biarkan komponen yang menangani alert, hook hanya melempar error
         const message = error.response?.data?.error || error.message;
         console.error("Save article error:", error);
-        // Melempar kembali error agar bisa ditangkap oleh .catch() di komponen
         throw new Error(message || "Gagal menyimpan artikel.");
     }
   });

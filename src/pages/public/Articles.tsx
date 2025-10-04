@@ -16,12 +16,12 @@ import {
 	ArrowDownUp,
 	ThumbsUp,
 } from "lucide-react";
-import { useLayoutData } from "../hooks/useLayoutData";
-import { useArticlesPage } from "../hooks/useArticlesPage";
-import { articlePageTranslations } from "../assets/page_artikel.i18n";
-import VerticalAd from "../components/VerticalAd";
-import HorizontalAd from "../components/HorizontalAd";
-import type { Article } from "../types/page_artikel.types";
+import { useLayoutData } from "../../hooks/useLayoutData";
+import { useArticlesPage } from "../../hooks/public/useArticlesPage";
+import { articlePageTranslations } from "../../assets/page_artikel.i18n";
+import VerticalAd from "../../components/VerticalAd";
+import HorizontalAd from "../../components/HorizontalAd";
+import type { Article } from "../../types/public/artikel.types";
 
 //================================================================================
 // KOMPONEN: ArticleCard (Dengan gaya baru)

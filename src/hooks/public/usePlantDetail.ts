@@ -1,7 +1,7 @@
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import type { Plant } from '../types/plant'; // Pastikan path tipe data sudah benar
-import api from '../services/apiService';   // Pastikan path API service sudah benar
+import type { Plant } from '../../types/public/plant.types'; // Pastikan path tipe data sudah benar
+import api from '../../services/apiService';   // Pastikan path API service sudah benar
 
 // Fungsi untuk mengambil detail satu tanaman dari API
 const fetchPlantById = async (id: string): Promise<Plant> => {

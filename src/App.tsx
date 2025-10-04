@@ -9,14 +9,15 @@ import { JournalistLayout } from './layouts/JournalistLayout';
 import UserLayout from './layouts/UserLayout';
 
 // --- Halaman Publik ---
-import HomePage from './pages/HomePage';
-import About from './pages/About';
-import ArticlePage from './pages/Articles';
-import ArticleDetail from './pages/ArticlesDetail';
-import EventPage from './pages/Event';
-import EventDetail from './pages/EventDetail';
-import PlantPage from './pages/Plant';
-import PlantDetail from './pages/PlantDetail';
+import HomePage from './pages/public/HomePage';
+import About from './pages/public/About';
+import ArticlesPage from './pages/public/Articles';
+import ArticleDetail from './pages/public/ArticlesDetail';
+import EventPage from './pages/public/Event';
+import EventDetail from './pages/public/EventDetail';
+import PlantPage from './pages/public/Plant';
+import PlantDetail from './pages/public/PlantDetail';
+import NotFoundPage from './pages/NotFoundPage'; // <-- Halaman 404 diimpor
 
 // --- Halaman Auth (Menggunakan URL Spesifik) ---
 import { AdminLoginPage } from './pages/auth/AdminLoginPage';
@@ -87,7 +88,7 @@ const App: React.FC = () => {
         <Route path="/" element={<MainLayout />}>
           <Route index element={<HomePage />} />
           <Route path="about" element={<About />} />
-          <Route path="articles" element={<ArticlePage />} />
+          <Route path="articles" element={<ArticlesPage />} />
           <Route path="articles/:id" element={<ArticleDetail />} />
           <Route path="events" element={<EventPage />} />
           <Route path="events/:id" element={<EventDetail />} />
@@ -141,10 +142,11 @@ const App: React.FC = () => {
         </Route>
 
         {/* === Rute Halaman Tidak Ditemukan (404) === */}
-        <Route path="*" element={<div className="flex items-center justify-center h-screen bg-[#003938] text-white">404 - Halaman Tidak Ditemukan</div>} />
+        <Route path="*" element={<NotFoundPage />} /> {/* <-- Menggunakan komponen 404 baru */}
       </Routes>
     </AuthProvider>
   );
 };
 
 export default App;
+

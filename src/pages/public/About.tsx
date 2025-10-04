@@ -13,9 +13,9 @@ import {
     Music,
 } from "lucide-react";
 
-import { useAboutData } from "../hooks/useAboutData";
-import { aboutTranslations } from "../assets/about.i18n";
-import SeoManager from "../components/SeoManager";
+import { useAboutData } from "../../hooks/public/useAboutData";
+import { aboutTranslations } from "../../assets/about.i18n";
+import SeoManager from "../../components/SeoManager";
 
 // ▼▼▼ PERUBAHAN DI SINI: Ikon dihapus dari ValueCard ▼▼▼
 interface ValueCardProps {

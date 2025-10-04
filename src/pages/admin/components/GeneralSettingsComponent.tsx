@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSiteSettings } from '../../../hooks/admin/useSiteSettings';
 import { Trash2, PlusCircle, UploadCloud } from 'lucide-react';
-import type { BannerImage, FaqItem, CompanyValue, SiteSettings } from '../../../types/admin/settings';
+import type { BannerImage, FaqItem, CompanyValue, SiteSettings } from '../../../types/admin/adminsettings';
 
 // Tipe Data Lokal
 type ArrayField = 'faqs' | 'companyValues';

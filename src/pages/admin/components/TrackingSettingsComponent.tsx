@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSiteSettings } from '../../../hooks/admin/useSiteSettings';
-import type { SiteSettings } from '../../../types/admin/settings';
+import type { SiteSettings } from '../../../types/admin/adminsettings';
 
 // Komponen UI
 const InputField: React.FC<{ label: string; name: string; value: string; onChange: React.ChangeEventHandler<HTMLInputElement>; placeholder?: string, type?: string }> = 

@@ -3,11 +3,11 @@
 import type { FC } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { ArrowLeft, Calendar, Clock, MapPin, User } from "lucide-react";
-import { useEventDetail } from "../hooks/useEventDetail";
-import { eventDetailTranslations } from "../assets/eventDetail.i18n";
-import SeoManager from "../components/SeoManager";
-import VerticalAd from "../components/VerticalAd";
-import HorizontalAd from "../components/HorizontalAd";
+import { useEventDetail } from "../../hooks/public/useEventDetail";
+import { eventDetailTranslations } from "../../assets/eventDetail.i18n";
+import SeoManager from "../../components/SeoManager";
+import VerticalAd from "../../components/VerticalAd";
+import HorizontalAd from "../../components/HorizontalAd";
 
 const EventDetail: FC = () => {
 	const { lang: currentLang } = useOutletContext<{ lang: "id" | "en" }>();

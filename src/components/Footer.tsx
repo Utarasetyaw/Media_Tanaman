@@ -1,7 +1,6 @@
 import type { FC } from 'react';
 import { Link } from 'react-router-dom';
 import { Instagram, Facebook, Music } from 'lucide-react'; 
-// Pastikan path impor ini sudah benar
 import { useLayoutData } from '../hooks/useLayoutData';
 import { footerTranslations } from '../assets/footer.i18n';
 
@@ -22,11 +21,12 @@ const Footer: FC<FooterProps> = ({ currentLang }) => {
     <footer className="bg-[#003938] text-white relative z-30 border-t-2 border-lime-400">
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="py-12 sm:py-16">
-          {/* DIUBAH: Grid diubah untuk mengakomodasi lebih banyak kolom */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-10">
+          
+          {/* ▼▼▼ PERUBAHAN DI SINI: 'md:grid-cols-3' diubah menjadi 'md:grid-cols-4' ▼▼▼ */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-10">
             
-            {/* DIUBAH: Kolom deskripsi diperkecil */}
-            <div className="sm:col-span-2 md:col-span-3 lg:col-span-2 space-y-4">
+            {/* ▼▼▼ PERUBAHAN DI SINI: 'md:col-span-3' diubah menjadi 'md:col-span-4' ▼▼▼ */}
+            <div className="sm:col-span-2 md:col-span-4 lg:col-span-2 space-y-4">
               <Link to="/" className="text-2xl font-bold text-white inline-block">
                 {isLoading ? (
                   <span className="h-8 w-32 bg-gray-700 rounded animate-pulse"></span>
@@ -59,7 +59,7 @@ const Footer: FC<FooterProps> = ({ currentLang }) => {
               </ul>
             </div>
 
-            {/* DIUBAH: Kolom Jurnalis (dibuat terpisah) */}
+            {/* Kolom Jurnalis */}
             <div>
               <h4 className="font-bold text-lime-300 mb-6 tracking-wider">{t('support_journalist')}</h4>
               <ul className="space-y-3 text-gray-300">
@@ -68,7 +68,7 @@ const Footer: FC<FooterProps> = ({ currentLang }) => {
               </ul>
             </div>
 
-            {/* DIUBAH: Kolom Peserta (dibuat terpisah) */}
+            {/* Kolom Peserta */}
             <div>
               <h4 className="font-bold text-lime-300 mb-6 tracking-wider">{t('support_participant')}</h4>
               <ul className="space-y-3 text-gray-300">
@@ -77,7 +77,7 @@ const Footer: FC<FooterProps> = ({ currentLang }) => {
               </ul>
             </div>
 
-            {/* DIUBAH: Kolom Bantuan (dibuat terpisah) */}
+            {/* Kolom Bantuan */}
             <div>
               <h4 className="font-bold text-lime-300 mb-6 tracking-wider">{t('support_help')}</h4>
               <ul className="space-y-3 text-gray-300">

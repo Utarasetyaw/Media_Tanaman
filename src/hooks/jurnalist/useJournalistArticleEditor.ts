@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../services/apiService';
-import type { Article, Category, PlantType } from '../../types';
-import type { JournalistArticleFormData } from '../../types/jurnalist/journalistArticleEditor.types'; // <-- Gunakan tipe spesifik
+// ▼▼▼ PERUBAHAN DI SINI: Impor semua tipe dari satu file ▼▼▼
+import type { Article, Category, PlantType, JournalistArticleFormData } from '../../types/jurnalist/journalistArticleEditor.types';
 
 // --- Definisi Fungsi-fungsi API ---
 
@@ -69,7 +69,7 @@ export const useJournalistArticleEditor = () => {
   const { data: plantTypes = [] } = useQuery<PlantType[]>({ queryKey: ['allPlantTypes'], queryFn: getPlantTypes });
 
   const articleMutation = useMutation({
-    mutationFn: async ({ formData, imageFile, action }: SavePayload) => {
+    mutationFn: async ({ formData, imageFile, action }: SavePayload): Promise<Article> => {
         let finalImageUrl = formData.imageUrl || '';
         if (imageFile) {
             const uploadRes = await uploadFile('artikel', imageFile);
