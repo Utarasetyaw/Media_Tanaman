@@ -21,7 +21,7 @@ import dashboardRoutes from "./routes/dashboard.routes.js";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3009;
+const PORT = 3009;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,7 +31,7 @@ const __dirname = path.dirname(__filename);
 // ▼▼▼ PERBAIKAN DI SINI ▼▼▼
 // Konfigurasi CORS yang lebih spesifik untuk mengizinkan kredensial
 const corsOptions = {
-	origin: process.env.FRONTEND_URL || "http://localhost:5173", // Ganti dengan URL frontend Anda
+	origin: "http://localhost:5173", // Ganti dengan URL frontend Anda
 	credentials: true,
 };
 app.use(cors(corsOptions));
