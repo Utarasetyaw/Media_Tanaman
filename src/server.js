@@ -31,8 +31,9 @@ const __dirname = path.dirname(__filename);
 // ▼▼▼ PERBAIKAN DI SINI ▼▼▼
 // Konfigurasi CORS yang lebih spesifik untuk mengizinkan kredensial
 const corsOptions = {
-	origin: "http://localhost:5173", // Ganti dengan URL frontend Anda
-	credentials: true,
+    // Ganti dengan URL frontend utama Anda, bukan backend
+    origin: "https://narapatiflora.com", 
+    credentials: true,
 };
 app.use(cors(corsOptions));
 // ▲▲▲ AKHIR DARI PERBAIKAN ▲▲▲
