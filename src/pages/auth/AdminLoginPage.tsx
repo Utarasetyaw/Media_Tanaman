@@ -73,8 +73,8 @@ const SwitchSessionPrompt: React.FC<{ targetRole: LoginRole, targetRoleName: str
 export const AdminLoginPage: React.FC = () => {
   // Ambil fungsi dan state baru dari context
   const { user, login, availableSessions, isLoading } = useAuth(); 
-  const [email, setEmail] = useState('admin@narapati.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
