@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSiteSettings } from '../../../hooks/admin/useSiteSettings';
-import { Trash2, PlusCircle, UploadCloud } from 'lucide-react';
+import { Trash2, PlusCircle, UploadCloud, XCircle, FileImage, Loader2 } from 'lucide-react';
 import type { BannerImage, FaqItem, CompanyValue, SiteSettings } from '../../../types/admin/adminsettings';
+import { toast } from 'react-hot-toast';
 
-// Tipe Data Lokal
+// Pindahkan definisi tipe ke luar komponen untuk praktik terbaik
 type ArrayField = 'faqs' | 'companyValues';
 type FaqSubField = 'q' | 'a';
 type CompanyValueSubField = 'title' | 'description';
@@ -20,86 +21,182 @@ const InputField: React.FC<{ label: string; name: string; value: string; onChang
     </div>
 );
 
-const TextareaField: React.FC<{ label: string; name: string; value: string; onChange: React.ChangeEventHandler<HTMLTextAreaElement>; placeholder?: string, rows?: number }> = 
-({ label, name, value, onChange, placeholder, rows=3 }) => (
-    <div>
-        <label htmlFor={name} className="block text-sm font-medium text-gray-300 mb-1">{label}</label>
-        <textarea
-            id={name} name={name} value={value || ''} onChange={onChange} placeholder={placeholder} rows={rows}
-            className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-lime-400 focus:border-lime-400 transition-colors"
-        />
-    </div>
-);
+const TextareaField: React.FC<{
+    label: string;
+    name: string;
+    value: string;
+    onChange: React.ChangeEventHandler<HTMLTextAreaElement>;
+    placeholder?: string;
+    rows?: number;
+    maxLength?: number;
+    className?: string;
+}> = ({ label, name, value, onChange, placeholder, rows = 3, maxLength, className }) => {
+    const wordCount = value?.split(/\s+/).filter(Boolean).length || 0;
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+            textarea.style.height = 'auto'; 
+            textarea.style.height = `${textarea.scrollHeight}px`;
+        }
+    }, [value]);
+
+    return (
+        <div className={`flex flex-col ${className}`}>
+            <div className="flex justify-between items-center mb-1">
+                <label htmlFor={name} className="block text-sm font-medium text-gray-300">{label}</label>
+                {maxLength && (
+                    <span className={`text-xs ${wordCount > maxLength ? 'text-red-400' : 'text-gray-400'}`}>
+                        {wordCount}/{maxLength} kata
+                    </span>
+                )}
+            </div>
+            <textarea
+                ref={textareaRef}
+                id={name}
+                name={name}
+                value={value || ''}
+                onChange={onChange}
+                placeholder={placeholder}
+                rows={rows}
+                className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-lime-400 focus:border-lime-400 transition-colors resize-none overflow-y-hidden flex-grow"
+            />
+        </div>
+    );
+};
+
 
 const SectionCard: React.FC<{ title: string; children: React.ReactNode; className?: string }> = ({ title, children, className }) => (
     <div className="space-y-4">
         <h4 className='text-lg font-semibold text-lime-300 border-b border-lime-400/30 pb-2'>{title}</h4>
-        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${className}`}>
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${className}`}>
             {children}
         </div>
     </div>
 );
 
+const ImageUploadField: React.FC<{
+    label: string;
+    description: string;
+    currentImageUrl: string | null | undefined;
+    onFileSelect: (file: File | null) => void;
+    onRemoveImage: () => void;
+    isUploading?: boolean;
+    variant?: 'square' | 'banner';
+}> = ({ label, description, currentImageUrl, onFileSelect, onRemoveImage, isUploading, variant = 'square' }) => {
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0] || null;
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => setPreviewUrl(reader.result as string);
+            reader.readAsDataURL(file);
+        } else {
+            setPreviewUrl(null);
+        }
+        onFileSelect(file);
+    };
+
+    const handleRemovePreview = () => {
+        setPreviewUrl(null);
+        onFileSelect(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    
+    const displayUrl = previewUrl || currentImageUrl;
+
+    const isBanner = variant === 'banner';
+    const containerClasses = isBanner ? "w-full" : "w-20 h-20 shrink-0";
+    const imageClasses = isBanner ? "w-full object-cover rounded-lg bg-white/10 aspect-[3/1]" : "h-20 w-20 object-contain bg-white/10 p-1 rounded-lg";
+    const placeholderClasses = isBanner ? "w-full bg-gray-900/50 rounded-lg flex items-center justify-center aspect-[3/1]" : "w-20 h-20 bg-gray-900/50 rounded-lg flex items-center justify-center";
+    const layoutClasses = isBanner ? "flex flex-col gap-4" : "flex items-center gap-4";
+
+    const previewElement = (
+        <div className={`relative group ${containerClasses}`}>
+            {isUploading ? (
+                <div className={placeholderClasses}><Loader2 className="animate-spin text-lime-400" /></div>
+            ) : displayUrl ? (
+                <div className="relative w-full h-full group">
+                    <img src={displayUrl} alt="preview" className={imageClasses} />
+                    <button
+                        onClick={previewUrl ? handleRemovePreview : onRemoveImage}
+                        className="absolute -top-2 -right-2 bg-red-600/90 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="Hapus gambar"
+                    >
+                        <XCircle size={18} />
+                    </button>
+                </div>
+            ) : (
+                <div className={placeholderClasses + " text-gray-500"}><FileImage size={isBanner ? 32 : 24} /></div>
+            )}
+        </div>
+    );
+
+    return (
+        <div className="flex flex-col gap-2">
+            <label className="block text-sm font-medium text-gray-300">{label}</label>
+            <p className="text-xs text-gray-400 -mt-1 mb-2">{description}</p>
+            <div className={layoutClasses}>
+                {previewElement}
+                <div className='w-full'>
+                    <input ref={fileInputRef} type="file" accept='image/*' onChange={handleFileChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-lime-200/20 file:text-lime-300 hover:file:bg-lime-200/30 cursor-pointer"/>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const ValidationError: React.FC<{ message: string }> = ({ message }) => (
+    <p className="text-red-400 text-xs mt-1">{message}</p>
+);
+
 export const GeneralSettingsComponent: React.FC = () => {
-    const { settings, isLoading, isSaving, updateSettings } = useSiteSettings();
+    // ▼▼▼ [PERUBAHAN 1] Sesuaikan nama variabel dari hook gabungan ▼▼▼
+    const { settings, isLoadingSettings, isSavingSettings, updateSettings, deleteBanner } = useSiteSettings();
     
     const [formData, setFormData] = React.useState<Partial<SiteSettings>>({});
     const [logoFile, setLogoFile] = React.useState<File | null>(null);
     const [faviconFile, setFaviconFile] = React.useState<File | null>(null);
     const [newBannerFile, setNewBannerFile] = React.useState<File | null>(null);
 
-    React.useEffect(() => {
-        if (settings) {
-            const ensureArray = (data: any): any[] => {
-                if (Array.isArray(data)) return data;
-                if (typeof data === 'string') {
-                    try {
-                        const parsed = JSON.parse(data);
-                        return Array.isArray(parsed) ? parsed : [];
-                    } catch (e) {
-                        return [];
-                    }
-                }
-                return [];
-            };
+    const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+    const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
+    const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+    const [errors, setErrors] = useState<{ [key: string]: string | null }>({});
 
+    useEffect(() => {
+        if (settings) {
+            const ensureArray = (data: any): any[] => Array.isArray(data) ? data : [];
             setFormData({
                 ...settings,
                 contactInfo: settings.contactInfo || {},
+                shortDescription: settings.shortDescription || { id: '', en: '' },
                 businessDescription: settings.businessDescription || { id: '', en: '' },
                 faqs: ensureArray(settings.faqs),
                 companyValues: ensureArray(settings.companyValues),
                 privacyPolicy: settings.privacyPolicy || { id: '', en: '' },
                 bannerTagline: settings.bannerTagline || { id: '', en: '' },
-                bannerImages: settings.bannerImages || [],
-                seo: settings.seo || {},
+                bannerImages: ensureArray(settings.bannerImages),
             });
         }
     }, [settings]);
-
-    // Handler tidak berubah
+    
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
     
     const handleNestedChange = (field: keyof SiteSettings, subField: string, value: string) => {
-        setFormData(prev => ({
-            ...prev,
-            [field]: { ...(prev[field] as object), [subField]: value },
-        }));
+        setFormData(prev => ({ ...prev, [field]: { ...(prev[field] as object), [subField]: value } }));
     };
 
     const handleDeeplyNestedChange = (field: keyof SiteSettings, subField: string, deepField: string, value: string) => {
-        setFormData(prev => ({
-            ...prev,
-            [field]: {
-                ...(prev[field] as object),
-                [subField]: { ...((prev[field] as any)?.[subField] || {}), [deepField]: value }
-            }
-        }));
+        setFormData(prev => ({ ...prev, [field]: { ...(prev[field] as object), [subField]: { ...((prev[field] as any)?.[subField] || {}), [deepField]: value } } }));
     };
-
+    
     const handleArrayItemChange = (arrayName: ArrayField, index: number, fieldName: FaqSubField | CompanyValueSubField, lang: 'id' | 'en', value: string) => {
         setFormData(prev => {
             const newArray = JSON.parse(JSON.stringify(prev[arrayName] || []));
@@ -113,67 +210,149 @@ export const GeneralSettingsComponent: React.FC = () => {
     const addArrayItem = (arrayName: ArrayField, newItem: object) => {
         setFormData(prev => ({ ...prev, [arrayName]: [...(prev[arrayName] || []), newItem] }));
     };
-
+    
     const removeArrayItem = (arrayName: ArrayField | 'bannerImages', index: number) => {
         const newArray = (formData[arrayName] || []).filter((_: any, i: number) => i !== index);
         setFormData(prev => ({ ...prev, [arrayName]: newArray }));
     };
-
-    // ▼▼▼ FUNGSI BARU UNTUK HAPUS GAMBAR ▼▼▼
-    const handleRemoveImage = (fieldName: 'logoUrl' | 'faviconUrl') => {
-        if (!window.confirm(`Yakin ingin menghapus ${fieldName === 'logoUrl' ? 'Logo' : 'Favicon'} ini? Gambar akan terhapus setelah disimpan.`)) return;
-        setFormData(prev => ({ ...prev, [fieldName]: null }));
-    };
-    // ▲▲▲ AKHIR DARI FUNGSI BARU ▲▲▲
     
+    const handleRemoveImage = (fieldName: 'logoUrl' | 'faviconUrl') => {
+        toast((t) => (
+            <div className="flex flex-col gap-3 p-2">
+                <p className="font-semibold text-white">{`Yakin ingin menghapus ${fieldName === 'logoUrl' ? 'Logo' : 'Favicon'}?`}</p>
+                <div className="flex gap-2">
+                    <button
+                        className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md text-sm"
+                        onClick={() => {
+                            setFormData(prev => ({ ...prev, [fieldName]: null }));
+                            if (fieldName === 'logoUrl') setLogoFile(null);
+                            if (fieldName === 'faviconUrl') setFaviconFile(null);
+                            toast.dismiss(t.id);
+                            toast.success(`${fieldName === 'logoUrl' ? 'Logo' : 'Favicon'} akan dihapus setelah disimpan.`);
+                        }}
+                    >
+                        Ya, Hapus
+                    </button>
+                    <button
+                        className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md text-sm"
+                        onClick={() => toast.dismiss(t.id)}
+                    >
+                        Batal
+                    </button>
+                </div>
+            </div>
+        ));
+    };
+    
+    const validateForm = (): boolean => {
+        const newErrors: { [key: string]: string | null } = {};
+
+        if (!formData.name?.trim()) newErrors.name = 'Nama Situs wajib diisi.';
+        if (!formData.businessDescription?.id?.trim()) newErrors.businessDescription = 'Deskripsi (Indonesia) wajib diisi.';
+        if (!formData.logoUrl && !logoFile) newErrors.logo = 'Logo wajib diunggah.';
+        if (!formData.faviconUrl && !faviconFile) newErrors.favicon = 'Favicon wajib diunggah.';
+        if ((!formData.bannerImages || formData.bannerImages.length === 0) && !newBannerFile) newErrors.banner = 'Minimal harus ada satu gambar banner.';
+
+        setErrors(newErrors);
+        
+        if (Object.keys(newErrors).length > 0) {
+            const firstError = Object.values(newErrors)[0];
+            if (firstError) toast.error(firstError);
+            return false;
+        }
+        return true;
+    };
+
     const handleSave = () => {
-        updateSettings({
-            settingsData: formData,
-            logoFile,
-            faviconFile
-        }, {
+        if (!validateForm()) return;
+        
+        if (logoFile) setIsUploadingLogo(true);
+        if (faviconFile) setIsUploadingFavicon(true);
+
+        updateSettings({ settingsData: formData, logoFile, faviconFile }, {
             onSuccess: () => {
                 setLogoFile(null);
                 setFaviconFile(null);
-                const logoInput = document.getElementById('logo-input') as HTMLInputElement;
-                const faviconInput = document.getElementById('favicon-input') as HTMLInputElement;
-                if(logoInput) logoInput.value = "";
-                if(faviconInput) faviconInput.value = "";
+                setErrors({});
+            },
+            onSettled: () => {
+                setIsUploadingLogo(false);
+                setIsUploadingFavicon(false);
             }
         });
     };
 
     const handleAddBanner = () => {
-        if (!newBannerFile) return;
-        updateSettings({
-            settingsData: formData,
-            newBannerFile: newBannerFile,
-        }, {
+        if (!newBannerFile) {
+            toast.error("Pilih file gambar banner terlebih dahulu.");
+            return;
+        }
+        setIsUploadingBanner(true);
+        updateSettings({ settingsData: formData, newBannerFile }, {
             onSuccess: () => {
-                setNewBannerFile(null);
-                const fileInput = document.getElementById('new-banner-input') as HTMLInputElement;
-                if (fileInput) fileInput.value = '';
-            }
+                setNewBannerFile(null)
+                setErrors(prev => ({...prev, banner: null}));
+            },
+            onSettled: () => setIsUploadingBanner(false)
         });
     };
 
-    const handleRemoveBanner = (indexToRemove: number) => {
-        if (!window.confirm('Yakin ingin hapus banner ini?')) return;
-        const newBannerList = (formData.bannerImages || []).filter((_, i) => i !== indexToRemove);
-        const updatedData = { ...formData, bannerImages: newBannerList };
-        setFormData(updatedData);
-        updateSettings({ settingsData: updatedData });
+    const handleRemoveBanner = (bannerId: number) => {
+        toast((t) => (
+            <div className="flex flex-col gap-3 p-2">
+                <p className="font-semibold text-white">Yakin ingin menghapus banner ini?</p>
+                <div className="flex gap-2">
+                    <button
+                        className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md text-sm"
+                        onClick={() => {
+                            deleteBanner(bannerId);
+                            toast.dismiss(t.id);
+                        }}
+                    >
+                        Ya, Hapus
+                    </button>
+                    <button
+                        className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md text-sm"
+                        onClick={() => toast.dismiss(t.id)}
+                    >
+                        Batal
+                    </button>
+                </div>
+            </div>
+        ), { duration: 6000 });
     };
     
-    if (isLoading) {
-        return <div className='text-center text-gray-300 p-8'>Memuat pengaturan...</div>;
-    }
+    // ▼▼▼ [PERUBAHAN 2] Gunakan isLoadingSettings ▼▼▼
+    if (isLoadingSettings) return <div className='text-center text-gray-300 p-8'>Memuat pengaturan...</div>;
 
     return (
         <div className="bg-[#0b5351]/30 p-4 sm:p-6 rounded-lg border border-lime-400/50 space-y-8">
             <h3 className="text-xl font-bold text-gray-200">Pengaturan Umum Situs</h3>
             <SectionCard title="Informasi Dasar & Kontak">
-                <InputField label="Nama Situs" name="name" value={formData.name || ''} onChange={handleInputChange} />
+                <div>
+                    <InputField label="Nama Situs *" name="name" value={formData.name || ''} onChange={handleInputChange} />
+                    {errors.name && <ValidationError message={errors.name} />}
+                </div>
+                <div className="md:col-span-2">
+                    <TextareaField 
+                        label="Short Description (Indonesia)"
+                        name="short_description_id"
+                        value={formData.shortDescription?.id || ''}
+                        onChange={(e) => handleNestedChange('shortDescription', 'id', e.target.value)}
+                        maxLength={30}
+                        rows={2}
+                    />
+                </div>
+                 <div className="md:col-span-2">
+                    <TextareaField 
+                        label="Short Description (English)"
+                        name="short_description_en"
+                        value={formData.shortDescription?.en || ''}
+                        onChange={(e) => handleNestedChange('shortDescription', 'en', e.target.value)}
+                        maxLength={30}
+                        rows={2}
+                    />
+                </div>
                 <InputField label="Email Kontak" name="email" value={formData.contactInfo?.email || ''} onChange={(e) => handleNestedChange('contactInfo', 'email', e.target.value)} />
                 <InputField label="Telepon" name="phone" value={formData.contactInfo?.phone || ''} onChange={(e) => handleNestedChange('contactInfo', 'phone', e.target.value)} />
                 <div className="md:col-span-2">
@@ -185,52 +364,60 @@ export const GeneralSettingsComponent: React.FC = () => {
                     <InputField label="URL TikTok" name="tiktok" placeholder="https://tiktok.com/@akunanda" value={formData.contactInfo?.socialMedia?.tiktok || ''} onChange={(e) => handleDeeplyNestedChange('contactInfo', 'socialMedia', 'tiktok', e.target.value)} />
                 </div>
             </SectionCard>
-            <SectionCard title="Deskripsi Perusahaan" className='md:grid-cols-1'>
-                <TextareaField label="Deskripsi (Indonesia)" name="id" value={formData.businessDescription?.id || ''} onChange={(e) => handleNestedChange('businessDescription', 'id', e.target.value)} />
-                <TextareaField label="Deskripsi (Bahasa Inggris)" name="en" value={formData.businessDescription?.en || ''} onChange={(e) => handleNestedChange('businessDescription', 'en', e.target.value)} />
-            </SectionCard>
+            
+            <div className="space-y-4">
+                <h4 className='text-lg font-semibold text-lime-300 border-b border-lime-400/30 pb-2'>Deskripsi Perusahaan</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:grid-flow-col md:auto-cols-fr">
+                    <div>
+                        <TextareaField 
+                            label="Deskripsi (Indonesia) *" 
+                            name="id" 
+                            value={formData.businessDescription?.id || ''} 
+                            onChange={(e) => handleNestedChange('businessDescription', 'id', e.target.value)} 
+                            maxLength={150} 
+                        />
+                        {errors.businessDescription && <ValidationError message={errors.businessDescription} />}
+                    </div>
+                    <TextareaField 
+                        label="Deskripsi (Bahasa Inggris)" 
+                        name="en" 
+                        value={formData.businessDescription?.en || ''} 
+                        onChange={(e) => handleNestedChange('businessDescription', 'en', e.target.value)} 
+                        maxLength={150} 
+                    />
+                </div>
+            </div>
 
-            {/* ▼▼▼ PERUBAHAN DI BAGIAN ASET VISUAL ▼▼▼ */}
             <SectionCard title="Aset Visual">
-                <div className='flex flex-col gap-2'>
-                    <label className="block text-sm font-medium text-gray-300">Logo</label>
-                    <p className="text-xs text-gray-400 -mt-1 mb-2">Rekomendasi rasio 1:1 (kotak). Ukuran ideal 512x512 piksel.</p>
-                    {formData.logoUrl ? (
-                        <div className="relative w-16 h-16 group mb-2">
-                            <img src={formData.logoUrl} alt="logo" className="h-16 w-16 object-contain bg-white/10 p-1 rounded" />
-                            <button
-                                onClick={() => handleRemoveImage('logoUrl')}
-                                className="absolute -top-1 -right-1 bg-red-600/90 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                aria-label="Hapus logo"
-                            >
-                                <Trash2 size={14} />
-                            </button>
-                        </div>
-                    ) : <div className='h-16 w-16 mb-2'></div>}
-                    <input id="logo-input" type="file" accept='image/*' onChange={(e) => setLogoFile(e.target.files ? e.target.files[0] : null)} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-lime-200/20 file:text-lime-300 hover:file:bg-lime-200/30 cursor-pointer"/>
+                <div>
+                    <ImageUploadField
+                        label="Logo *"
+                        description="Rasio 1:1 (kotak). Ukuran ideal 512x512 piksel."
+                        currentImageUrl={formData.logoUrl}
+                        onFileSelect={setLogoFile}
+                        onRemoveImage={() => handleRemoveImage('logoUrl')}
+                        // ▼▼▼ [PERUBAHAN 3] Gunakan isSavingSettings ▼▼▼
+                        isUploading={isUploadingLogo || (isSavingSettings && logoFile != null)}
+                    />
+                    {errors.logo && <ValidationError message={errors.logo} />}
                 </div>
-                 <div className='flex flex-col gap-2'>
-                    <label className="block text-sm font-medium text-gray-300">Favicon</label>
-                    <p className="text-xs text-gray-400 -mt-1 mb-2">Gunakan format .ico atau .png transparan. Ukuran 48x48 piksel.</p>
-                    {formData.faviconUrl ? (
-                        <div className="relative w-16 h-16 group mb-2">
-                            <img src={formData.faviconUrl} alt="favicon" className="h-16 w-16 object-contain bg-white/10 p-1 rounded" />
-                             <button
-                                onClick={() => handleRemoveImage('faviconUrl')}
-                                className="absolute -top-1 -right-1 bg-red-600/90 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                aria-label="Hapus favicon"
-                            >
-                                <Trash2 size={14} />
-                            </button>
-                        </div>
-                    ) : <div className='h-16 w-16 mb-2'></div>}
-                    <input id="favicon-input" type="file" accept='image/*' onChange={(e) => setFaviconFile(e.target.files ? e.target.files[0] : null)} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-lime-200/20 file:text-lime-300 hover:file:bg-lime-200/30 cursor-pointer"/>
+                 <div>
+                    <ImageUploadField
+                        label="Favicon *"
+                        description="Gunakan format .ico atau .png transparan. Ukuran 48x48 piksel."
+                        currentImageUrl={formData.faviconUrl}
+                        onFileSelect={setFaviconFile}
+                        onRemoveImage={() => handleRemoveImage('faviconUrl')}
+                         // ▼▼▼ [PERUBAHAN 4] Gunakan isSavingSettings ▼▼▼
+                        isUploading={isUploadingFavicon || (isSavingSettings && faviconFile != null)}
+                    />
+                    {errors.favicon && <ValidationError message={errors.favicon} />}
                 </div>
             </SectionCard>
-            {/* ▲▲▲ AKHIR PERUBAHAN ▲▲▲ */}
 
             <div className="space-y-4">
-                 <h4 className='text-lg font-semibold text-lime-300 border-b border-lime-400/30 pb-2'>Banner Halaman Utama</h4>
+                 <h4 className='text-lg font-semibold text-lime-300 border-b border-lime-400/30 pb-2'>Banner Halaman Utama *</h4>
+                 {errors.banner && <ValidationError message={errors.banner} />}
                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                     <InputField label="Tagline Banner (ID)" name="bannerTagline_id" value={formData.bannerTagline?.id || ''} onChange={(e) => handleNestedChange('bannerTagline', 'id', e.target.value)} />
                     <InputField label="Tagline Banner (EN)" name="bannerTagline_en" value={formData.bannerTagline?.en || ''} onChange={(e) => handleNestedChange('bannerTagline', 'en', e.target.value)} />
@@ -239,21 +426,23 @@ export const GeneralSettingsComponent: React.FC = () => {
                     {formData.bannerImages?.map((banner: BannerImage, index: number) => (
                         <div key={banner.id || index} className="relative group">
                             <img src={banner.imageUrl} alt={`banner-${index}`} className="w-full h-24 object-cover rounded-md bg-white/10" />
-                            <button onClick={() => handleRemoveBanner(index)} className="absolute top-1 right-1 bg-red-600/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14}/></button>
+                            <button onClick={() => typeof banner.id === 'number' && handleRemoveBanner(banner.id)} className="absolute top-1 right-1 bg-red-600/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14}/></button>
                         </div>
                     ))}
                  </div>
                  <div className="p-4 border-2 border-dashed border-lime-400/30 rounded-lg space-y-4">
                     <h5 className="font-semibold text-gray-200">Tambah Gambar Banner Baru</h5>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Pilih File Gambar</label>
-                        <p className="text-xs text-gray-400 mb-2">
-                            <b>Rasio 3:1.</b> Ukuran ideal <b>1920x640</b> piksel.<br/>
-                            Ukuran minimum yang baik <b>1500x500</b> piksel.
-                        </p>
-                        <input id="new-banner-input" type="file" accept='image/*' onChange={(e) => setNewBannerFile(e.target.files ? e.target.files[0] : null)} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-lime-200/20 file:text-lime-300 hover:file:bg-lime-200/30 cursor-pointer"/>
-                    </div>
-                    <button onClick={handleAddBanner} disabled={isSaving || !newBannerFile} className="bg-lime-400/80 text-gray-900 font-semibold py-2 px-4 rounded-lg hover:bg-lime-500 transition-colors text-sm flex items-center gap-2 disabled:bg-gray-500 disabled:cursor-not-allowed"><UploadCloud size={16}/> Upload & Tambah Gambar</button>
+                    <ImageUploadField 
+                        variant="banner"
+                        label="Pilih File Gambar"
+                        description="Rasio 3:1. Ukuran ideal 1920x640 piksel. Min 1500x500 piksel."
+                        currentImageUrl={null}
+                        onFileSelect={setNewBannerFile}
+                        onRemoveImage={() => setNewBannerFile(null)}
+                    />
+                    <button onClick={handleAddBanner} disabled={isUploadingBanner || !newBannerFile} className="bg-lime-400/80 text-gray-900 font-semibold py-2 px-4 rounded-lg hover:bg-lime-500 transition-colors text-sm flex items-center gap-2 disabled:bg-gray-500 disabled:cursor-not-allowed">
+                        {isUploadingBanner ? <><Loader2 size={16} className="animate-spin" /> Mengunggah...</> : <><UploadCloud size={16}/> Upload & Tambah Gambar</>}
+                    </button>
                  </div>
             </div>
             <div className="space-y-4">
@@ -286,14 +475,16 @@ export const GeneralSettingsComponent: React.FC = () => {
                     <PlusCircle size={18}/> Tambah FAQ
                 </button>
             </div>
+
             <SectionCard title="Kebijakan Privasi" className='md:grid-cols-1'>
-                <TextareaField label="Isi Kebijakan Privasi (Indonesia)" name="privacyPolicy_id" value={formData.privacyPolicy?.id || ''} onChange={(e) => handleNestedChange('privacyPolicy', 'id', e.target.value)} rows={8} />
-                <TextareaField label="Isi Kebijakan Privasi (Bahasa Inggris)" name="privacyPolicy_en" value={formData.privacyPolicy?.en || ''} onChange={(e) => handleNestedChange('privacyPolicy', 'en', e.target.value)} rows={8} />
+                <TextareaField label="Isi Kebijakan Privasi (Indonesia)" name="privacyPolicy_id" value={formData.privacyPolicy?.id || ''} onChange={(e) => handleNestedChange('privacyPolicy', 'id', e.target.value)} rows={8} maxLength={300} />
+                <TextareaField label="Isi Kebijakan Privasi (Bahasa Inggris)" name="privacyPolicy_en" value={formData.privacyPolicy?.en || ''} onChange={(e) => handleNestedChange('privacyPolicy', 'en', e.target.value)} rows={8} maxLength={300} />
             </SectionCard>
 
             <div className='pt-6 mt-6 border-t border-lime-400/30'>
-                <button onClick={handleSave} disabled={isSaving} className="w-full bg-lime-400 text-gray-900 font-bold py-3 px-6 rounded-lg hover:bg-lime-500 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
-                    {isSaving ? 'Menyimpan...' : 'Simpan Semua Perubahan'}
+                {/* ▼▼▼ [PERUBAHAN 5] Gunakan isSavingSettings ▼▼▼ */}
+                <button onClick={handleSave} disabled={isSavingSettings || isUploadingLogo || isUploadingFavicon} className="w-full bg-lime-400 text-gray-900 font-bold py-3 px-6 rounded-lg hover:bg-lime-500 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    {isSavingSettings ? <><Loader2 className="animate-spin"/> Menyimpan...</> : 'Simpan Semua Perubahan'}
                 </button>
             </div>
         </div>

@@ -1,7 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/apiService'; 
-import type { SiteSettings } from '../../types/admin/adminsettings';
-// Fungsi upload file kita definisikan di sini agar hook ini mandiri
+import type { SiteSettings, BannerImage, AnnouncementSettings } from '../../types/admin/adminsettings';
+import { toast } from 'react-hot-toast';
+
+// --- FUNGSI API PENGATURAN UMUM ---
+
+const getSiteSettings = async (): Promise<SiteSettings> => {
+  const { data } = await api.get('/settings');
+  return data;
+};
+
 const uploadFile = async (folder: string, file: File): Promise<{ imageUrl: string }> => {
     const formData = new FormData();
     formData.append('image', file);
@@ -11,13 +19,6 @@ const uploadFile = async (folder: string, file: File): Promise<{ imageUrl: strin
     return data;
 };
 
-// Fungsi API untuk mengambil data
-const getSiteSettings = async (): Promise<SiteSettings> => {
-  const { data } = await api.get('/settings');
-  return data;
-};
-
-// Tipe data baru untuk payload mutasi agar bisa menerima file
 interface UpdateSettingsPayload {
   settingsData: Partial<SiteSettings>;
   logoFile?: File | null;
@@ -25,22 +26,42 @@ interface UpdateSettingsPayload {
   newBannerFile?: File | null;
 }
 
-// --- Fungsi hook utama ---
+// --- FUNGSI API PENGUMUMAN ---
+
+const getAnnouncements = async (): Promise<AnnouncementSettings> => {
+  const { data } = await api.get('/settings/announcements');
+  return data;
+};
+
+
+// --- HOOK UTAMA ---
+
 export const useSiteSettings = () => {
   const queryClient = useQueryClient();
 
-  const { data: settings, isLoading, isError } = useQuery<SiteSettings, Error>({
+  // --- QUERIES (PENGAMBILAN DATA) ---
+
+  // Query untuk Pengaturan Umum
+  const { data: settings, isLoading: isLoadingSettings, isError: isErrorSettings } = useQuery<SiteSettings, Error>({
     queryKey: ['siteSettings'],
     queryFn: getSiteSettings,
   });
 
-  // REVISI: Mutation sekarang menangani logika upload file
+  // Query untuk Pengumuman
+  const { data: announcements, isLoading: isLoadingAnnouncements } = useQuery<AnnouncementSettings, Error>({
+    queryKey: ['announcements'],
+    queryFn: getAnnouncements,
+  });
+
+
+  // --- MUTATIONS (UPDATE DATA) ---
+
+  // Mutasi untuk Pengaturan Umum
   const updateSettingsMutation = useMutation({
     mutationFn: async ({ settingsData, logoFile, faviconFile, newBannerFile }: UpdateSettingsPayload) => {
-      // Salin data form agar tidak mengubah state asli secara langsung
       let dataToSave = { ...settingsData };
+      delete dataToSave.bannerImages;
 
-      // 1. Proses upload file jika ada file yang dikirim
       if (logoFile) {
         const res = await uploadFile('settings', logoFile);
         dataToSave.logoUrl = res.imageUrl;
@@ -50,32 +71,81 @@ export const useSiteSettings = () => {
         dataToSave.faviconUrl = res.imageUrl;
       }
       if (newBannerFile) {
-        const res = await uploadFile('banners', newBannerFile);
-        // Tambahkan banner baru ke dalam daftar yang sudah ada
-        const existingBanners = settingsData.bannerImages || [];
-        dataToSave.bannerImages = [...existingBanners, { imageUrl: res.imageUrl }];
+        const formData = new FormData();
+        formData.append('image', newBannerFile);
+        const { data: bannerResponse } = await api.post('/settings/banners', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        dataToSave = { ...bannerResponse, ...dataToSave };
       }
-
-      // 2. Kirim data final (yang sudah berisi URL gambar baru) ke server
       const { data } = await api.put('/settings', dataToSave);
       return data;
     },
     onSuccess: (savedData) => {
-      // 3. Update cache React Query dengan data terbaru dari server
       queryClient.setQueryData(['siteSettings'], savedData);
-      alert('Pengaturan berhasil disimpan!');
+      toast.success('Pengaturan berhasil disimpan!');
     },
     onError: (error) => {
       console.error("Failed to save settings:", error);
-      alert(`Gagal menyimpan pengaturan: ${error.message}`);
+      toast.error('Gagal menyimpan pengaturan.');
     }
   });
 
+  // Mutasi untuk menghapus Banner
+  const deleteBannerMutation = useMutation({
+      mutationFn: async (bannerId: number) => {
+          return api.delete(`/settings/banners/${bannerId}`);
+      },
+      onSuccess: (_data, bannerId) => {
+          queryClient.setQueryData(['siteSettings'], (oldData: SiteSettings | undefined) => {
+              if (!oldData) return oldData;
+              return {
+                  ...oldData,
+                  bannerImages: oldData.bannerImages.filter((banner: BannerImage) => banner.id !== bannerId),
+              };
+          });
+          toast.success('Banner berhasil dihapus!');
+      },
+      onError: (error) => {
+          console.error('Failed to delete banner:', error);
+          toast.error('Gagal menghapus banner.');
+      }
+  });
+
+  // Mutasi untuk Pengumuman
+  const updateAnnouncementsMutation = useMutation({
+    mutationFn: async (dataToSave: Partial<AnnouncementSettings>) => {
+      const { data } = await api.put('/settings/announcements', dataToSave);
+      return data;
+    },
+    onSuccess: (savedData) => {
+      queryClient.setQueryData(['announcements'], savedData);
+      toast.success('Pengumuman berhasil disimpan!');
+    },
+    onError: (error) => {
+      toast.error('Gagal menyimpan pengumuman.');
+      console.error("Failed to save announcements:", error);
+    }
+  });
+
+  // --- RETURN SEMUA DATA DAN FUNGSI ---
+
   return { 
+    // Data & Status Pengaturan Umum
     settings, 
-    isLoading, 
-    isError, 
+    isLoadingSettings, 
+    isErrorSettings,
     updateSettings: updateSettingsMutation.mutate, 
-    isSaving: updateSettingsMutation.isPending 
+    isSavingSettings: updateSettingsMutation.isPending,
+    
+    // Fungsi Hapus Banner
+    deleteBanner: deleteBannerMutation.mutate,
+    isDeletingBanner: deleteBannerMutation.isPending,
+
+    // Data & Status Pengumuman
+    announcements,
+    isLoadingAnnouncements,
+    updateAnnouncements: updateAnnouncementsMutation.mutate,
+    isSavingAnnouncements: updateAnnouncementsMutation.isPending,
   };
 };

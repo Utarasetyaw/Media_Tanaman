@@ -6,19 +6,21 @@ export interface LocalizedString {
 
 // Tipe untuk item FAQ (disesuaikan dengan data API)
 export interface FaqItem {
+  id?: number;
   q: LocalizedString;
   a: LocalizedString;
 }
 
 // Tipe untuk Nilai Perusahaan (disesuaikan dengan komponen)
 export interface CompanyValue {
+  id?: number;
   title: LocalizedString;
   description: LocalizedString;
 }
 
 // Tipe untuk gambar banner
 export interface BannerImage {
-  id?: number;
+  id: number;
   imageUrl: string;
 }
 
@@ -50,17 +52,27 @@ export interface ContactInfo {
 export interface SiteSettings {
   id: number;
   name: string;
-  logoUrl: string;
-  faviconUrl: string;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  shortDescription: LocalizedString;
   businessDescription: LocalizedString;
-  contactInfo: ContactInfo; // Tidak lagi 'any'
+  contactInfo: ContactInfo;
   faqs: FaqItem[];
   companyValues: CompanyValue[];
   privacyPolicy: LocalizedString;
-  seo: SiteSeo; // Tidak lagi 'any'
+  seo: SiteSeo;
   googleAnalyticsId: string | null;
   googleAdsId: string | null;
   metaPixelId: string | null;
   bannerTagline: LocalizedString;
   bannerImages: BannerImage[];
+}
+
+// ▼▼▼ TAMBAHKAN INTERFACE BARU INI ▼▼▼
+export interface AnnouncementSettings {
+  id: number;
+  journalistAnnouncement: LocalizedString;
+  userAnnouncement: LocalizedString;
+  journalistRules: LocalizedString;
+  userRules: LocalizedString;
 }

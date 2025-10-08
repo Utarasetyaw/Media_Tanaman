@@ -16,7 +16,7 @@ import {
     loginParticipant,
     getMyProfile,
     logoutUser,
-} from "../services/apiAuth"; // REVISI: Jalur impor diperbaiki
+} from "../services/apiAuth";
 import { toast } from "react-toastify";
 
 // --- Tipe Data & Interface ---
@@ -26,18 +26,17 @@ interface User {
     email: string;
     role: "ADMIN" | "JOURNALIST" | "USER";
 }
-type LoginCredentials = { email: string; password: string };
+type LoginCredentials = { email: string; password:string };
 type LoginRole = "admin" | "journalist" | "user";
 
-// ▼▼▼ REVISI 1: Perbarui ContextType untuk fitur baru ▼▼▼
 interface AuthContextType {
     user: User | null;
     login: (credentials: LoginCredentials, role: LoginRole) => Promise<void>;
     logout: () => void;
     isLoading: boolean;
     isAuthenticated: boolean;
-    availableSessions: LoginRole[]; // Untuk menyimpan sesi yang tersedia
-    switchSession: (role: LoginRole) => Promise<void>; // Fungsi untuk ganti sesi
+    availableSessions: LoginRole[];
+    switchSession: (role: LoginRole) => Promise<void>;
 }
 
 // --- Context ---
@@ -55,11 +54,14 @@ const SplashScreen: React.FC = () => (
 
 // --- Kunci localStorage ---
 const ACTIVE_ROLE_KEY = 'narapati_active_role';
+
+// ▼▼▼ PERUBAHAN UTAMA DI SINI ▼▼▼
 const TOKEN_KEYS: { [key in LoginRole]: string } = {
-    admin: 'admin_narapati_auth_token',
-    journalist: 'journalist_narapati_auth_token',
-    user: 'user_narapati_auth_token',
+    admin: 'admintoken',
+    journalist: 'jurnalisttoken',
+    user: 'usertoken',
 };
+// ▲▲▲ AKHIR PERUBAHAN ▲▲▲
 
 // --- Provider Utama ---
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
@@ -67,7 +69,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    // ▼▼▼ REVISI 2: State baru untuk melacak semua sesi yang valid ▼▼▼
     const [availableSessions, setAvailableSessions] = useState<LoginRole[]>([]);
     const navigate = useNavigate();
 
@@ -99,7 +100,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
                 }
             }
         } else {
-            // Jika tidak ada peran aktif, pastikan user null
             setUser(null);
         }
         setIsLoading(false);
@@ -109,7 +109,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         initializeSession();
     }, [initializeSession]);
 
-    // ▼▼▼ REVISI 3: Buat fungsi untuk berganti sesi ▼▼▼
     const switchSession = async (role: LoginRole) => {
         const token = localStorage.getItem(TOKEN_KEYS[role]);
         if (!token) {
@@ -124,14 +123,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             const profile = await getMyProfile();
             setUser(profile.data);
             
-            // Arahkan ke dashboard yang sesuai
             if (profile.data.role === "ADMIN") navigate("/admin");
             if (profile.data.role === "JOURNALIST") navigate("/jurnalis");
             if (profile.data.role === "USER") navigate("/dashboard");
 
         } catch (error) {
             toast.error("Gagal berganti sesi.");
-            // Jika gagal, kembalikan ke kondisi awal
             initializeSession();
         } finally {
             setIsLoading(false);
@@ -139,7 +136,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     };
 
     const login = async (credentials: LoginCredentials, role: LoginRole) => {
-        // ... Logika login tidak berubah ...
         let response;
         switch (role) {
             case "admin": response = await loginAdmin(credentials); break;
@@ -154,7 +150,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         setAuthHeader(newToken);
         setUser(loggedInUser);
 
-        // Tambahkan sesi baru ke daftar sesi yang tersedia
         setAvailableSessions(prev => [...new Set([...prev, role])]);
 
         if (loggedInUser.role === "ADMIN") navigate("/admin");
@@ -176,17 +171,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             setAuthHeader(null);
             setUser(null);
             
-            // Hapus dari daftar sesi & set sesi aktif baru jika ada
             const remainingSessions = availableSessions.filter(r => r !== roleToLogout);
             setAvailableSessions(remainingSessions);
             if (remainingSessions.length > 0) {
-                // Jika masih ada sesi lain, jadikan yang pertama sebagai sesi aktif
-                localStorage.setItem(ACTIVE_ROLE_KEY, remainingSessions[0]);
+                const nextActiveRole = remainingSessions[0];
+                const nextToken = localStorage.getItem(TOKEN_KEYS[nextActiveRole]);
+                localStorage.setItem(ACTIVE_ROLE_KEY, nextActiveRole);
+                if (nextToken) {
+                   setAuthHeader(nextToken);
+                   // Inisialisasi ulang untuk memuat profil pengguna berikutnya
+                   initializeSession(); 
+                }
             }
             
             navigate("/");
         }
-    }, [user, navigate, availableSessions]);
+    }, [user, navigate, availableSessions, initializeSession]);
 
     if (isLoading) {
         return <SplashScreen />;
@@ -200,8 +200,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
                 logout,
                 isLoading,
                 isAuthenticated: !!user,
-                availableSessions, // Kirim ke provider
-                switchSession,     // Kirim ke provider
+                availableSessions,
+                switchSession,
             }}
         >
             {children}
@@ -216,4 +216,3 @@ export const useAuth = () => {
     }
     return context;
 };
-

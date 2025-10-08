@@ -35,7 +35,7 @@ const SectionCard: React.FC<{ title: string; children: React.ReactNode; classNam
 );
 
 export const SeoSettingsComponent: React.FC = () => {
-    const { settings, isLoading, isSaving, updateSettings } = useSiteSettings();
+    const { settings, isLoadingSettings, isSavingSettings, updateSettings } = useSiteSettings();
     const [formData, setFormData] = React.useState<Partial<SiteSettings>>({});
 
     React.useEffect(() => {
@@ -68,7 +68,7 @@ export const SeoSettingsComponent: React.FC = () => {
         updateSettings({ settingsData: formData });
     };
 
-    if (isLoading) {
+    if (isLoadingSettings) {
         return <div className='text-center text-gray-300 p-8'>Memuat pengaturan SEO...</div>;
     }
 
@@ -173,8 +173,8 @@ export const SeoSettingsComponent: React.FC = () => {
             </SectionCard>
 
             <div className='pt-6 mt-6 border-t border-lime-400/30'>
-                <button onClick={handleSave} disabled={isSaving} className="w-full bg-lime-400 text-gray-900 font-bold py-3 px-6 rounded-lg hover:bg-lime-500 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
-                    {isSaving ? 'Menyimpan Pengaturan SEO...' : 'Simpan Pengaturan SEO'}
+                <button onClick={handleSave} disabled={isSavingSettings} className="w-full bg-lime-400 text-gray-900 font-bold py-3 px-6 rounded-lg hover:bg-lime-500 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
+                    {isSavingSettings ? 'Menyimpan Pengaturan SEO...' : 'Simpan Pengaturan SEO'}
                 </button>
             </div>
         </div>

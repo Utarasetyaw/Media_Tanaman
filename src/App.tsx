@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { Toaster } from 'react-hot-toast'; // <-- 1. Import Toaster
 
 // --- Layouts ---
 import MainLayout from './layouts/MainLayout';
@@ -17,9 +18,9 @@ import EventPage from './pages/public/Event';
 import EventDetail from './pages/public/EventDetail';
 import PlantPage from './pages/public/Plant';
 import PlantDetail from './pages/public/PlantDetail';
-import NotFoundPage from './pages/NotFoundPage'; // <-- Halaman 404 diimpor
+import NotFoundPage from './pages/NotFoundPage';
 
-// --- Halaman Auth (Menggunakan URL Spesifik) ---
+// --- Halaman Auth ---
 import { AdminLoginPage } from './pages/auth/AdminLoginPage';
 import { JournalistLoginPage } from './pages/auth/JournalistLoginPage';
 import { ParticipantLoginPage } from './pages/auth/ParticipantLoginPage';
@@ -56,11 +57,9 @@ const ProtectedRoute: React.FC<{ allowedRoles: string[] }> = ({ allowedRoles }) 
     return <div className="flex items-center justify-center h-screen bg-[#003938] text-white">Memeriksa sesi...</div>;
   }
 
-  // Cek jika user tidak ada atau perannya tidak diizinkan
   if (!user || !allowedRoles.includes(user.role)) {
-    // Tentukan halaman login tujuan berdasarkan peran yang diharapkan
     const expectedRole = allowedRoles[0]; 
-    let loginPath = '/participant/login'; // Default
+    let loginPath = '/participant/login'; 
 
     if (expectedRole === 'ADMIN') {
       loginPath = '/admin/login';
@@ -70,11 +69,9 @@ const ProtectedRoute: React.FC<{ allowedRoles: string[] }> = ({ allowedRoles }) 
       loginPath = '/participant/login';
     }
     
-    // Arahkan ke halaman login yang sesuai
     return <Navigate to={loginPath} replace />;
   }
 
-  // Jika otentikasi dan otorisasi berhasil, tampilkan konten halaman
   return <Outlet />;
 };
 
@@ -83,6 +80,35 @@ const ProtectedRoute: React.FC<{ allowedRoles: string[] }> = ({ allowedRoles }) 
 const App: React.FC = () => {
   return (
     <AuthProvider>
+      {/* ▼▼▼ [PERUBAHAN] Tambahkan Toaster di sini ▼▼▼ */}
+      <Toaster
+        position="top-center"
+        reverseOrder={false}
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#1a202c', // Warna latar belakang gelap
+            color: '#e2e8f0', // Warna teks terang
+            border: '1px solid #4a5568', // Border
+          },
+          success: {
+            duration: 2000,
+            iconTheme: {
+              primary: '#38a169', // Warna ikon sukses
+              secondary: 'white',
+            },
+          },
+          error: {
+            duration: 4000,
+            iconTheme: {
+              primary: '#e53e3e', // Warna ikon error
+              secondary: 'white',
+            },
+          },
+        }}
+      />
+      {/* ▲▲▲ AKHIR PERUBAHAN ▲▲▲ */}
+
       <Routes>
         {/* === Rute Publik dengan Layout Utama === */}
         <Route path="/" element={<MainLayout />}>
@@ -142,11 +168,10 @@ const App: React.FC = () => {
         </Route>
 
         {/* === Rute Halaman Tidak Ditemukan (404) === */}
-        <Route path="*" element={<NotFoundPage />} /> {/* <-- Menggunakan komponen 404 baru */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </AuthProvider>
   );
 };
 
 export default App;
-

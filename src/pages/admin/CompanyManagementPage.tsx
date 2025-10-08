@@ -5,6 +5,7 @@ import { TaxonomyManager } from './components/TaxonomyManager';
 import { GeneralSettingsComponent } from './components/GeneralSettingsComponent';
 import { SeoSettingsComponent } from './components/SeoSettingsComponent';
 import { TrackingSettingsComponent } from './components/TrackingSettingsComponent';
+import { AnnouncementsComponent } from './components/AnnouncementsComponent'; // <-- 1. Import komponen baru
 import api from '../../services/apiService'; 
 
 // Tipe data untuk payload API taksonomi
@@ -26,12 +27,14 @@ const plantTypeApi = {
   delete: (id: number) => api.delete(`/plant-types/${id}`).then(res => res.data),
 };
 
-type ActiveTab = 'categories' | 'plantTypes' | 'general' | 'seo' | 'tracking';
+// ▼▼▼ 2. Tambahkan 'announcements' ke tipe ActiveTab ▼▼▼
+type ActiveTab = 'categories' | 'plantTypes' | 'general' | 'seo' | 'tracking' | 'announcements';
 
 const tabs: { key: ActiveTab, label: string }[] = [
     { key: 'general', label: 'Pengaturan Umum' },
     { key: 'seo', label: 'Pengaturan SEO' },
     { key: 'tracking', label: 'Google & Ads' },
+    { key: 'announcements', label: 'Pengumuman' }, // <-- 3. Tambahkan tab baru di sini
     { key: 'categories', label: 'Manajemen Kategori' },
     { key: 'plantTypes', label: 'Manajemen Tipe Tanaman' },
 ];
@@ -41,16 +44,19 @@ export const CompanyManagementPage: React.FC = () => {
 
     const renderContent = () => {
         switch (activeTab) {
-            case 'categories':
-                return <TaxonomyManager queryKey="adminCategories" title="Manajemen Kategori" itemName="Kategori" api={categoryApi} />;
-            case 'plantTypes':
-                return <TaxonomyManager queryKey="adminPlantTypes" title="Manajemen Tipe Tanaman" itemName="Tipe Tanaman" api={plantTypeApi} />;
             case 'general':
                 return <GeneralSettingsComponent />;
             case 'seo':
                 return <SeoSettingsComponent />;
             case 'tracking':
                 return <TrackingSettingsComponent />;
+            // ▼▼▼ 4. Tambahkan case baru untuk render komponen pengumuman ▼▼▼
+            case 'announcements':
+                return <AnnouncementsComponent />;
+            case 'categories':
+                return <TaxonomyManager queryKey="adminCategories" title="Manajemen Kategori" itemName="Kategori" api={categoryApi} />;
+            case 'plantTypes':
+                return <TaxonomyManager queryKey="adminPlantTypes" title="Manajemen Tipe Tanaman" itemName="Tipe Tanaman" api={plantTypeApi} />;
             default:
                 return null;
         }
@@ -63,8 +69,6 @@ export const CompanyManagementPage: React.FC = () => {
             <h2 className="text-2xl sm:text-3xl font-bold text-lime-200/90 mb-4">Pengaturan Situs</h2>
             
             <div className="mb-6">
-                {/* ▼▼▼ PERUBAHAN BREAKPOINT DARI 'md' KE 'lg' ▼▼▼ */}
-                {/* Tampilan Dropdown untuk Mobile & Tablet (di bawah breakpoint 'lg') */}
                 <div className="lg:hidden"> 
                     <Menu as="div" className="relative inline-block text-left w-full">
                         <div>
@@ -102,7 +106,6 @@ export const CompanyManagementPage: React.FC = () => {
                     </Menu>
                 </div>
 
-                {/* Tampilan Tab untuk Desktop (di atas breakpoint 'lg') */}
                 <div className="hidden lg:block border-b border-lime-400/30">
                     <nav className="-mb-px flex space-x-6" aria-label="Tabs">
                         {tabs.map((tab) => (
@@ -116,7 +119,6 @@ export const CompanyManagementPage: React.FC = () => {
                         ))}
                     </nav>
                 </div>
-                {/* ▲▲▲ AKHIR PERUBAHAN BREAKPOINT ▲▲▲ */}
             </div>
 
             <div>

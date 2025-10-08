@@ -24,7 +24,7 @@ const SectionCard: React.FC<{ title: string; children: React.ReactNode; classNam
 );
 
 export const TrackingSettingsComponent: React.FC = () => {
-    const { settings, isLoading, isSaving, updateSettings } = useSiteSettings();
+    const { settings, isLoadingSettings, isSavingSettings, updateSettings } = useSiteSettings();
     const [formData, setFormData] = React.useState<Partial<SiteSettings>>({});
 
     React.useEffect(() => {
@@ -42,7 +42,7 @@ export const TrackingSettingsComponent: React.FC = () => {
         updateSettings({ settingsData: formData });
     };
 
-    if (isLoading) {
+    if (isLoadingSettings) {
         return <div className='text-center text-gray-300 p-8'>Memuat pengaturan...</div>;
     }
 
@@ -79,8 +79,8 @@ export const TrackingSettingsComponent: React.FC = () => {
 
 
             <div className='pt-6 mt-6 border-t border-lime-400/30'>
-                <button onClick={handleSave} disabled={isSaving} className="w-full bg-lime-400 text-gray-900 font-bold py-3 px-6 rounded-lg hover:bg-lime-500 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
-                    {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
+                <button onClick={handleSave} disabled={isSavingSettings} className="w-full bg-lime-400 text-gray-900 font-bold py-3 px-6 rounded-lg hover:bg-lime-500 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
+                    {isSavingSettings ? 'Menyimpan...' : 'Simpan Perubahan'}
                 </button>
             </div>
         </div>
