@@ -5,6 +5,7 @@ import { Menu, Transition } from '@headlessui/react';
 import { useJournalistArticleEditor } from '../../hooks/jurnalist/useJournalistArticleEditor';
 import { MarkdownEditor } from '../admin/components/MarkdownEditor';
 import type { JournalistArticleFormData } from '../../types/jurnalist/journalistArticleEditor.types';
+import { toast } from 'react-hot-toast'; // Impor toast
 
 const initialFormData: JournalistArticleFormData = {
     title: { id: '', en: '' },
@@ -15,6 +16,7 @@ const initialFormData: JournalistArticleFormData = {
     plantTypeId: 0,
 };
 
+// Komponen CustomDropdown (Tidak ada perubahan)
 const CustomDropdown: React.FC<{
     options: { id: string | number; name: string }[];
     selectedValue: string | number;
@@ -46,15 +48,7 @@ const CustomDropdown: React.FC<{
     );
 };
 
-const SuccessModal: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 transition-opacity duration-300">
-        <div className="bg-[#004A49] border-2 border-lime-400/50 rounded-lg p-8 text-center shadow-xl transform transition-all duration-300 scale-100">
-            <CheckCircle className="text-green-400 w-16 h-16 mx-auto mb-4" />
-            <p className="text-white text-lg mb-6">{message}</p>
-            <button onClick={onClose} className="bg-lime-400 text-gray-900 font-bold py-2 px-8 rounded-lg hover:bg-lime-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#004A49] focus:ring-lime-400">OK</button>
-        </div>
-    </div>
-);
+// Komponen SuccessModal (dihapus)
 
 export const JournalistArticleEditorPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -68,7 +62,7 @@ export const JournalistArticleEditorPage: React.FC = () => {
 
     const [formData, setFormData] = useState<JournalistArticleFormData>(initialFormData);
     const [imageFile, setImageFile] = useState<File | null>(null);
-    const [successInfo, setSuccessInfo] = useState<{ message: string; path: string } | null>(null);
+    const [isDownloading, setIsDownloading] = useState(false); // State untuk unduh gambar
 
     useEffect(() => {
         if (isEditMode && articleData) {
@@ -83,7 +77,6 @@ export const JournalistArticleEditorPage: React.FC = () => {
         }
     }, [articleData, isEditMode]);
     
-
     const handleJsonChange = (field: 'title' | 'excerpt' | 'content', lang: 'id' | 'en', value: string | undefined) => {
         setFormData(prev => ({ ...prev, [field]: { ...prev[field], [lang]: value || '' } }));
     };
@@ -98,49 +91,89 @@ export const JournalistArticleEditorPage: React.FC = () => {
         const fileInput = document.getElementById('image-input') as HTMLInputElement;
         if (fileInput) fileInput.value = '';
     };
-    
-    const handleSaveDraft = async () => {
-        if (!formData.title.id || !formData.categoryId) {
-            alert('Judul (Indonesia) dan Kategori wajib diisi.');
-            return;
-        }
-        try {
-            const savedArticle = await saveArticleAsync({ formData, imageFile, action: 'save' });
-            const redirectPath = isEditMode ? '/jurnalis/articles' : `/jurnalis/articles/edit/${savedArticle.id}`;
-            const message = isEditMode ? 'Draf berhasil diperbarui!' : 'Draf berhasil disimpan!';
-            setSuccessInfo({ message, path: redirectPath });
-        } catch (error) {
-            console.error("Gagal menyimpan draf:", error);
-        }
-    };
 
-    const handleSubmitForReview = async () => {
-        if (!formData.title.id || !formData.categoryId) {
-            alert('Judul (Indonesia) dan Kategori wajib diisi.');
-            return;
-        }
+    const handleDownload = async (imageUrl: string) => {
+        setIsDownloading(true);
+        toast.loading('Mulai mengunduh...');
         try {
-            await saveArticleAsync({ formData, imageFile, action: 'submit' });
-            setSuccessInfo({ message: 'Artikel berhasil dikirim untuk tinjauan!', path: '/jurnalis/articles' });
+            const response = await fetch(imageUrl);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', imageUrl.substring(imageUrl.lastIndexOf('/') + 1));
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            toast.dismiss();
+            toast.success('Gambar berhasil diunduh!');
         } catch (error) {
-            console.error("Gagal mengirim untuk tinjauan:", error);
+            toast.dismiss();
+            toast.error('Gagal mengunduh gambar.');
+        } finally {
+            setIsDownloading(false);
         }
     };
     
-    const handleFinishRevision = async () => {
-        if (!window.confirm('Yakin ingin mengirim hasil revisi ini kembali ke admin?')) return;
+    const handleSave = async (action: 'save' | 'submit') => {
         if (!formData.title.id || !formData.categoryId) {
-            alert('Judul (Indonesia) dan Kategori wajib diisi.');
+            toast.error('Judul (Indonesia) dan Kategori wajib diisi.');
             return;
         }
         try {
-            const savedArticle = await saveArticleAsync({ formData, imageFile, action: 'save' });
+            const savedArticle = await saveArticleAsync({ formData, imageFile, action });
             if (savedArticle) {
-                finishRevision(savedArticle.id);
+                if (action === 'submit') {
+                    toast.success('Artikel berhasil dikirim untuk tinjauan!');
+                    navigate('/jurnalis/articles');
+                } else {
+                    const message = isEditMode ? 'Draf berhasil diperbarui!' : 'Draf berhasil disimpan!';
+                    const path = isEditMode ? '/jurnalis/articles' : `/jurnalis/articles/edit/${savedArticle.id}`;
+                    toast.success(message);
+                    if(!isEditMode) navigate(path); // Arahkan ke halaman edit hanya jika membuat baru
+                }
             }
         } catch (error) {
-            console.log("Gagal menyimpan sebelum menyelesaikan revisi.", error);
+            // Error sudah ditangani di hook, tidak perlu toast lagi di sini
+            console.error("Gagal memproses:", error);
         }
+    };
+    
+    const confirmFinishRevision = () => {
+        toast((t) => (
+            <div className="flex flex-col gap-3 p-2">
+                <p className="font-semibold text-white">Kirim hasil revisi ini kembali ke admin?</p>
+                <div className="flex gap-2">
+                    <button
+                        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md text-sm"
+                        onClick={async () => {
+                            toast.dismiss(t.id);
+                            if (!formData.title.id || !formData.categoryId) {
+                                toast.error('Judul (Indonesia) dan Kategori wajib diisi.');
+                                return;
+                            }
+                            try {
+                                const savedArticle = await saveArticleAsync({ formData, imageFile, action: 'save' });
+                                if (savedArticle) {
+                                    finishRevision(savedArticle.id);
+                                }
+                            } catch (error) {
+                                console.log("Gagal menyimpan sebelum menyelesaikan revisi.", error);
+                            }
+                        }}
+                    >
+                        Ya, Kirim
+                    </button>
+                    <button
+                        className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md text-sm"
+                        onClick={() => toast.dismiss(t.id)}
+                    >
+                        Batal
+                    </button>
+                </div>
+            </div>
+        ));
     };
 
     if (isLoading) return <div className="text-white p-8 text-center">Memuat editor...</div>;
@@ -159,16 +192,6 @@ export const JournalistArticleEditorPage: React.FC = () => {
                 </Link>
             </div>
             
-            {successInfo && (
-                <SuccessModal 
-                    message={successInfo.message} 
-                    onClose={() => {
-                        setSuccessInfo(null);
-                        navigate(successInfo.path);
-                    }} 
-                />
-            )}
-
             {articleData?.feedback && ['NEEDS_REVISION', 'JOURNALIST_REVISING'].includes(articleData.status) && (
                 <div className="bg-yellow-500/20 border-l-4 border-yellow-400 text-yellow-300 p-4 mb-6 rounded-r-lg">
                     <div className="flex items-start">
@@ -183,25 +206,13 @@ export const JournalistArticleEditorPage: React.FC = () => {
             
             <form onSubmit={(e) => e.preventDefault()} className="bg-[#004A49]/60 border-2 border-lime-400/50 shadow-lg rounded-lg p-4 sm:p-6 space-y-6">
                 <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Judul (Indonesia)</label>
-                        <input readOnly={!isEditable} value={formData.title.id} onChange={(e) => handleJsonChange('title', 'id', e.target.value)} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 read-only:bg-gray-700/30 read-only:cursor-not-allowed" required/>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Judul (Bahasa Inggris)</label>
-                        <input readOnly={!isEditable} value={formData.title.en} onChange={(e) => handleJsonChange('title', 'en', e.target.value)} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 read-only:bg-gray-700/30 read-only:cursor-not-allowed"/>
-                    </div>
+                    <div><label className="block text-sm font-medium text-gray-300 mb-1">Judul (Indonesia)</label><input readOnly={!isEditable} value={formData.title.id} onChange={(e) => handleJsonChange('title', 'id', e.target.value)} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 read-only:bg-gray-700/30 read-only:cursor-not-allowed" required/></div>
+                    <div><label className="block text-sm font-medium text-gray-300 mb-1">Judul (Bahasa Inggris)</label><input readOnly={!isEditable} value={formData.title.en} onChange={(e) => handleJsonChange('title', 'en', e.target.value)} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 read-only:bg-gray-700/30 read-only:cursor-not-allowed"/></div>
                 </div>
                 
                 <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Kutipan (Indonesia)</label>
-                        <textarea readOnly={!isEditable} value={formData.excerpt.id} onChange={(e) => handleJsonChange('excerpt', 'id', e.target.value)} rows={3} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 read-only:bg-gray-700/30 read-only:cursor-not-allowed"/>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Kutipan (Bahasa Inggris)</label>
-                        <textarea readOnly={!isEditable} value={formData.excerpt.en} onChange={(e) => handleJsonChange('excerpt', 'en', e.target.value)} rows={3} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 read-only:bg-gray-700/30 read-only:cursor-not-allowed"/>
-                    </div>
+                    <div><label className="block text-sm font-medium text-gray-300 mb-1">Kutipan (Indonesia)</label><textarea readOnly={!isEditable} value={formData.excerpt.id} onChange={(e) => handleJsonChange('excerpt', 'id', e.target.value)} rows={3} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 read-only:bg-gray-700/30 read-only:cursor-not-allowed"/></div>
+                    <div><label className="block text-sm font-medium text-gray-300 mb-1">Kutipan (Bahasa Inggris)</label><textarea readOnly={!isEditable} value={formData.excerpt.en} onChange={(e) => handleJsonChange('excerpt', 'en', e.target.value)} rows={3} className="w-full px-4 py-2 bg-transparent border border-lime-400/60 rounded-lg text-gray-200 read-only:bg-gray-700/30 read-only:cursor-not-allowed"/></div>
                 </div>
                 
                 <div><label className="block text-sm font-medium text-gray-300 mb-2">Konten (Indonesia)</label><MarkdownEditor readOnly={!isEditable} value={formData.content.id} onChange={(value) => handleJsonChange('content', 'id', value)} /></div>
@@ -225,7 +236,7 @@ export const JournalistArticleEditorPage: React.FC = () => {
                             <div className="flex items-center gap-4 mt-3">
                                 <label htmlFor="image-input" className="cursor-pointer bg-lime-200/20 text-lime-300 hover:bg-lime-200/30 font-semibold text-sm py-2 px-4 rounded-full transition-colors">Pilih File</label>
                                 <input id="image-input" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-                                {formData.imageUrl && !imageFile && (<a href={formData.imageUrl} download target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-gray-400 hover:text-white"><Download size={16} /> Unduh</a>)}
+                                {formData.imageUrl && !imageFile && (<button type="button" disabled={isDownloading} onClick={() => handleDownload(formData.imageUrl)} className="flex items-center gap-2 text-sm text-gray-400 hover:text-white disabled:opacity-50">{isDownloading ? <Loader2 className="animate-spin" size={16}/> : <Download size={16} />} Unduh</button>)}
                             </div>
                         )}
                     </div>
@@ -239,13 +250,13 @@ export const JournalistArticleEditorPage: React.FC = () => {
                     <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t border-lime-400/30">
                         {isEditMode && ['NEEDS_REVISION', 'JOURNALIST_REVISING'].includes(articleData?.status || '') ? (
                             <>
-                                <button type="button" onClick={handleSaveDraft} disabled={isSaving} className="w-full sm:w-auto bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600 disabled:bg-gray-700 disabled:opacity-60 flex items-center justify-center gap-2">{isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={16} />} Simpan Perubahan</button>
-                                <button type="button" onClick={handleFinishRevision} disabled={isSaving} className="w-full sm:w-auto bg-green-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-600 disabled:bg-green-700 disabled:opacity-60 flex items-center justify-center gap-2">{isSaving ? <Loader2 className="animate-spin" size={20}/> : <CheckCircle size={16} />} Revisi Selesai</button>
+                                <button type="button" onClick={() => handleSave('save')} disabled={isSaving} className="w-full sm:w-auto bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600 disabled:bg-gray-700 disabled:opacity-60 flex items-center justify-center gap-2">{isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={16} />} Simpan Perubahan</button>
+                                <button type="button" onClick={confirmFinishRevision} disabled={isSaving} className="w-full sm:w-auto bg-green-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-600 disabled:bg-green-700 disabled:opacity-60 flex items-center justify-center gap-2">{isSaving ? <Loader2 className="animate-spin" size={20}/> : <CheckCircle size={16} />} Revisi Selesai</button>
                             </>
                         ) : (
                             <>
-                                <button type="button" onClick={handleSaveDraft} disabled={isSaving} className="w-full sm:w-auto bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600 disabled:bg-gray-700 disabled:opacity-60 flex items-center justify-center gap-2">{isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={16} />} Simpan Draf</button>
-                                <button type="button" onClick={handleSubmitForReview} disabled={isSaving} className="w-full sm:w-auto bg-lime-400 text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-lime-500 disabled:bg-lime-700 disabled:opacity-60 flex items-center justify-center gap-2">{isSaving ? <Loader2 className="animate-spin" size={20}/> : <Send size={16} />} Kirim untuk Tinjauan</button>
+                                <button type="button" onClick={() => handleSave('save')} disabled={isSaving} className="w-full sm:w-auto bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600 disabled:bg-gray-700 disabled:opacity-60 flex items-center justify-center gap-2">{isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={16} />} Simpan Draf</button>
+                                <button type="button" onClick={() => handleSave('submit')} disabled={isSaving} className="w-full sm:w-auto bg-lime-400 text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-lime-500 disabled:bg-lime-700 disabled:opacity-60 flex items-center justify-center gap-2">{isSaving ? <Loader2 className="animate-spin" size={20}/> : <Send size={16} />} Kirim untuk Tinjauan</button>
                             </>
                         )}
                     </div>

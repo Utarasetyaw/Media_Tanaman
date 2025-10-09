@@ -41,19 +41,14 @@ export interface PlantType {
 }
 
 /**
- * Tipe untuk informasi toko online.
+ * Tipe baru untuk data toko penjual.
  */
-export interface OnlineStore {
+export interface Store {
+    id: number;
     name: string;
-    link: string;
-}
-
-/**
- * Tipe untuk informasi toko offline.
- */
-export interface OfflineStore {
-    name: string;
-    location: string;
+    url: string;
+    clicks: number;
+    plantId: number;
 }
 
 /**
@@ -65,10 +60,7 @@ export interface Plant {
     scientificName: string;
     description: LocalizedString;
     imageUrl: string;
-    stores: string | { // Bisa string (dari backend lama) atau objek (dari backend baru)
-        online: OnlineStore[] | string;
-        offline: OfflineStore[] | string;
-    };
+    stores: Store[]; // <-- Perubahan di sini
     plantTypeId: number;
     plantType: PlantType;
 }

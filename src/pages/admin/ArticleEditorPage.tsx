@@ -1,11 +1,12 @@
 import React, { useEffect, useState, Fragment } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Newspaper, ArrowLeft, Save, Send, ChevronDown, CheckCircle, Trash2, Download } from 'lucide-react';
+import { Newspaper, ArrowLeft, Save, Send, ChevronDown, Trash2, Download } from 'lucide-react';
 import { Menu, Transition } from '@headlessui/react';
 import { useArticleEditor } from '../../hooks/admin/useArticleEditor';
 import { MarkdownEditor } from './components/MarkdownEditor';
 import { useAuth } from '../../contexts/AuthContext';
 import type { AdminArticleFormData } from '../../types/admin/adminarticleeditor.types';
+import { toast } from 'react-hot-toast';
 
 const initialFormData: AdminArticleFormData = {
     title: { id: '', en: '' },
@@ -16,7 +17,6 @@ const initialFormData: AdminArticleFormData = {
     plantTypeId: 0,
 };
 
-// --- Komponen-komponen UI ---
 const CustomDropdown: React.FC<{
     options: { id: string | number; name: string }[];
     selectedValue: string | number;
@@ -38,17 +38,6 @@ const CustomDropdown: React.FC<{
         </Menu>
     );
 };
-const SuccessModal: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 transition-opacity duration-300">
-        <div className="bg-[#004A49] border-2 border-lime-400/50 rounded-lg p-8 text-center shadow-xl transform transition-all duration-300 scale-100">
-            <CheckCircle className="text-green-400 w-16 h-16 mx-auto mb-4" />
-            <p className="text-white text-lg mb-6">{message}</p>
-            <button onClick={onClose} className="bg-lime-400 text-gray-900 font-bold py-2 px-8 rounded-lg hover:bg-lime-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#004A49] focus:ring-lime-400">OK</button>
-        </div>
-    </div>
-);
-
-// --- Komponen Halaman Utama (Admin-Only) ---
 
 export const ArticleEditorPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -60,11 +49,10 @@ export const ArticleEditorPage: React.FC = () => {
 
     const [formData, setFormData] = useState<AdminArticleFormData>(initialFormData);
     const [imageFile, setImageFile] = useState<File | null>(null);
-    const [successInfo, setSuccessInfo] = useState<{ message: string; path: string } | null>(null);
 
     useEffect(() => {
         if (user && user.role !== 'ADMIN') {
-            alert('Anda tidak memiliki akses ke halaman ini.');
+            toast.error('Anda tidak memiliki akses ke halaman ini.');
             navigate('/admin/dashboard');
         }
     }, [user, navigate]);
@@ -99,20 +87,23 @@ export const ArticleEditorPage: React.FC = () => {
 
     const handleAction = async (action: 'save' | 'publish') => {
         if (!formData.title.id || !formData.categoryId) {
-            alert('Judul (Indonesia) dan Kategori wajib diisi.');
+            toast.error('Judul (Indonesia) dan Kategori wajib diisi.');
             return;
         }
         try {
             const savedArticle = await handleSaveAction({ formData, imageFile, action });
-            let message = '';
-            let path = '/admin/articles';
-            if (action === 'publish') {
-                message = 'Artikel berhasil diterbitkan!';
-            } else {
-                message = isEditMode ? 'Perubahan berhasil disimpan!' : 'Draf berhasil disimpan!';
-                if (!isEditMode) path = `/admin/articles/edit/${savedArticle.id}`;
+            if (savedArticle) {
+                let message = '';
+                let path = '/admin/articles';
+                if (action === 'publish') {
+                    message = 'Artikel berhasil diterbitkan!';
+                } else {
+                    message = isEditMode ? 'Perubahan berhasil disimpan!' : 'Draf berhasil disimpan!';
+                    if (!isEditMode) path = `/admin/articles/edit/${savedArticle.id}`;
+                }
+                toast.success(message);
+                navigate(path);
             }
-            setSuccessInfo({ message, path });
         } catch (error) {
             console.error("Gagal menyimpan artikel:", error);
         }
@@ -124,12 +115,7 @@ export const ArticleEditorPage: React.FC = () => {
     const displayImageUrl = imageFile ? URL.createObjectURL(imageFile) : formData.imageUrl;
 
     return (
-        <div>
-            {successInfo && (
-                <SuccessModal message={successInfo.message} onClose={() => { setSuccessInfo(null); navigate(successInfo.path); }} />
-            )}
-
-            {/* ▼▼▼ PERUBAHAN TATA LETAK HEADER DI SINI ▼▼▼ */}
+        <div className="p-4 sm:p-6 lg:p-8">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
                 <h2 className="text-2xl sm:text-3xl font-bold text-lime-200/90 flex items-center gap-3">
                     <Newspaper /> {isEditMode ? 'Ubah Artikel' : 'Buat Artikel Baru'}
@@ -138,7 +124,6 @@ export const ArticleEditorPage: React.FC = () => {
                     <ArrowLeft size={16} /> Kembali ke Manajemen Artikel
                 </Link>
             </div>
-            {/* ▲▲▲ AKHIR PERUBAHAN HEADER ▲▲▲ */}
             
             <form onSubmit={(e) => e.preventDefault()} className="bg-[#004A49]/60 border-2 border-lime-400/50 shadow-lg rounded-lg p-4 sm:p-6 space-y-6">
                 <div className="grid md:grid-cols-2 gap-4">
@@ -155,7 +140,7 @@ export const ArticleEditorPage: React.FC = () => {
                 <div className="grid md:grid-cols-2 gap-6 border-t border-lime-400/30 pt-6">
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-1">Gambar Utama</label>
-                        <p className="text-xs text-gray-400 mt-1 mb-2">Rekomendasi rasio 16:9 (Contoh: 1280x720 piksel).</p>
+                        <p className="text-xs text-gray-400 mt-1 mb-2">Rekomendasi rasio 16:9 (Ukuran Ideal: 1280x720 piksel).</p>
                         <div className="mt-2">
                             {displayImageUrl ? (
                                 <div className="relative group w-full max-w-sm aspect-video rounded-lg overflow-hidden border p-1 border-lime-400/50">

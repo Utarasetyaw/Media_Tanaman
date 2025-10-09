@@ -5,6 +5,7 @@ import { Plus, Edit, Trash2, X, CheckCircle, MessageSquare, XCircle, Settings2, 
 import { Menu, Transition } from '@headlessui/react';
 import type { Article, ArticleStatus, AdminEditRequestStatus } from '../../types/admin/adminarticlemanagement.types';
 import { useArticleManager } from '../../hooks/admin/useArticleManager';
+import { toast } from 'react-hot-toast';
 
 // Komponen Pagination
 interface PaginationProps {
@@ -83,7 +84,6 @@ const ActionButton: FC<{ onClick?: () => void; to?: string; target?: string; rel
     return <button onClick={onClick} title={title} className={`${commonClasses} ${colorClasses[color]}`}>{icon} {children}</button>;
 };
 
-// Tipe untuk filter dan sort
 type ArticleFilter = 'ALL' | ArticleStatus | 'NEEDS_REVISION_GROUP' | AdminEditRequestStatus | 'REJECTED_GROUP';
 type SortByType = 'terbaru' | 'terlama';
 
@@ -93,14 +93,12 @@ export const ArticleManagementPage: FC = () => {
         updateStatus, deleteArticle, requestEdit, 
     } = useArticleManager();
     
-    // State
     const [activeFilter, setActiveFilter] = useState<ArticleFilter>('ALL');
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState<SortByType>('terbaru');
     const [currentPage, setCurrentPage] = useState(1);
     const ARTICLES_PER_PAGE = 12;
 
-    // State untuk modal
     const [currentArticle, setCurrentArticle] = useState<Article | null>(null);
     const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
     const [feedbackText, setFeedbackText] = useState('');
@@ -132,7 +130,6 @@ export const ArticleManagementPage: FC = () => {
     
     const activeFilterLabel = filterOptions.find(f => f.key === activeFilter)?.label || 'Filter';
 
-    // Handlers
     const handleFilterChange = (filter: ArticleFilter) => {
         setActiveFilter(filter);
         setCurrentPage(1);
@@ -187,7 +184,31 @@ export const ArticleManagementPage: FC = () => {
             setFeedbackText('');
         });
     };
-    const handleDelete = (id: number) => { if (window.confirm('Apakah Anda yakin ingin menghapus artikel ini?')) deleteArticle(id); };
+
+    const confirmDelete = (articleId: number) => {
+        toast((t) => (
+            <div className="flex flex-col gap-3 p-2">
+                <p className="font-semibold text-white">Yakin ingin menghapus artikel ini?</p>
+                <div className="flex gap-2">
+                    <button
+                        className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md text-sm"
+                        onClick={() => {
+                            deleteArticle(articleId);
+                            toast.dismiss(t.id);
+                        }}
+                    >
+                        Ya, Hapus
+                    </button>
+                    <button
+                        className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md text-sm"
+                        onClick={() => toast.dismiss(t.id)}
+                    >
+                        Batal
+                    </button>
+                </div>
+            </div>
+        ));
+    };
     
     if (isLoading) return <div className="text-white p-8 text-center">Memuat artikel...</div>;
     if (isError) return <div className="text-red-400 p-8 text-center">Gagal memuat data artikel.</div>;
@@ -198,7 +219,7 @@ export const ArticleManagementPage: FC = () => {
             <ActionButton to={`/admin/articles/edit/${article.id}`} color="blue" icon={<Edit3 size={12}/>}>Ubah</ActionButton>
             <ActionButton onClick={() => updateStatus({ articleId: article.id, status: 'PUBLISHED'})} color="green" icon={<CheckCircle size={12}/>}>Terbitkan</ActionButton>
         </>;
-        if (article.adminEditRequest === 'DENIED') return <ActionButton onClick={() => handleDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>;
+        if (article.adminEditRequest === 'DENIED') return <ActionButton onClick={() => confirmDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>;
         
         switch (article.status) {
             case 'IN_REVIEW': return <>
@@ -221,13 +242,13 @@ export const ArticleManagementPage: FC = () => {
                 <ActionButton to={`/admin/articles/analytics/${article.id}`} color="gray" icon={<Eye size={12}/>} title="Lihat Analitik">Lihat</ActionButton>
                 <ActionButton to={`/admin/articles/seo/${article.id}`} color="gray" icon={<Settings2 size={12}/>}>SEO</ActionButton>
                 <ActionButton to={`/admin/articles/edit/${article.id}`} color="blue" icon={<Edit size={12}/>}>Ubah</ActionButton>
-                <ActionButton onClick={() => handleDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>
+                <ActionButton onClick={() => confirmDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>
             </>;
-            case 'REJECTED': return <ActionButton onClick={() => handleDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>;
+            case 'REJECTED': return <ActionButton onClick={() => confirmDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>;
             case 'DRAFT': if(article.author.role === 'ADMIN') return <>
                 <ActionButton onClick={() => updateStatus({ articleId: article.id, status: 'PUBLISHED'})} color="green" icon={<CheckCircle size={12}/>}>Terbitkan</ActionButton>
                 <ActionButton to={`/admin/articles/edit/${article.id}`} color="blue" icon={<Edit3 size={12}/>}>Ubah</ActionButton>
-                <ActionButton onClick={() => handleDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>
+                <ActionButton onClick={() => confirmDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>
             </>;
         }
         return null;

@@ -19,7 +19,7 @@ export interface Article {
   createdAt: string;
   category: Category;
   viewCount: number;
-  likeCount: number; // atau _count: { likes: number } tergantung API Anda
+  likeCount: number; 
 }
 
 // Tipe untuk data gambar banner di hero section
@@ -49,7 +49,11 @@ export interface Plant {
 
 // Tipe utama untuk respons API endpoint /api/home
 export interface HomePageData {
-  bannerImages: BannerImage[];
+  // ▼▼▼ PERBAIKAN DI SINI ▼▼▼
+  settings: {
+    bannerImages: BannerImage[];
+  };
+  // ▲▲▲ AKHIR PERBAIKAN ▲▲▲
   mostViewedArticle: Article | null;
   latestArticles: Article[];
   topHeadlines: {

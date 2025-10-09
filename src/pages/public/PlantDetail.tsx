@@ -5,13 +5,13 @@ import {
     Sprout,
     ExternalLink,
     ShoppingBag,
-    MapPin,
 } from "lucide-react";
 import { usePlantDetail } from "../../hooks/public/usePlantDetail";
 import { plantDetailTranslations } from "../../assets/plantDetail.i18n";
 import SeoManager from "../../components/SeoManager";
 import VerticalAd from "../../components/VerticalAd";
 import HorizontalAd from "../../components/HorizontalAd";
+import api from "../../services/apiService"; // <-- Impor instance API
 
 const PlantDetail: FC = () => {
     const { lang: currentLang } = useOutletContext<{ lang: "id" | "en" }>();
@@ -19,6 +19,20 @@ const PlantDetail: FC = () => {
         plantDetailTranslations[currentLang]?.[key] || key;
 
     const { plant, isLoading, isError } = usePlantDetail();
+
+    // ▼▼▼ FUNGSI BARU UNTUK MENANGANI KLIK TOKO ▼▼▼
+    const handleStoreClick = async (storeId: number, storeUrl: string) => {
+        try {
+            // Langkah 1: Kirim permintaan ke backend untuk melacak klik.
+            // Kita tidak perlu menunggu responsnya selesai sepenuhnya.
+            api.get(`/plants/track/store/${storeId}`);
+        } catch (error) {
+            console.error("Gagal melacak klik:", error);
+        }
+        
+        // Langkah 2: Langsung buka URL toko di tab baru.
+        window.open(storeUrl, '_blank', 'noopener,noreferrer');
+    };
 
     if (isLoading) {
         return (
@@ -41,19 +55,8 @@ const PlantDetail: FC = () => {
             </div>
         );
     }
-
-    // Proses data 'stores' dari string menjadi array jika diperlukan
-    const storesObj = typeof plant.stores === 'object' && plant.stores !== null ? plant.stores : undefined;
-
-    const onlineStores = (typeof storesObj?.online === 'string'
-        ? storesObj.online.split(',').map(name => ({ name: name.trim(), link: '#' })).filter(store => store.name)
-        : (storesObj?.online || [])
-    ).filter((s: any) => s.name && s.link);
-
-    const offlineStores = (typeof storesObj?.offline === 'string'
-        ? storesObj.offline.split(',').map(name => ({ name: name.trim(), location: 'Lokasi tidak tersedia' })).filter(store => store.name)
-        : (storesObj?.offline || [])
-    ).filter((s: any) => s.name && s.location);
+    
+    const onlineStores = plant.stores || [];
 
     return (
         <>
@@ -109,9 +112,9 @@ const PlantDetail: FC = () => {
                                 {t("description")}
                             </h2>
                             <div
-                                className="prose prose-invert max-w-none text-gray-300 leading-relaxed mb-10"
+                                className="prose prose-invert max-w-none text-gray-300 leading-relaxed mb-10 text-justify"
                                 dangerouslySetInnerHTML={{
-                                    __html: plant.description[currentLang],
+                                    __html: plant.description[currentLang].replace(/\n/g, '<br />'),
                                 }}
                             />
 
@@ -119,7 +122,7 @@ const PlantDetail: FC = () => {
                                 {t("where_to_buy")}
                             </h2>
                             <div className="space-y-6">
-                                {onlineStores.length > 0 && (
+                                {onlineStores.length > 0 ? (
                                     <div>
                                         <h3 className="flex items-center gap-2 font-semibold text-gray-200 mb-3">
                                             <ShoppingBag
@@ -130,12 +133,11 @@ const PlantDetail: FC = () => {
                                         </h3>
                                         <div className="space-y-3">
                                             {onlineStores.map((store) => (
-                                                <a
-                                                    key={store.name}
-                                                    href={store.link}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="flex items-center justify-between bg-[#004A49]/60 p-4 rounded-lg border-2 border-lime-400/50 hover:border-lime-500 hover:bg-[#004A49]/90 transition-all"
+                                                // ▼▼▼ UBAH 'a' MENJADI 'button' DAN GUNAKAN 'onClick' ▼▼▼
+                                                <button
+                                                    key={store.id}
+                                                    onClick={() => handleStoreClick(store.id, store.url)}
+                                                    className="w-full flex items-center justify-between bg-[#004A49]/60 p-4 rounded-lg border-2 border-lime-400/50 hover:border-lime-500 hover:bg-[#004A49]/90 transition-all text-left"
                                                 >
                                                     <span className="font-semibold text-gray-200">
                                                         {store.name}
@@ -146,37 +148,14 @@ const PlantDetail: FC = () => {
                                                         </span>
                                                         <ExternalLink size={16} />
                                                     </div>
-                                                </a>
+                                                </button>
                                             ))}
                                         </div>
                                     </div>
-                                )}
-
-                                {offlineStores.length > 0 && (
-                                    <div>
-                                        <h3 className="flex items-center gap-2 font-semibold text-gray-200 mb-3">
-                                            <MapPin
-                                                size={18}
-                                                className="text-lime-400"
-                                            />
-                                            {t("offline_stores")}
-                                        </h3>
-                                        <div className="space-y-3">
-                                            {offlineStores.map((store) => (
-                                                <div
-                                                    key={store.name}
-                                                    className="bg-[#004A49]/60 p-4 rounded-lg border-2 border-lime-400/50"
-                                                >
-                                                    <p className="font-semibold text-gray-200">
-                                                        {store.name}
-                                                    </p>
-                                                    <p className="text-sm text-gray-400">
-                                                        {store.location}
-                                                    </p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
+                                ) : (
+                                    <p className="text-gray-400 italic">
+                                        {t("no_stores_available")}
+                                    </p>
                                 )}
                             </div>
                         </div>

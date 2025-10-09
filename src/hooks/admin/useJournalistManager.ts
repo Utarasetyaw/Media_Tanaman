@@ -1,13 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Journalist, Article } from '../../types/admin/adminjournalist';
-import api from '../../services/apiService'; // Kita tetap butuh 'api' dasar
+import api from '../../services/apiService';
+import { toast } from 'react-hot-toast';
 
 type ArticleStatus = Article['status'];
-
-// =================================================================
-// --- FUNGSI-FUNGSI API (Sekarang ada di dalam file ini) ---
-// =================================================================
 
 const fetchJournalists = async (): Promise<Journalist[]> => {
     const { data } = await api.get('/users?role=JOURNALIST');
@@ -41,23 +38,17 @@ const updateArticleStatus = async (
     return data;
 };
 
-
-// =================================================================
-// --- HOOK UTAMA ---
-// =================================================================
 export const useJournalistManager = () => {
     const queryClient = useQueryClient();
 
-    // --- State Management ---
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isArticleModalOpen, setIsArticleModalOpen] = useState(false);
     const [selectedJournalistId, setSelectedJournalistId] = useState<number | null>(null);
     const [formData, setFormData] = useState({ name: '', email: '', password: '' });
 
-    // --- Data Fetching (Queries) ---
     const { data: journalists, isLoading, error } = useQuery<Journalist[]>({
         queryKey: ['journalists'],
-        queryFn: fetchJournalists, // Memanggil fungsi lokal
+        queryFn: fetchJournalists,
     });
     
     const { data: viewingJournalist, isLoading: isLoadingDetail } = useQuery<Journalist>({
@@ -66,40 +57,54 @@ export const useJournalistManager = () => {
         enabled: !!selectedJournalistId && isArticleModalOpen,
     });
 
-    // --- Data Manipulation (Mutations) ---
     const createMutation = useMutation({
-        mutationFn: createJournalist, // Memanggil fungsi lokal
+        mutationFn: createJournalist,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['journalists'] });
             closeModal();
+            toast.success("Jurnalis baru berhasil ditambahkan!");
         },
-    });
-
-    const updateMutation = useMutation({
-        mutationFn: updateJournalist, // Memanggil fungsi lokal
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['journalists'] });
-            queryClient.invalidateQueries({ queryKey: ['journalistDetail', selectedJournalistId] });
-            closeModal();
-        },
-    });
-
-    const deleteMutation = useMutation({
-        mutationFn: deleteJournalist, // Memanggil fungsi lokal
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['journalists'] });
-        },
-    });
-
-    const statusUpdateMutation = useMutation({
-        mutationFn: updateArticleStatus, // Memanggil fungsi lokal
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['journalistDetail', selectedJournalistId] });
-            queryClient.invalidateQueries({ queryKey: ['journalists'] });
+        onError: (err: any) => {
+            toast.error(err.response?.data?.error || "Gagal menambahkan jurnalis.");
         }
     });
 
-    // --- Handlers ---
+    const updateMutation = useMutation({
+        mutationFn: updateJournalist,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['journalists'] });
+            queryClient.invalidateQueries({ queryKey: ['journalistDetail', selectedJournalistId] });
+            closeModal();
+            toast.success("Data jurnalis berhasil diperbarui!");
+        },
+        onError: (err: any) => {
+            toast.error(err.response?.data?.error || "Gagal memperbarui data.");
+        }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: deleteJournalist,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['journalists'] });
+            toast.success("Jurnalis berhasil dihapus.");
+        },
+        onError: (err: any) => {
+            toast.error(err.response?.data?.error || "Gagal menghapus jurnalis.");
+        }
+    });
+
+    const statusUpdateMutation = useMutation({
+        mutationFn: updateArticleStatus,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['journalistDetail', selectedJournalistId] });
+            queryClient.invalidateQueries({ queryKey: ['journalists'] });
+            toast.success("Status artikel berhasil diubah.");
+        },
+        onError: (err: any) => {
+            toast.error(err.response?.data?.error || "Gagal mengubah status.");
+        }
+    });
+
     const openModal = (journalist: Journalist | null = null) => {
         setSelectedJournalistId(journalist ? journalist.id : null);
         setFormData({ name: journalist?.name || '', email: journalist?.email || '', password: '' });
@@ -118,6 +123,15 @@ export const useJournalistManager = () => {
     };
 
     const handleSave = () => {
+        if (!formData.name.trim() || !formData.email.trim()) {
+            toast.error("Nama dan Email wajib diisi.");
+            return;
+        }
+        if (!selectedJournalistId && !formData.password.trim()) {
+            toast.error("Kata sandi wajib diisi untuk jurnalis baru.");
+            return;
+        }
+
         const dataToSave: any = { ...formData };
         if (!dataToSave.password) delete dataToSave.password;
 
@@ -129,20 +143,19 @@ export const useJournalistManager = () => {
     };
     
     const handleDelete = (id: number) => {
-        if (window.confirm('Apakah Anda yakin ingin menghapus jurnalis ini? Semua artikelnya juga akan terhapus.')) {
-            deleteMutation.mutate(id);
-        }
+        deleteMutation.mutate(id);
     };
 
     const handleStatusChange = (articleId: number, newStatus: ArticleStatus) => {
         let feedback = '';
         if (newStatus === 'NEEDS_REVISION' || newStatus === 'REJECTED') {
-            feedback = prompt(`Berikan feedback untuk status '${newStatus}':`) || 'Tidak ada feedback.';
+            const response = prompt(`Berikan feedback untuk status '${newStatus}':`);
+            if (response === null) return; // User membatalkan prompt
+            feedback = response || 'Tidak ada feedback.';
         }
         statusUpdateMutation.mutate({ articleId, status: newStatus, feedback });
     };
 
-    // --- Return values ---
     return {
         journalists,
         isLoading,

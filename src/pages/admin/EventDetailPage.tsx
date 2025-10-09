@@ -1,154 +1,234 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Users, ExternalLink, Image as ImageIcon, X, User as UserIcon, Calendar, CheckCircle, Clock, Download, Ticket } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useEventManager } from '../../hooks/admin/useEventManager';
+import { ArrowLeft, Trophy, User, Link as LinkIcon, Edit, Save, XCircle, Calendar, MapPin, Download, Mail, Phone, Home, Globe, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { toast } from 'react-hot-toast';
 
-// Definisikan tipe data yang lebih detail
-interface UserProfile {
-    id: number;
-    name: string;
-    email: string;
-    address?: string | null;
-    phoneNumber?: string | null;
-    socialMedia?: string | null;
-}
-interface Submission {
-    id: number;
-    submissionUrl: string;
-    submissionNotes?: string | null;
-    user: UserProfile;
-    placement: number | null;
-}
+const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    return format(new Date(dateString), "d MMMM yyyy, HH:mm", { locale: id });
+};
 
-// Komponen Kartu Statistik
-const StatCard: React.FC<{ icon: React.ElementType; title: string; value: string | number; color: string; valueColor?: string; }> = ({ icon: Icon, title, value, color, valueColor }) => (
-    <div className="bg-gray-700/50 p-4 rounded-lg flex items-center gap-4">
-        <div className={`p-3 rounded-full bg-${color}-500/20`}>
-            <Icon className={`text-${color}-400 shrink-0`} size={28} />
+const StatCard: React.FC<{ icon: React.ElementType; title: string; value: string | number; color: string }> = ({ icon: Icon, title, value, color }) => (
+    <div className="bg-black/20 border-2 border-lime-400/30 p-4 rounded-lg flex items-start gap-4">
+        <div className={`p-3 rounded-full bg-${color}-500/20 flex-shrink-0`}>
+            <Icon className={`text-${color}-300`} size={24} />
         </div>
         <div>
-            <p className="text-gray-400 text-sm">{title}</p>
-            <p className={`text-2xl font-bold ${valueColor || `text-white`}`}>{value}</p>
+            <p className="text-sm font-medium text-gray-400">{title}</p>
+            <p className="text-lg font-bold text-white">{value}</p>
         </div>
     </div>
 );
 
-const lang: 'id' | 'en' = 'id';
-
-export const EventDetailPage: React.FC = () => {
-    const { event, isLoadingDetail, isErrorDetail, handleSetPlacement } = useEventManager();
-
-    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-    const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
-    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-    const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-
-    const openViewModal = (submission: Submission) => { setSelectedSubmission(submission); setIsViewModalOpen(true); };
-    const closeViewModal = () => { setSelectedSubmission(null); setIsViewModalOpen(false); };
-    const openProfileModal = (user: UserProfile) => { setSelectedUser(user); setIsProfileModalOpen(true); };
-    const closeProfileModal = () => { setSelectedUser(null); setIsProfileModalOpen(false); };
-
-    if (isLoadingDetail) return <div className="text-center text-gray-300 p-8">Memuat detail event...</div>;
-    if (isErrorDetail || !event) return (
-        <div className="text-center text-red-400 p-8">
-            <p>Event tidak ditemukan atau gagal dimuat.</p>
-            <Link to="/admin/events" className="text-lime-300 hover:underline mt-4 inline-block">Kembali</Link>
+const InfoItem: React.FC<{ icon: React.ElementType; label: string; value?: string | null }> = ({ icon: Icon, label, value }) => {
+    if (!value) return null;
+    return (
+        <div className="flex items-start gap-2 text-sm">
+            <Icon className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+            <div>
+                <strong className="block text-gray-400">{label}:</strong>
+                <p className="text-gray-200 break-words">{value}</p>
+            </div>
         </div>
     );
+};
+
+export const EventDetailPage: React.FC = () => {
+    const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
+
+    const { event, isLoadingDetail, handleSetPlacement } = useEventManager(id);
+
+    const [editingSubmissionId, setEditingSubmissionId] = useState<number | null>(null);
+    const [placementValue, setPlacementValue] = useState<string>('0');
+    const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+    const handleDownload = async (imageUrl: string, fileName: string) => {
+        setDownloadingId(imageUrl);
+        toast.loading('Mulai mengunduh...');
+
+        try {
+            const response = await fetch(imageUrl);
+            if (!response.ok) throw new Error('Gagal mengambil gambar dari server.');
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            const finalFilename = imageUrl.substring(imageUrl.lastIndexOf('/') + 1);
+            link.setAttribute('download', finalFilename || `${fileName.replace(/\s+/g, '_')}.jpg`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            toast.dismiss();
+            toast.success('Gambar berhasil diunduh!');
+        } catch (err) {
+            console.error("Download Error:", err);
+            toast.dismiss();
+            toast.error('Gagal mengunduh gambar.');
+        } finally {
+            setDownloadingId(null);
+        }
+    };
+
+    const handleEditPlacement = (submission: any) => {
+        setEditingSubmissionId(submission.id);
+        setPlacementValue(String(submission.placement || '0'));
+    };
+
+    const handleSavePlacement = (submissionId: number) => {
+        handleSetPlacement(submissionId, placementValue);
+        setEditingSubmissionId(null);
+    };
+
+    if (isLoadingDetail) return <div className="p-8 text-center text-white">Memuat detail event...</div>;
     
-    const isEventFinished = new Date(event.endDate) < new Date();
+    if (!event) return (
+        <div className="p-8 text-center text-gray-400">
+            <p>Event tidak ditemukan atau gagal dimuat.</p>
+            <button onClick={() => navigate('/admin/events')} className="mt-4 text-lime-300 hover:text-lime-100 flex items-center justify-center gap-2 bg-black/20 px-4 py-2 rounded-lg border border-lime-400/50 transition-colors mx-auto">
+                <ArrowLeft size={16} /> Kembali
+            </button>
+        </div>
+    );
+
+    const getPlacementLabel = (placement: number | null) => {
+        if (placement === 1) return 'Juara 1';
+        if (placement === 2) return 'Juara 2';
+        if (placement === 3) return 'Juara 3';
+        return 'Peserta';
+    };
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <h2 className="text-2xl sm:text-3xl font-bold text-lime-200/90 flex items-center gap-3">
-                    <Ticket /> Detail Event
-                </h2>
-                <Link to="/admin/events" className="w-full sm:w-auto text-lime-300 hover:text-lime-100 flex items-center justify-center sm:justify-start gap-2 bg-black/20 px-4 py-2 rounded-lg border border-lime-400/50 transition-colors">
+        <div className="p-4 sm:p-6 lg:p-8">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+                <h2 className="text-2xl sm:text-3xl font-bold text-lime-200/90">Detail Event</h2>
+                <button onClick={() => navigate('/admin/events')} className="flex items-center justify-center gap-2 bg-transparent border border-lime-400/60 text-lime-200/90 font-semibold py-2 px-4 rounded-lg hover:bg-lime-900/20 transition-colors text-sm w-full sm:w-auto">
                     <ArrowLeft size={16} /> Kembali ke Manajemen Event
-                </Link>
+                </button>
             </div>
-            
-            <div className="bg-[#0b5351]/30 p-4 sm:p-6 rounded-lg border border-lime-400/50">
-                {/* ▼▼▼ PERUBAHAN BREAKPOINT DARI 'md' KE 'lg' ▼▼▼ */}
-                <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-                    <div className="w-full lg:w-1/3 self-start">
-                        <img src={event.imageUrl} alt={event.title[lang]} className="w-full h-auto object-cover rounded-md aspect-[16/9]" />
-                        <p className="text-xs text-gray-400 mt-2">Rekomendasi rasio gambar 16:9 (1280x720 piksel).</p>
-                        <a href={event.imageUrl} download target="_blank" rel="noopener noreferrer" className="mt-3 w-full inline-flex items-center justify-center gap-2 bg-gray-600/80 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors text-sm">
-                            <Download size={16} /> Unduh Gambar
-                        </a>
-                    </div>
-                {/* ▲▲▲ AKHIR PERUBAHAN ▲▲▲ */}
 
-                    <div className="flex-1 space-y-4">
-                        <div>
-                            <h2 className="text-2xl sm:text-3xl font-bold text-gray-100">{event.title[lang]}</h2>
-                            <h3 className="text-lg sm:text-xl font-normal text-gray-300">{event.title.en}</h3>
-                        </div>
-                        <div className="text-sm text-gray-400 flex items-center gap-2"><Calendar size={16} /><span>{format(new Date(event.startDate), 'd MMM yyyy', { locale: id })} - {format(new Date(event.endDate), 'd MMM yyyy', { locale: id })}</span></div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-lime-400/20">
-                            {event.eventType === 'EXTERNAL' ? (
-                                <StatCard icon={ExternalLink} title="Jumlah Klik Link" value={event.externalLinkClicks || 0} color="lime" />
-                            ) : (
-                                <StatCard icon={Users} title="Jumlah Peserta" value={event.submissions?.length || 0} color="lime" />
-                            )}
-                             <StatCard
-                                icon={isEventFinished ? CheckCircle : Clock}
-                                title="Status"
-                                value={isEventFinished ? 'Selesai' : 'Berlangsung'}
-                                color={isEventFinished ? 'green' : 'yellow'}
-                                valueColor={isEventFinished ? 'text-green-400' : 'text-yellow-400'}
-                            />
-                        </div>
+            <div className="bg-[#0b5351]/30 p-4 sm:p-6 rounded-lg border border-lime-400/50 space-y-8">
+                <div>
+                    <h3 className="text-2xl lg:text-3xl font-bold text-white">{event.title.id}</h3>
+                    {event.title.en && <p className="text-gray-400 italic mt-1">{event.title.en}</p>}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <StatCard icon={User} title="Penyelenggara" value={event.organizer} color="blue" />
+                    <StatCard icon={LinkIcon} title="Tipe Event" value={event.eventType === 'INTERNAL' ? 'Internal' : 'Eksternal'} color="yellow" />
+                    {event.eventType === 'INTERNAL' ? (
+                        <StatCard icon={Trophy} title="Total Submission" value={event.submissions?.length || 0} color="green" />
+                    ) : (
+                        <StatCard icon={Trophy} title="Total Klik Link" value={event.externalLinkClicks || 0} color="pink" />
+                    )}
+                </div>
+                
+                <div className="space-y-4 border-t border-lime-400/20 pt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex items-start gap-3"><Calendar size={18} className="text-lime-400 mt-1 flex-shrink-0"/><p><strong className="block text-gray-300">Mulai:</strong> {formatDate(event.startDate)}</p></div>
+                        <div className="flex items-start gap-3"><Calendar size={18} className="text-lime-400 mt-1 flex-shrink-0"/><p><strong className="block text-gray-300">Selesai:</strong> {formatDate(event.endDate)}</p></div>
+                    </div>
+                     <div className="flex items-start gap-3"><MapPin size={18} className="text-lime-400 mt-1 flex-shrink-0"/><p><strong className="block text-gray-300">Lokasi:</strong> {event.location}</p></div>
+                </div>
+
+                <div>
+                    <img src={event.imageUrl} alt={event.title.id} className="w-full aspect-video object-cover rounded-lg bg-black/20" />
+                    <div className="flex justify-center mt-3">
+                        <button 
+                            onClick={() => handleDownload(event.imageUrl, event.title.id)}
+                            disabled={downloadingId === event.imageUrl}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gray-600/80 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors text-sm disabled:bg-gray-500 disabled:cursor-not-allowed"
+                        >
+                            {downloadingId === event.imageUrl ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                            {downloadingId === event.imageUrl ? 'Mengunduh...' : 'Unduh Gambar Utama'}
+                        </button>
                     </div>
                 </div>
-            </div>
-
-            {event.eventType === 'INTERNAL' && (
+                
                 <div>
-                    <h3 className="text-2xl font-bold text-lime-200/90 mb-4">Karya Peserta</h3>
-                    {event.submissions && event.submissions.length > 0 ? (
-                        <>
-                            <div className="hidden md:block bg-[#0b5351]/30 p-4 rounded-lg border border-lime-400/50 overflow-x-auto">
-                               <table className="w-full text-left text-gray-300 min-w-[600px]">
-                                    <thead><tr className="border-b border-lime-400/30"><th className="p-3 font-semibold">Peserta</th><th className="p-3 font-semibold">Karya</th><th className="p-3 font-semibold">Pemenang</th></tr></thead>
-                                    <tbody>
-                                        {event.submissions.map(sub => (
-                                            <tr key={sub.id} className="border-b border-gray-700/50 hover:bg-gray-700/20">
-                                                <td className="p-3 font-medium"><div className="flex items-center gap-3"><span>{sub.user.name}</span><button onClick={() => openProfileModal(sub.user)} title="Lihat Profil Peserta"><UserIcon size={16} className="text-lime-400/70 hover:text-lime-300" /></button></div></td>
-                                                <td className="p-3"><button onClick={() => openViewModal(sub)} className="flex items-center gap-2 text-blue-400 hover:underline"><ImageIcon size={16} /> Lihat Karya</button></td>
-                                                <td className="p-3"><select value={sub.placement || 0} onChange={(e) => handleSetPlacement(sub.id, e.target.value)} disabled={!isEventFinished} className="px-3 py-1 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-lime-400 disabled:opacity-50 disabled:cursor-not-allowed"><option value={0}>-</option><option value={1}>Juara 1</option><option value={2}>Juara 2</option><option value={3}>Juara 3</option></select></td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div className="md:hidden space-y-4">
-                                {event.submissions.map(sub => (
-                                    <div key={sub.id} className="bg-[#0b5351]/30 p-4 rounded-lg border border-lime-400/50 space-y-3">
-                                        <div className="flex justify-between items-center">
-                                            <div className="flex items-center gap-3 font-semibold text-white"><span>{sub.user.name}</span><button onClick={() => openProfileModal(sub.user)} title="Lihat Profil Peserta"><UserIcon size={16} className="text-lime-400/70 hover:text-lime-300" /></button></div>
-                                            <button onClick={() => openViewModal(sub)} className="flex items-center gap-2 text-blue-400 hover:underline text-sm"><ImageIcon size={16} /> Lihat Karya</button>
+                    <h4 className="text-xl font-bold text-lime-400 mb-2">Deskripsi (ID)</h4>
+                    <p className="text-gray-300 whitespace-pre-wrap">{event.description.id}</p>
+                </div>
+                {event.description.en && (
+                     <div>
+                        <h4 className="text-xl font-bold text-lime-400 mb-2">Deskripsi (EN)</h4>
+                        <p className="text-gray-300 whitespace-pre-wrap">{event.description.en}</p>
+                    </div>
+                )}
+                
+                {event.eventType === 'EXTERNAL' && (
+                    <div>
+                        <h4 className="text-xl font-bold text-lime-400 mb-2">Link Eksternal</h4>
+                        <a href={event.externalUrl || '#'} target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:text-teal-300 underline break-all">{event.externalUrl}</a>
+                    </div>
+                )}
+                
+                {event.eventType === 'INTERNAL' && (
+                    <div>
+                        <h4 className="text-xl font-bold text-lime-400 mb-4">Submission Peserta ({event.submissions.length})</h4>
+                        {event.submissions.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {event.submissions.map((sub) => (
+                                    <div key={sub.id} className="bg-black/20 p-4 rounded-lg border border-lime-400/20 flex flex-col gap-4">
+                                        <div className='space-y-2'>
+                                            <a href={sub.submissionUrl} target="_blank" rel="noopener noreferrer">
+                                                <img src={sub.submissionUrl} alt={`Karya dari ${sub.user.name}`} className="w-full aspect-video object-contain rounded-md bg-black/30" />
+                                            </a>
+                                            <button 
+                                                onClick={() => handleDownload(sub.submissionUrl, sub.user.name)}
+                                                disabled={downloadingId === sub.submissionUrl}
+                                                className="w-full flex items-center justify-center gap-2 bg-gray-600/80 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors text-sm disabled:bg-gray-500 disabled:cursor-not-allowed"
+                                            >
+                                                {downloadingId === sub.submissionUrl ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                                                {downloadingId === sub.submissionUrl ? 'Mengunduh...' : 'Unduh Karya'}
+                                            </button>
                                         </div>
-                                        <div className="flex justify-between items-center border-t border-lime-400/20 pt-3">
-                                            <label className="font-semibold text-gray-300">Pemenang:</label>
-                                            <select value={sub.placement || 0} onChange={(e) => handleSetPlacement(sub.id, e.target.value)} disabled={!isEventFinished} className="px-3 py-1 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-lime-400 disabled:opacity-50"><option value={0}>-</option><option value={1}>Juara 1</option><option value={2}>Juara 2</option><option value={3}>Juara 3</option></select>
+
+                                        <div className="border-t border-lime-400/20 pt-4 flex flex-col flex-grow">
+                                            <div className="space-y-2 flex-grow">
+                                                <p className="font-semibold text-white flex items-center gap-2"><User size={16} /> {sub.user.name}</p>
+                                                <div className="space-y-2 pl-6">
+                                                    <InfoItem icon={Mail} label="Email" value={sub.user.email} />
+                                                    <InfoItem icon={Phone} label="Telepon" value={sub.user.phoneNumber} />
+                                                    <InfoItem icon={Home} label="Alamat" value={sub.user.address} />
+                                                    <InfoItem icon={Globe} label="Instagram" value={sub.user.socialMedia} />
+                                                </div>
+                                                {sub.submissionNotes && <p className="text-sm text-gray-300 mt-2 pt-2 border-t border-lime-400/10 italic">"{sub.submissionNotes}"</p>}
+                                            </div>
+
+                                            <div className="flex items-center gap-2 w-full mt-4 pt-3 border-t border-lime-400/20 self-end">
+                                                {editingSubmissionId === sub.id ? (
+                                                    <>
+                                                        <select value={placementValue} onChange={(e) => setPlacementValue(e.target.value)} className="bg-transparent border border-lime-400/60 rounded-md py-1 px-2 text-white w-full">
+                                                            <option value="0" className="bg-[#003938]">Peserta</option>
+                                                            <option value="1" className="bg-[#003938]">Juara 1</option>
+                                                            <option value="2" className="bg-[#003938]">Juara 2</option>
+                                                            <option value="3" className="bg-[#003938]">Juara 3</option>
+                                                        </select>
+                                                        <button onClick={() => handleSavePlacement(sub.id)} className="p-2 text-green-400 hover:text-green-300"><Save size={18} /></button>
+                                                        <button onClick={() => setEditingSubmissionId(null)} className="p-2 text-gray-400 hover:text-white"><XCircle size={18} /></button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span className="text-sm font-semibold text-lime-300 flex items-center gap-2 flex-grow"><Trophy size={16} /> {getPlacementLabel(sub.placement)}</span>
+                                                        <button onClick={() => handleEditPlacement(sub)} className="p-2 text-blue-400 hover:text-blue-300"><Edit size={18} /></button>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                        </>
-                       ) : (
-                           <div className="bg-[#0b5351]/30 p-4 rounded-lg border border-lime-400/50"><p className="text-center text-gray-400 p-4">Belum ada peserta yang mengirimkan karya.</p></div>
-                       )}
-                </div>
-            )}
-
-            {isViewModalOpen && selectedSubmission && (<div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"><div className="bg-[#073f3d] text-gray-200 rounded-lg shadow-xl w-full max-w-2xl border border-green-400/50"><div className="p-4 flex justify-between items-center border-b border-gray-700"><h3 className="text-xl font-bold text-white">Detail Karya: {selectedSubmission.user.name}</h3><button onClick={closeViewModal} className="text-gray-400 hover:text-white"><X /></button></div><div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto"><div className="w-full aspect-video rounded-md bg-black/20 flex items-center justify-center"><img src={selectedSubmission.submissionUrl} alt={`Karya oleh ${selectedSubmission.user.name}`} className="max-w-full max-h-full object-contain"/></div><a href={selectedSubmission.submissionUrl} download target="_blank" rel="noopener noreferrer" className="w-full inline-flex items-center justify-center gap-2 bg-gray-600/80 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors text-sm"><Download size={16} /> Unduh Karya</a><div><label className="block text-sm font-medium text-gray-400 mb-1">Caption:</label><p className="w-full bg-black/20 border border-gray-600 rounded-md p-3 whitespace-pre-wrap">{selectedSubmission.submissionNotes || <span className="italic text-gray-500">Tidak ada caption.</span>}</p></div></div></div></div>)}
-            {isProfileModalOpen && selectedUser && (<div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"><div className="bg-[#073f3d] text-gray-200 rounded-lg shadow-xl w-full max-w-md border border-lime-400/50"><div className="p-4 flex justify-between items-center border-b border-gray-700"><h3 className="text-xl font-bold text-white">Profil Peserta</h3><button onClick={closeProfileModal} className="text-gray-400 hover:text-white"><X /></button></div><div className="p-6 space-y-3"><div className="flex flex-col"><span className="text-sm text-gray-400">Nama</span><span className="font-semibold text-lg">{selectedUser.name}</span></div><div className="flex flex-col"><span className="text-sm text-gray-400">Email</span><span className="font-semibold">{selectedUser.email}</span></div><div className="flex flex-col"><span className="text-sm text-gray-400">No. Telepon</span><span className="font-semibold">{selectedUser.phoneNumber || '-'}</span></div><div className="flex flex-col"><span className="text-sm text-gray-400">Instagram</span><span className="font-semibold">{selectedUser.socialMedia || '-'}</span></div><div className="flex flex-col"><span className="text-sm text-gray-400">Alamat</span><p className="font-semibold whitespace-pre-wrap">{selectedUser.address || '-'}</p></div></div></div></div>)}
+                        ) : (
+                            <p className="text-gray-400 italic">Belum ada submission.</p>
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

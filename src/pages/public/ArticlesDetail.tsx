@@ -1,11 +1,11 @@
 import type { FC } from "react";
+import { useState, useEffect } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { ArrowLeft, User, Calendar, ThumbsUp, Eye } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { useArticleDetail } from "../../hooks/public/useArticleDetail";
-// ▼▼▼ PERUBAHAN DI SINI ▼▼▼
 import type { Article } from "../../types/public/articleDetail.types";
 import { articleDetailPageTranslations } from "../../assets/page_artikeldetail.i18n";
 import VerticalAd from "../../components/VerticalAd";
@@ -86,7 +86,33 @@ const ArticleDetail: FC = () => {
         return articleDetailPageTranslations[currentLang]?.[key] || key;
     };
 
-    const { article, relatedArticles, isLoading, isError } = useArticleDetail();
+    const { article, relatedArticles, isLoading, isError, handleLike, isLiking } = useArticleDetail();
+    
+    const [likeCount, setLikeCount] = useState(0);
+    const [hasLiked, setHasLiked] = useState(false);
+
+    useEffect(() => {
+        if (article) {
+            setLikeCount(article.likeCount);
+            const likedArticles = JSON.parse(localStorage.getItem('likedArticles') || '[]');
+            if (likedArticles.includes(article.id)) {
+                setHasLiked(true);
+            }
+        }
+    }, [article]);
+
+    const onLikeClick = () => {
+        if (hasLiked || isLiking || !article) return;
+
+        handleLike(undefined, {
+            onSuccess: (data) => {
+                setLikeCount(data.likeCount);
+                setHasLiked(true);
+                const likedArticles = JSON.parse(localStorage.getItem('likedArticles') || '[]');
+                localStorage.setItem('likedArticles', JSON.stringify([...likedArticles, article.id]));
+            }
+        });
+    };
 
     if (isLoading) {
         return (
@@ -155,11 +181,31 @@ const ArticleDetail: FC = () => {
                             className="w-full h-full object-cover"
                         />
                     </div>
-                    <div className="prose prose-lg prose-invert max-w-none text-gray-300 leading-relaxed">
+                    <div className="prose prose-lg prose-invert max-w-none text-gray-300 leading-relaxed text-justify prose-pre:whitespace-pre-wrap">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                             {article.content[currentLang]}
                         </ReactMarkdown>
                     </div>
+
+                    <div className="mt-10 pt-6 border-t-2 border-lime-400/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-4 text-gray-300">
+                            <div className="flex items-center gap-2"><Eye size={18} /><span>{article.viewCount} {t("views")}</span></div>
+                            <div className="flex items-center gap-2"><ThumbsUp size={18} /><span>{likeCount} {t("likes")}</span></div>
+                        </div>
+                        <button
+                            onClick={onLikeClick}
+                            disabled={hasLiked || isLiking}
+                            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition-colors duration-300
+                                ${hasLiked 
+                                    ? 'bg-lime-800 text-lime-300 cursor-not-allowed' 
+                                    : 'bg-lime-400 text-gray-900 hover:bg-lime-500 disabled:bg-gray-500'
+                                }`}
+                        >
+                            <ThumbsUp size={20} />
+                            {hasLiked ? t('liked_button') : t('like_button')}
+                        </button>
+                    </div>
+
                 </article>
                 <div className="my-16">
                     <HorizontalAd />

@@ -3,7 +3,6 @@ import { Link, useOutletContext } from "react-router-dom";
 import { Calendar, MapPin } from "lucide-react";
 import { useEventsPage } from "../../hooks/public/useEventsPage";
 import { eventsTranslations } from "../../assets/events.i18n";
-// ▼▼▼ Gunakan tipe dari file baru ▼▼▼
 import type { Event } from "../../types/public/eventsPage.types";
 import SeoManager from "../../components/SeoManager";
 import VerticalAd from "../../components/VerticalAd";
@@ -30,16 +29,14 @@ const EventCard: FC<{ event: Event; isPast?: boolean; lang: "id" | "en" }> = ({
                 isPast ? "opacity-70" : ""
             }`}
         >
-            <div className="relative">
-                <div className="aspect-video bg-black/20">
-                    <img
-                        src={event.imageUrl}
-                        alt={event.title[lang]}
-                        className={`w-full h-full object-cover ${
-                            isPast ? "grayscale" : ""
-                        }`}
-                    />
-                </div>
+            <div className="relative aspect-video bg-black/20">
+                <img
+                    src={event.imageUrl}
+                    alt={event.title[lang]}
+                    className={`w-full h-full object-cover ${
+                        isPast ? "grayscale" : ""
+                    }`}
+                />
                 {isPast && (
                     <div className="absolute top-2 right-2 bg-gray-800 text-white text-xs font-bold px-2 py-1 rounded">
                         {t("finished_badge")}
@@ -157,15 +154,17 @@ const EventPage: FC = () => {
                         <div className="space-y-16 sm:space-y-24">
                             {featuredEvent && (
                                 <section>
-                                    <div className="bg-[#004A49]/60 border-2 border-lime-400 rounded-lg shadow-lg overflow-hidden flex flex-col md:flex-row md:items-stretch">
-                                        <div className="w-full md:w-1/2 aspect-video bg-black/20">
+                                    {/* ▼▼▼ PERUBAHAN BREAKPOINT DARI 'md:' MENJADI 'lg:' ▼▼▼ */}
+                                    <div className="bg-[#004A49]/60 border-2 border-lime-400 rounded-lg shadow-lg overflow-hidden flex flex-col lg:flex-row lg:items-stretch">
+                                        <div className="w-full lg:w-1/2 aspect-video bg-black/20">
                                             <img
                                                 src={featuredEvent.imageUrl}
                                                 alt={featuredEvent.title[currentLang]}
                                                 className="w-full h-full object-cover"
                                             />
                                         </div>
-                                        <div className="w-full md:w-1/2 p-6 sm:p-8 flex flex-col justify-center">
+                                        <div className="w-full lg:w-1/2 p-6 sm:p-8 flex flex-col justify-center">
+                                    {/* ▲▲▲ AKHIR PERUBAHAN ▲▲▲ */}
                                             <div>
                                                 <span className="inline-block bg-lime-200 text-lime-800 text-sm font-semibold px-3 py-1 rounded-full mb-4">
                                                     {t("featured_badge")}

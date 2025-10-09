@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../services/apiService';
-// ▼▼▼ PERUBAHAN DI SINI: Impor semua tipe dari satu file ▼▼▼
 import type { Article, Category, PlantType, JournalistArticleFormData } from '../../types/jurnalist/journalistArticleEditor.types';
+import { toast } from 'react-hot-toast';
 
 // --- Definisi Fungsi-fungsi API ---
 
@@ -18,27 +18,23 @@ const getPlantTypes = async (): Promise<PlantType[]> => {
   const { data } = await api.get('/plant-types');
   return data;
 };
-const uploadFile = async (folder: string, file: File): Promise<{ imageUrl: string }> => {
-    const formData = new FormData();
-    formData.append('image', file);
-    const { data } = await api.post(`/upload/${folder}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return data;
-};
-const createArticle = async (payload: Partial<Article>): Promise<Article> => {
+
+const createArticle = async (payload: FormData): Promise<Article> => {
     const { data } = await api.post('/articles/management', payload);
     return data;
 };
-const updateArticle = async (payload: {id: number} & Partial<Article>): Promise<Article> => {
-    const { id, ...dataToUpdate } = payload;
-    const { data } = await api.put(`/articles/management/${id}`, dataToUpdate);
+
+const updateArticle = async (payload: {id: number, data: FormData}): Promise<Article> => {
+    const { id, data: formData } = payload;
+    const { data } = await api.put(`/articles/management/${id}`, formData);
     return data;
 };
+
 const submitForReview = async (articleId: number) => {
     const { data } = await api.post(`/articles/management/${articleId}/submit`);
     return data;
 };
+
 const finishRevisionApi = async (articleId: number) => {
     const { data } = await api.post(`/articles/management/${articleId}/finish-revision`);
     return data;
@@ -70,21 +66,25 @@ export const useJournalistArticleEditor = () => {
 
   const articleMutation = useMutation({
     mutationFn: async ({ formData, imageFile, action }: SavePayload): Promise<Article> => {
-        let finalImageUrl = formData.imageUrl || '';
-        if (imageFile) {
-            const uploadRes = await uploadFile('artikel', imageFile);
-            finalImageUrl = uploadRes.imageUrl;
-        }
-
-        if (!finalImageUrl && action === 'submit') {
+        if (!imageFile && !formData.imageUrl && action === 'submit') {
             throw new Error('Gambar utama wajib diunggah sebelum mengirim artikel.');
         }
 
-        const payload = { ...formData, imageUrl: finalImageUrl };
+        const fd = new FormData();
+        fd.append('title', JSON.stringify(formData.title));
+        fd.append('excerpt', JSON.stringify(formData.excerpt));
+        fd.append('content', JSON.stringify(formData.content));
+        fd.append('categoryId', String(formData.categoryId));
+        if (formData.plantTypeId) {
+            fd.append('plantTypeId', String(formData.plantTypeId));
+        }
+        if (imageFile) {
+            fd.append('image', imageFile);
+        }
         
         const savedArticle = isEditMode
-            ? await updateArticle({ id: articleId!, ...payload })
-            : await createArticle(payload);
+            ? await updateArticle({ id: articleId!, data: fd })
+            : await createArticle(fd);
         
         if (action === 'submit') {
             await submitForReview(savedArticle.id);
@@ -99,8 +99,8 @@ export const useJournalistArticleEditor = () => {
     },
     onError: (error: any) => {
         const message = error.response?.data?.error || error.message;
+        toast.error(message || 'Gagal memproses permintaan.');
         console.error("Save/Submit error:", error);
-        throw new Error(message || 'Gagal memproses permintaan.');
     }
   });
 
@@ -109,11 +109,11 @@ export const useJournalistArticleEditor = () => {
       onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: ['myArticles'] });
           queryClient.invalidateQueries({ queryKey: ['journalistDashboard'] });
-          alert('Revisi berhasil dikirim kembali ke admin!');
+          toast.success('Revisi berhasil dikirim kembali ke admin!');
           navigate('/jurnalis/articles');
       },
       onError: (error: any) => {
-          alert(`Gagal menyelesaikan revisi: ${error.response?.data?.error || error.message}`);
+          toast.error(`Gagal menyelesaikan revisi: ${error.response?.data?.error || error.message}`);
       }
   });
 

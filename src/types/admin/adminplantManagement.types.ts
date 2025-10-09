@@ -8,10 +8,14 @@ export interface PlantType {
   name: LocalizedString;
 }
 
+// ▼▼▼ PERUBAHAN DI SINI ▼▼▼
 export interface Store {
+  id: number; // Tambahkan ID
   name: string;
   url: string;
+  clicks: number; // Tambahkan kolom clicks
 }
+// ▲▲▲ AKHIR PERUBAHAN ▲▲▲
 
 export interface Plant {
   id: number;

@@ -2,12 +2,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useUserDashboard } from '../../hooks/user/useUserDashboard';
 import type { EventDashboard, UserProfile } from '../../types/user/userDashboard.types';
-import { Award, Calendar, CheckCircle, Clock, Upload, X, Image as ImageIcon, AlertTriangle, User, Phone, Globe, Edit, Download } from 'lucide-react';
+import { Award, Calendar, CheckCircle, Clock, Upload, X, Image as ImageIcon, AlertTriangle, User, Phone, Globe, Edit, Download, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { toast } from 'react-hot-toast';
 
 // --- Helper Functions ---
-const formatDate = (dateString: string) => format(new Date(dateString), "d MMMM yyyy", { locale: id });
+const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    return format(new Date(dateString), "d MMMM yyyy", { locale: id });
+};
+
 const formatRemainingTime = (endDate: string) => {
     const diff = new Date(endDate).getTime() - new Date().getTime();
     if (diff <= 0) return "Waktu pengiriman telah berakhir";
@@ -21,18 +26,14 @@ const formatRemainingTime = (endDate: string) => {
 
 // --- Sub-Komponen ---
 const StatCard: React.FC<{ count: number; label: string; icon: React.ElementType }> = ({ count, label, icon: Icon }) => (
-    // ▼▼▼ PERUBAHAN DI SINI ▼▼▼
     <div className="bg-black/20 p-4 rounded-lg border border-green-400/20 flex items-center gap-4 transition-colors hover:border-green-400/50">
         <Icon className="w-8 h-8 text-green-400 shrink-0" />
         <div>
-            {/* Ukuran teks diubah agar responsif */}
             <p className="text-2xl md:text-xl lg:text-3xl font-bold text-white">{count}</p>
             <p className="text-sm md:text-xs lg:text-sm text-gray-400">{label}</p>
         </div>
     </div>
 );
-// ▲▲▲ AKHIR PERUBAHAN ▲▲▲
-
 
 const EventCard: React.FC<{ 
     event: EventDashboard; 
@@ -43,7 +44,9 @@ const EventCard: React.FC<{
 }> = ({ event, type, onUploadClick, onViewClick, isProfileComplete }) => (
     <div className="bg-black/20 rounded-lg overflow-hidden border border-gray-700 hover:border-green-400/50 transition-colors flex flex-col">
         <Link to={`/events/${event.id}`}>
-            <img src={event.imageUrl} alt={event.title.id} className="w-full h-48 object-cover" />
+            <div className="w-full aspect-video bg-gray-800">
+                <img src={event.imageUrl} alt={event.title.id} className="w-full h-full object-cover" />
+            </div>
         </Link>
         <div className="p-4 sm:p-5 flex flex-col flex-grow">
             <p className="text-sm text-gray-400 flex items-center gap-2"><Calendar size={14} />{formatDate(event.startDate)} - {formatDate(event.endDate)}</p>
@@ -89,7 +92,7 @@ const EventCard: React.FC<{
 );
 
 export const UserDashboardPage: React.FC = () => {
-    const { dashboardData, isLoading, isError, error, submitMutation, updateProfileMutation } = useUserDashboard();
+    const { dashboardData, announcements, isLoading, isError, error, submitMutation, updateProfileMutation } = useUserDashboard();
     
     const [modalMode, setModalMode] = useState<'upload' | 'view' | null>(null);
     const [selectedEvent, setSelectedEvent] = useState<EventDashboard | null>(null);
@@ -105,7 +108,14 @@ export const UserDashboardPage: React.FC = () => {
     const openModal = (event: EventDashboard, mode: 'upload' | 'view') => { setSelectedEvent(event); setModalMode(mode); setSelectedFile(null); };
     const closeModal = () => { setModalMode(null); setSelectedEvent(null); };
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) setSelectedFile(e.target.files[0]); };
-    const handleSubmit = () => { if (!selectedEvent) return; if (!selectedEvent.submission && !selectedFile) { alert("Silakan pilih file untuk diunggah."); return; } submitMutation.mutate({ eventId: selectedEvent.id, file: selectedFile, caption: caption, currentImageUrl: selectedEvent.submission?.submissionUrl }, { onSuccess: () => closeModal() }); };
+    const handleSubmit = () => { 
+        if (!selectedEvent) return; 
+        if (!selectedEvent.submission && !selectedFile) { 
+            toast.error("Silakan pilih file untuk diunggah."); 
+            return; 
+        } 
+        submitMutation.mutate({ eventId: selectedEvent.id, file: selectedFile, caption: caption, currentImageUrl: selectedEvent.submission?.submissionUrl }, { onSuccess: () => closeModal() }); 
+    };
     const handleProfileInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => { setProfileData(prev => ({ ...prev, [e.target.name]: e.target.value })); };
     const handleProfileSubmit = () => { updateProfileMutation.mutate(profileData as UserProfile, { onSuccess: () => setIsProfileModalOpen(false) }); };
     
@@ -121,6 +131,27 @@ export const UserDashboardPage: React.FC = () => {
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">Dashboard Peserta</h1>
                 {isProfileComplete && (<button onClick={() => setIsProfileModalOpen(true)} className="w-full sm:w-auto text-lime-300 hover:text-lime-100 flex items-center justify-center sm:justify-start gap-2 bg-black/20 px-4 py-2 rounded-lg border border-lime-400/50 transition-colors" title="Ubah Profil"><Edit size={16} /> <span className="sm:inline">Ubah Profil</span></button>)}
             </div>
+
+            {announcements && (announcements.userAnnouncement?.id || announcements.userRules?.id) && (
+                <div className="mb-8 p-5 bg-blue-900/40 border border-blue-500/50 rounded-lg space-y-4">
+                    <div className="flex items-center gap-3 text-blue-300">
+                        <Info size={20} className="shrink-0" />
+                        <h2 className="text-xl font-bold">Informasi Penting</h2>
+                    </div>
+                    {announcements.userAnnouncement?.id && (
+                        <div>
+                            <h3 className="font-semibold text-white mb-1">Pengumuman</h3>
+                            <p className="text-gray-300 text-sm whitespace-pre-wrap">{announcements.userAnnouncement.id}</p>
+                        </div>
+                    )}
+                    {announcements.userRules?.id && (
+                        <div className="pt-2">
+                            <h3 className="font-semibold text-white mb-1">Aturan Partisipasi</h3>
+                            <p className="text-gray-300 text-sm whitespace-pre-wrap">{announcements.userRules.id}</p>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {!isProfileComplete && (<div className="bg-yellow-900/50 border border-yellow-500 text-yellow-300 p-4 rounded-lg mb-8 flex flex-col sm:flex-row items-center justify-between gap-4"><div className="flex items-center gap-3"><AlertTriangle className="w-6 h-6 shrink-0" /><p className="font-semibold text-center sm:text-left">Profil Anda belum lengkap untuk mengikuti event.</p></div><button onClick={() => setIsProfileModalOpen(true)} className="bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 whitespace-nowrap transition-colors flex-shrink-0">Lengkapi Profil</button></div>)}
             

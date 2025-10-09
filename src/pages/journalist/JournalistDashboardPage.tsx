@@ -1,10 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle, Clock, Edit, ShieldAlert, XCircle, FileText, MessageSquare, Edit3 } from 'lucide-react';
+import { CheckCircle, Clock, Edit, ShieldAlert, XCircle, FileText, MessageSquare, Edit3, Info } from 'lucide-react';
 import type { RecentArticle, ArticleStatus, AdminEditRequestStatus } from '../../types/jurnalist/journalistDashboard.types';
 import { useJournalistDashboard } from '../../hooks/jurnalist/useJournalistDashboard';
 
-// Komponen Card Statistik
 const StatCard: React.FC<{ icon: React.ElementType; title: string; value: number; color: string }> = ({ icon: Icon, title, value, color }) => (
     <div className="bg-black/20 border-2 border-lime-400/30 p-4 sm:p-6 rounded-lg shadow-md flex items-center transition-all hover:border-lime-400 hover:bg-black/40">
         <div className={`p-3 rounded-full bg-${color}-500/20`}>
@@ -17,7 +16,6 @@ const StatCard: React.FC<{ icon: React.ElementType; title: string; value: number
     </div>
 );
 
-// Helper untuk status chip
 const getStatusChip = (article: RecentArticle) => {
     let displayStatus: ArticleStatus | AdminEditRequestStatus = article.status;
     let statusText = '';
@@ -52,7 +50,7 @@ const getStatusChip = (article: RecentArticle) => {
 };
 
 export const JournalistDashboardPage: React.FC = () => {
-    const { data, isLoading, error } = useJournalistDashboard();
+    const { data, announcements, isLoading, error } = useJournalistDashboard();
 
     if (isLoading) return <div className="p-8 text-center text-white">Memuat dashboard...</div>;
     if (error) return <div className="p-8 text-center text-red-400">Gagal memuat data: {(error as Error).message}</div>;
@@ -63,6 +61,27 @@ export const JournalistDashboardPage: React.FC = () => {
     return (
         <div className="p-4 sm:p-6 lg:p-8">
             <h2 className="text-2xl sm:text-3xl font-bold text-lime-200/90 mb-6">Dashboard Jurnalis</h2>
+
+            {announcements && (announcements.journalistAnnouncement?.id || announcements.journalistRules?.id) && (
+                <div className="mb-8 p-5 bg-blue-900/40 border border-blue-500/50 rounded-lg space-y-4">
+                    <div className="flex items-center gap-3 text-blue-300">
+                        <Info size={20} className="shrink-0" />
+                        <h2 className="text-xl font-bold">Informasi Penting</h2>
+                    </div>
+                    {announcements.journalistAnnouncement?.id && (
+                        <div>
+                            <h3 className="font-semibold text-white mb-1">Pengumuman</h3>
+                            <p className="text-gray-300 text-sm whitespace-pre-wrap">{announcements.journalistAnnouncement.id}</p>
+                        </div>
+                    )}
+                    {announcements.journalistRules?.id && (
+                        <div className="pt-2">
+                            <h3 className="font-semibold text-white mb-1">Aturan & Panduan</h3>
+                            <p className="text-gray-300 text-sm whitespace-pre-wrap">{announcements.journalistRules.id}</p>
+                        </div>
+                    )}
+                </div>
+            )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <StatCard icon={CheckCircle} title="Diterbitkan" value={stats?.published ?? 0} color="green" />

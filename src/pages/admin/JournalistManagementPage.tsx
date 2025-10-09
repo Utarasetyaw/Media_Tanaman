@@ -1,8 +1,8 @@
 import type { FC } from 'react';
 import { useJournalistManager } from '../../hooks/admin/useJournalistManager';
 import { Plus, X, Users, LoaderCircle } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
-// Helper untuk menerjemahkan status dan memberikan warna
 const getStatusProps = (status: string) => {
     switch (status) {
         case 'PUBLISHED': return { text: 'DITERBITKAN', className: 'bg-green-400 text-green-300' };
@@ -21,26 +21,51 @@ export const JournalistManagementPage: FC = () => {
         handleInputChange, handleSave, handleDelete, handleStatusChange, isMutating
     } = useJournalistManager();
 
+    const confirmDelete = (journalistId: number) => {
+        toast((t) => (
+            <div className="flex flex-col gap-3 p-2">
+                <p className="font-semibold text-white">Yakin ingin menghapus jurnalis ini?</p>
+                <p className="text-sm text-gray-300">Semua artikel yang belum dipublikasikan akan ikut terhapus.</p>
+                <div className="flex gap-2">
+                    <button
+                        className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md text-sm"
+                        onClick={() => {
+                            handleDelete(journalistId);
+                            toast.dismiss(t.id);
+                        }}
+                    >
+                        Ya, Hapus
+                    </button>
+                    <button
+                        className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md text-sm"
+                        onClick={() => toast.dismiss(t.id)}
+                    >
+                        Batal
+                    </button>
+                </div>
+            </div>
+        ), {
+            duration: 6000,
+        });
+    };
+
     if (isLoading) return <div className="text-white text-center p-8">Memuat data jurnalis...</div>;
     if (error) return <div className="text-red-400 text-center p-8">Terjadi Kesalahan: {(error as Error).message}</div>;
 
     return (
-        <div>
+        <div className="p-4 sm:p-6 lg:p-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <h2 className="text-2xl sm:text-3xl font-bold text-lime-200/90 flex items-center gap-3">
                     <Users /> Manajemen Jurnalis
                 </h2>
-                {/* ▼▼▼ PERUBAHAN DI SINI ▼▼▼ */}
                 <button
                     onClick={() => openModal()}
                     className="bg-lime-400 text-lime-900 font-bold py-2 px-4 rounded-lg hover:bg-lime-500 flex items-center justify-center gap-2 transition-colors w-full sm:w-auto"
                 >
-                {/* ▲▲▲ AKHIR PERUBAHAN ('justify-center' ditambahkan) ▲▲▲ */}
                     <Plus size={20} /> Tambah Jurnalis
                 </button>
             </div>
 
-            {/* Tampilan Tabel untuk Desktop (md ke atas) */}
             <div className="hidden md:block bg-[#004A49]/60 border-2 border-lime-400/50 shadow-lg rounded-lg overflow-x-auto">
                 <table className="min-w-full divide-y-2 divide-lime-400/30">
                     <thead className="bg-black/20">
@@ -73,7 +98,7 @@ export const JournalistManagementPage: FC = () => {
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div className="flex justify-end gap-3" onClick={(e) => e.stopPropagation()}>
                                         <button onClick={() => openModal(j)} className="text-xs bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded">Ubah</button>
-                                        <button onClick={() => handleDelete(j.id)} className="text-xs bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded">Hapus</button>
+                                        <button onClick={() => confirmDelete(j.id)} className="text-xs bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded">Hapus</button>
                                     </div>
                                 </td>
                             </tr>
@@ -82,7 +107,6 @@ export const JournalistManagementPage: FC = () => {
                 </table>
             </div>
 
-            {/* Tampilan Kartu untuk Mobile (di bawah md) */}
             <div className="md:hidden space-y-4">
                 {journalists?.map(j => (
                     <div key={j.id} className="bg-[#004A49]/60 border-2 border-lime-400/50 shadow-lg rounded-lg p-4">
@@ -103,13 +127,12 @@ export const JournalistManagementPage: FC = () => {
                         </div>
                         <div className="flex justify-end gap-3 mt-4 pt-3 border-t border-lime-400/20">
                             <button onClick={() => openModal(j)} className="text-sm bg-blue-500 hover:bg-blue-600 text-white font-bold py-1.5 px-4 rounded">Ubah</button>
-                            <button onClick={() => handleDelete(j.id)} className="text-sm bg-red-500 hover:bg-red-600 text-white font-bold py-1.5 px-4 rounded">Hapus</button>
+                            <button onClick={() => confirmDelete(j.id)} className="text-sm bg-red-500 hover:bg-red-600 text-white font-bold py-1.5 px-4 rounded">Hapus</button>
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* Modal Tambah/Edit Jurnalis */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
                     <div className="bg-[#003938] rounded-lg shadow-xl w-full max-w-md p-6 relative border-2 border-lime-400">
@@ -140,7 +163,6 @@ export const JournalistManagementPage: FC = () => {
                 </div>
             )}
 
-            {/* Modal Lihat Detail Artikel */}
             {isArticleModalOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
                     <div className="bg-[#003938] rounded-lg shadow-xl w-full max-w-3xl p-6 relative border-2 border-lime-400">

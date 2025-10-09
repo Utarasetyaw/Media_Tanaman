@@ -38,7 +38,7 @@ const Footer: FC<FooterProps> = ({ currentLang }) => {
                 {isLoading ? (
                    <span className="block h-4 w-full bg-gray-700 rounded animate-pulse mt-2"></span>
                 ) : (
-                  layoutData?.settings.businessDescription?.[currentLang] || t('description')
+                  layoutData?.settings.shortDescription?.[currentLang] || t('description')
                 )}
               </p>
               <div className="flex space-x-4 pt-2">

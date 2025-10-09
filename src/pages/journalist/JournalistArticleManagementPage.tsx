@@ -5,6 +5,7 @@ import { Plus, Edit, Trash2, X, CheckCircle, MessageSquare, Send, ShieldCheck, S
 import { Menu, Transition } from '@headlessui/react';
 import type { Article } from '../../types/jurnalist/journalistArticleManagement.types';
 import { useJournalistArticleManager } from '../../hooks/jurnalist/useJournalistArticleManager';
+import { toast } from 'react-hot-toast';
 
 // Komponen Pagination
 const Pagination: FC<{currentPage: number; totalPages: number; onPageChange: (page: number) => void;}> = ({ currentPage, totalPages, onPageChange }) => {
@@ -138,7 +139,6 @@ export const JournalistArticleManagementPage: FC = () => {
         return filteredArticles.slice(startIndex, startIndex + ARTICLES_PER_PAGE);
     }, [filteredArticles, currentPage]);
 
-    const handleDelete = (id: number) => { if (window.confirm('Yakin ingin menghapus artikel ini?')) deleteArticle(id); };
     const openRequestModal = (article: Article) => { setCurrentArticle(article); setIsRequestModalOpen(true); };
     const openFeedbackModal = (article: Article) => { setCurrentArticle(article); setIsFeedbackModalOpen(true); };
     const handleRespondToRequest = (response: "APPROVED" | "DENIED") => {
@@ -147,24 +147,49 @@ export const JournalistArticleManagementPage: FC = () => {
         setIsRequestModalOpen(false);
     };
 
+    const confirmDelete = (articleId: number) => {
+        toast((t) => (
+            <div className="flex flex-col gap-3 p-2">
+                <p className="font-semibold text-white">Yakin ingin menghapus artikel ini?</p>
+                <div className="flex gap-2">
+                    <button
+                        className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md text-sm"
+                        onClick={() => {
+                            deleteArticle(articleId);
+                            toast.dismiss(t.id);
+                        }}
+                    >
+                        Ya, Hapus
+                    </button>
+                    <button
+                        className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md text-sm"
+                        onClick={() => toast.dismiss(t.id)}
+                    >
+                        Batal
+                    </button>
+                </div>
+            </div>
+        ));
+    };
+
     if (isLoading) return <div className="p-8 text-center text-white">Memuat artikel Anda...</div>;
     if (isError) return <div className="p-8 text-center text-red-400">Gagal memuat data.</div>;
 
     const ActionButtons: FC<{ article: Article }> = ({ article }) => {
         if (article.adminEditRequest === 'APPROVED') return <ActionButton to={`/jurnalis/articles/analytics/${article.id}`} color="gray" icon={<BarChart2 size={12}/>}>Lihat</ActionButton>;
         if (article.adminEditRequest === 'PENDING') return <ActionButton onClick={() => openRequestModal(article)} color="purple" icon={<ShieldCheck size={12}/>}>Respon</ActionButton>;
-        if (article.adminEditRequest === 'DENIED') return <ActionButton onClick={() => handleDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>;
+        if (article.adminEditRequest === 'DENIED') return <ActionButton onClick={() => confirmDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>;
         
         switch (article.status) {
             case 'DRAFT': return <>
                 <ActionButton to={`/jurnalis/articles/edit/${article.id}`} color="blue" icon={<Edit size={12}/>}>Ubah</ActionButton>
                 <ActionButton onClick={() => submitArticle(article.id)} color="green" icon={<Send size={12}/>}>Kirim</ActionButton>
-                <ActionButton onClick={() => handleDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>
+                <ActionButton onClick={() => confirmDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>
             </>;
             case 'IN_REVIEW': return <ActionButton to={`/jurnalis/articles/analytics/${article.id}`} color="gray" icon={<BarChart2 size={12}/>}>Lihat</ActionButton>;
             case 'NEEDS_REVISION': return <>
                 <ActionButton onClick={() => openFeedbackModal(article)} color="yellow" icon={<MessageSquare size={12}/>}>Lihat Umpan Balik</ActionButton>
-                <ActionButton onClick={() => handleDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>
+                <ActionButton onClick={() => confirmDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>
                 <ActionButton onClick={() => startRevision(article.id)} color="blue" icon={<PlayCircle size={14}/>}>Mulai Revisi</ActionButton>
             </>;
             case 'JOURNALIST_REVISING': return <>
@@ -175,9 +200,9 @@ export const JournalistArticleManagementPage: FC = () => {
             case 'REVISED': return <ActionButton to={`/jurnalis/articles/analytics/${article.id}`} color="gray" icon={<BarChart2 size={12}/>}>Lihat</ActionButton>;
             case 'PUBLISHED': return <>
                 <ActionButton to={`/jurnalis/articles/analytics/${article.id}`} color="gray" icon={<BarChart2 size={12}/>}>Lihat</ActionButton>
-                <ActionButton onClick={() => handleDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>
+                <ActionButton onClick={() => confirmDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>
             </>;
-            case 'REJECTED': return <ActionButton onClick={() => handleDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>;
+            case 'REJECTED': return <ActionButton onClick={() => confirmDelete(article.id)} color="red" icon={<Trash2 size={12}/>}>Hapus</ActionButton>;
             default: return null;
         }
     };

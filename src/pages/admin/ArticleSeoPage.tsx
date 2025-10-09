@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Settings2, ArrowLeft, Save } from 'lucide-react';
 import type { ArticleSeo } from '../../types/admin/adminarticleseo.types';
 import { useArticleSeo } from '../../hooks/admin/useArticleSeo';
+import { toast } from 'react-hot-toast';
 
 // Helper komponen
 const Input = (props: React.ComponentProps<'input'>) => (
@@ -74,13 +75,12 @@ export const ArticleSeoPage: React.FC = () => {
             try {
                 cleanedSeoData.structuredData = JSON.parse(cleanedSeoData.structuredData);
             } catch (error) {
-                alert('Format JSON pada Data Terstruktur tidak valid.');
+                toast.error('Format JSON pada Data Terstruktur tidak valid.');
                 return;
             }
         }
         saveSeo(cleanedSeoData);
     };
-
     if (isLoading) { return <div className="text-white p-8 text-center">Memuat data SEO...</div>; }
 
     return (

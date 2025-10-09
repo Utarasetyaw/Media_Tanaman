@@ -1,29 +1,21 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import api from '../../services/apiService';
+import { toast } from 'react-hot-toast';
+import type { Event, EventFilter } from '../../types/admin/adminEventManagement.types';
 
-// --- TIPE DATA DAN FUNGSI API ---
-export interface Event {
-    id: number;
-    title: { id: string; en: string };
-    description: { id: string; en: string };
-    imageUrl: string;
-    location: string;
-    organizer: string;
-    startDate: string;
-    endDate: string;
-    eventType: 'INTERNAL' | 'EXTERNAL';
-    externalUrl: string;
-    submissions?: any[];
-    externalLinkClicks?: number;
-    createdAt: string;
-    updatedAt: string;
-}
+// ▼▼▼ PERBAIKAN DI SEMUA PATH API DI BAWAH INI ▼▼▼
 
-type EventFilter = 'ALL' | 'INTERNAL' | 'EXTERNAL';
-
+const getEvents = (): Promise<Event[]> => api.get('/events/management').then(res => res.data);
+const getEventById = (id: number): Promise<Event> => api.get(`/events/management/${id}`).then(res => res.data);
+const createEvent = (data: FormData): Promise<Event> => api.post('/events/management', data).then(res => res.data);
+const updateEvent = (id: number, data: FormData): Promise<Event> => api.put(`/events/management/${id}`, data).then(res => res.data);
+const deleteEvent = (id: number): Promise<void> => api.delete(`/events/management/${id}`);
+const setSubmissionPlacement = (submissionId: number, placement: number | null): Promise<any> => 
+    api.put(`/events/management/submissions/${submissionId}/placement`, { placement });
+    
 const initialFormData: Omit<Event, 'id' | 'submissions' | 'externalLinkClicks' | 'createdAt' | 'updatedAt'> = {
     title: { id: '', en: '' },
     description: { id: '', en: '' },
@@ -36,48 +28,36 @@ const initialFormData: Omit<Event, 'id' | 'submissions' | 'externalLinkClicks' |
     externalUrl: '',
 };
 
-const getEvents = (): Promise<Event[]> => api.get('/events/management').then(res => res.data);
-const getEventById = (id: number): Promise<Event> => api.get(`/events/management/${id}`).then(res => res.data);
-const createEvent = (data: Partial<Event>): Promise<Event> => api.post('/events/management', data).then(res => res.data);
-const updateEvent = (id: number, data: Partial<Event>): Promise<Event> => api.put(`/events/management/${id}`, data).then(res => res.data);
-const deleteEvent = (id: number): Promise<void> => api.delete(`/events/management/${id}`);
-const uploadFile = async (folder: string, file: File): Promise<{ imageUrl: string }> => {
-    const formData = new FormData();
-    formData.append('image', file);
-    const { data } = await api.post(`/upload/${folder}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return data;
-};
-const setSubmissionPlacement = (submissionId: number, placement: number | null): Promise<any> => 
-    api.put(`/events/management/submissions/${submissionId}/placement`, { placement });
-
-
-// =================================================================
-// HOOK UTAMA
-// =================================================================
-export const useEventManager = () => {
-    const { id } = useParams<{ id: string }>();
-    const eventId = id ? parseInt(id, 10) : undefined;
+export const useEventManager = (eventIdParam?: string) => {
+    const navigate = useNavigate();
+    const eventId = eventIdParam ? parseInt(eventIdParam, 10) : undefined;
     const queryClient = useQueryClient();
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingEvent, setEditingEvent] = useState<Event | null>(null);
     const [formData, setFormData] = useState<any>(initialFormData);
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [filter, setFilter] = useState<EventFilter>('ALL');
 
-    const { data: eventsList, isLoading: isLoadingList, isError: isErrorList } = useQuery<Event[], Error>({
+    const { data: eventsList, isLoading: isLoadingList } = useQuery<Event[], Error>({
         queryKey: ['adminEventsList'],
         queryFn: getEvents,
         enabled: !eventId,
     });
 
-    const { data: detailEvent, isLoading: isLoadingDetail, isError: isErrorDetail } = useQuery<Event, Error>({
+    const { data: detailEvent, isLoading: isLoadingDetail } = useQuery<Event, Error>({
         queryKey: ['adminEventDetail', eventId],
         queryFn: () => getEventById(eventId!),
         enabled: !!eventId,
     });
+    
+    useEffect(() => {
+        if (detailEvent && eventId) {
+            setFormData({
+              ...detailEvent,
+              startDate: format(new Date(detailEvent.startDate), "yyyy-MM-dd'T'HH:mm"),
+              endDate: format(new Date(detailEvent.endDate), "yyyy-MM-dd'T'HH:mm"),
+            });
+        }
+    }, [detailEvent, eventId]);
 
     const commonMutationOptions = {
         onSuccess: () => {
@@ -85,43 +65,50 @@ export const useEventManager = () => {
             if (eventId) {
                 queryClient.invalidateQueries({ queryKey: ['adminEventDetail', eventId] });
             }
-            closeModal();
+            navigate('/admin/events');
         },
         onError: (error: any) => {
             const errorMessage = error.response?.data?.error || error.message || 'Gagal memproses permintaan.';
-            console.error(error);
-            alert(`Terjadi kesalahan: ${errorMessage}`);
+            toast.error(`Terjadi kesalahan: ${errorMessage}`);
         },
     };
     
-    const createMutation = useMutation({ mutationFn: createEvent, ...commonMutationOptions });
-    const updateMutation = useMutation({ mutationFn: ({ id, data }: { id: number; data: Partial<Event> }) => updateEvent(id, data), ...commonMutationOptions });
-    const deleteMutation = useMutation({ mutationFn: deleteEvent, ...commonMutationOptions });
+    const createMutation = useMutation({ 
+        mutationFn: createEvent, 
+        ...commonMutationOptions,
+        onSuccess: () => {
+            commonMutationOptions.onSuccess();
+            toast.success("Event berhasil ditambahkan!");
+        }
+    });
+
+    const updateMutation = useMutation({ 
+        mutationFn: ({ id, data }: { id: number; data: FormData }) => updateEvent(id, data), 
+        ...commonMutationOptions,
+        onSuccess: () => {
+            commonMutationOptions.onSuccess();
+            toast.success("Event berhasil diperbarui!");
+        }
+    });
+
+    const deleteMutation = useMutation({ 
+        mutationFn: deleteEvent, 
+        ...commonMutationOptions,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['adminEventsList'] });
+            toast.success("Event berhasil dihapus!");
+        }
+    });
+
     const setPlacementMutation = useMutation({
         mutationFn: ({ submissionId, placement }: { submissionId: number; placement: number | null }) => setSubmissionPlacement(submissionId, placement),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['adminEventDetail', eventId] });
+            toast.success("Pemenang berhasil diatur!");
         },
-        onError: () => alert("Gagal mengatur pemenang."),
+        onError: () => toast.error("Gagal mengatur pemenang."),
     });
 
-    const openModal = (event: Event | null = null) => {
-        setImageFile(null);
-        if (event) {
-            setEditingEvent(event);
-            setFormData({
-              ...event,
-              startDate: format(new Date(event.startDate), "yyyy-MM-dd'T'HH:mm"),
-              endDate: format(new Date(event.endDate), "yyyy-MM-dd'T'HH:mm"),
-            });
-        } else {
-            setEditingEvent(null);
-            setFormData(initialFormData);
-        }
-        setIsModalOpen(true);
-    };
-
-    const closeModal = () => setIsModalOpen(false);
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         setFormData((prev: any) => ({ ...prev, [e.target.name]: e.target.value }));
     };
@@ -131,7 +118,6 @@ export const useEventManager = () => {
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files?.[0]) setImageFile(e.target.files[0]);
     };
-
     const handleRemoveImage = () => {
         setImageFile(null);
         setFormData((prev: any) => ({ ...prev, imageUrl: '' }));
@@ -139,55 +125,40 @@ export const useEventManager = () => {
         if (fileInput) fileInput.value = '';
     };
 
-    const handleSave = async () => {
+    const handleSave = async (currentId?: string) => {
         if (!formData.title.id || !formData.startDate || !formData.endDate) {
-            alert("Judul (ID), Tanggal Mulai, dan Tanggal Selesai wajib diisi.");
+            toast.error("Judul (ID), Tanggal Mulai, dan Tanggal Selesai wajib diisi.");
             return;
         }
         
-        try {
-            let imageUrlForPayload = formData.imageUrl || '';
+        const isEditing = !!currentId;
+        if (!isEditing && !imageFile) {
+            toast.error("Gambar utama wajib diunggah untuk event baru.");
+            return;
+        }
+        
+        const fd = new FormData();
+        fd.append('title', JSON.stringify(formData.title));
+        fd.append('description', JSON.stringify(formData.description));
+        fd.append('location', formData.location);
+        fd.append('organizer', formData.organizer);
+        fd.append('startDate', formData.startDate);
+        fd.append('endDate', formData.endDate);
+        fd.append('eventType', formData.eventType);
+        if (formData.externalUrl) fd.append('externalUrl', formData.externalUrl);
+        if (imageFile) fd.append('image', imageFile);
 
-            if (imageFile) {
-                const uploadRes = await uploadFile('events', imageFile);
-                imageUrlForPayload = uploadRes.imageUrl;
-            } else if (editingEvent?.imageUrl) {
-                try {
-                    imageUrlForPayload = new URL(editingEvent.imageUrl).pathname;
-                } catch {
-                    imageUrlForPayload = editingEvent.imageUrl;
-                }
-            }
-
-            if (!imageUrlForPayload && !editingEvent) {
-                alert("Gambar utama wajib diunggah untuk event baru.");
-                return;
-            }
-
-            const payload = {
-                ...formData,
-                imageUrl: imageUrlForPayload,
-            };
-
-            const fieldsToDelete = ['id', 'submissions', 'createdAt', 'updatedAt', 'externalLinkClicks'];
-            fieldsToDelete.forEach(field => delete payload[field]);
-
-            if (editingEvent) {
-                updateMutation.mutate({ id: editingEvent.id, data: payload });
-            } else {
-                createMutation.mutate(payload);
-            }
-        } catch (error) {
-            alert(`Gagal menyimpan data: ${(error as Error).message}`);
+        if (isEditing) {
+            updateMutation.mutate({ id: parseInt(currentId!), data: fd });
+        } else {
+            createMutation.mutate(fd);
         }
     };
     
     const handleDelete = (id: number) => {
-        if (window.confirm('Yakin ingin menghapus event ini?')) {
-            deleteMutation.mutate(id);
-        }
+        deleteMutation.mutate(id);
     };
-    
+
     const handleSetPlacement = (submissionId: number, placementValue: string) => {
         const placement = placementValue === '0' ? null : Number(placementValue);
         setPlacementMutation.mutate({ submissionId, placement });
@@ -207,10 +178,22 @@ export const useEventManager = () => {
 
     return {
         events: filteredEvents,
-        isLoadingList, isErrorList, filter, setFilter, isModalOpen,
-        editingEvent, formData, imageFile, openModal, closeModal,
-        handleInputChange, handleJsonChange, handleImageChange, handleSave, handleDelete,
-        event: detailEvent, isLoadingDetail, isErrorDetail, handleSetPlacement, isMutating,
+        isLoadingList,
+        filter,
+        setFilter,
+        handleDelete,
+        
+        formData, 
+        imageFile,
+        handleInputChange, 
+        handleJsonChange, 
+        handleImageChange, 
         handleRemoveImage,
+        handleSave,
+        isMutating,
+
+        event: detailEvent, 
+        isLoadingDetail, 
+        handleSetPlacement
     };
 };

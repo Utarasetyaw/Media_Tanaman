@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/apiService';
-import type { Article } from '../../types/jurnalist/journalistArticleManagement.types'; // <-- Gunakan tipe baru
+import type { Article } from '../../types/jurnalist/journalistArticleManagement.types';
+import { toast } from 'react-hot-toast';
 
 // --- Definisi Fungsi-fungsi API ---
 
@@ -11,7 +12,7 @@ const getMyArticles = async (): Promise<Article[]> => {
 
 const deleteMyArticle = async (articleId: number) => {
   await api.delete(`/articles/management/${articleId}`);
-  return articleId; // Kembalikan ID untuk pembaruan cache
+  return articleId;
 };
 
 const submitArticleForReview = async (articleId: number): Promise<Article> => {
@@ -44,32 +45,41 @@ export const useJournalistArticleManager = () => {
     queryFn: getMyArticles,
   });
 
-  const mutationErrorOptions = {
+  // Opsi umum untuk menangani error dan sukses
+  const mutationOptions = {
     onError: (err: any) => {
       const message = err.response?.data?.error || "Terjadi kesalahan.";
-      alert(message);
+      toast.error(message);
       console.error(err);
+    },
+    // Fungsi untuk memperbarui data di cache setelah berhasil
+    onSuccess: (updatedArticle: Article) => {
+        queryClient.setQueryData<Article[]>(queryKey, (oldData = []) => 
+            oldData.map(article => article.id === updatedArticle.id ? updatedArticle : article)
+        );
     },
   };
 
+  // Mutasi untuk aksi yang mengembalikan data artikel (update, submit, dll.)
   const articleUpdateMutation = useMutation({
+      ...mutationOptions,
       mutationFn: (updateFn: () => Promise<Article>) => updateFn(),
       onSuccess: (updatedArticle) => {
-          queryClient.setQueryData<Article[]>(queryKey, (oldData = []) => 
-              oldData.map(article => article.id === updatedArticle.id ? updatedArticle : article)
-          );
-      },
-      ...mutationErrorOptions
+          mutationOptions.onSuccess(updatedArticle); // panggil onSuccess umum
+          toast.success("Aksi berhasil diterapkan!");
+      }
   });
 
+  // Mutasi khusus untuk delete
   const deleteMutation = useMutation({
     mutationFn: deleteMyArticle,
     onSuccess: (deletedArticleId) => {
       queryClient.setQueryData<Article[]>(queryKey, (oldData = []) =>
         oldData.filter(article => article.id !== deletedArticleId)
       );
+      toast.success("Artikel berhasil dihapus.");
     },
-    ...mutationErrorOptions
+    onError: mutationOptions.onError, // Gunakan onError yang sama
   });
 
   const isMutating = articleUpdateMutation.isPending || deleteMutation.isPending;

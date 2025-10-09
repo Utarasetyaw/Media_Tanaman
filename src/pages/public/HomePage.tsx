@@ -14,10 +14,8 @@ import { Menu, Transition } from "@headlessui/react";
 
 import { useHomePage } from "../../hooks/public/useHomePage";
 import { useLayoutData } from "../../hooks/useLayoutData";
-// --- PERUBAHAN DI SINI ---
-// Tipe 'Article' sekarang diimpor dari file yang benar bersama tipe lainnya.
 import type {
-    Article, // <-- Ditambahkan ke sini
+    Article,
     Event,
     Plant,
     BannerImage,
@@ -26,7 +24,6 @@ import type {
 } from "../../types/public/home.types";
 import { homeTranslations } from "../../assets/home.i18n";
 
-// Impor komponen yang relevan
 import SeoManager from "../../components/SeoManager";
 import VerticalAd from "../../components/VerticalAd";
 import HorizontalAd from "../../components/HorizontalAd";
@@ -112,7 +109,7 @@ const HeroBanner: FC<{ banners: BannerImage[] }> = ({ banners }) => {
         <div className="w-full rounded-lg shadow-xl overflow-hidden relative aspect-[3/1]">
             {banners.map((banner, index) => (
                 <img
-                    key={index}
+                    key={banner.id}
                     src={banner.imageUrl || ""}
                     alt={`Banner ${index + 1}`}
                     className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
@@ -351,8 +348,6 @@ const ArticleCard: FC<{ article: Article; lang: "id" | "en" }> = ({
         month: "short",
         day: "numeric",
     });
-
-    // Menggunakan likeCount langsung dari tipe Article yang baru
     const likeCount = article.likeCount ?? 0;
 
     return (
@@ -447,14 +442,16 @@ const Home: FC = () => {
 
     const categories = layoutData?.categories || [];
     const plantTypes = layoutData?.plantTypes || [];
+    
     const {
         mostViewedArticle,
         latestArticles,
         topHeadlines,
         runningEvents,
         plants,
-        bannerImages,
     } = staticData || {};
+
+    const bannerImages = staticData?.settings?.bannerImages || [];
 
     return (
         <>
@@ -465,7 +462,7 @@ const Home: FC = () => {
                 <VerticalAd position="right" />
                 <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 2xl:px-60">
                     <div className="pt-8">
-                        {isLoadingStatic || !bannerImages ? (
+                        {isLoadingStatic ? (
                             <HeroBannerSkeleton />
                         ) : (
                             <HeroBanner banners={bannerImages} />

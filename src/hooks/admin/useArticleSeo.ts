@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/apiService';
 import type { Article, ArticleSeo } from '../../types/admin/adminarticleseo.types';
+import { toast } from 'react-hot-toast';
 
 // --- Definisi Fungsi-fungsi API ---
 
@@ -28,18 +29,19 @@ export const useArticleSeo = () => {
     enabled: !!articleId,
   });
 
+  // ▼▼▼ [PERUBAHAN 2] Ganti 'alert' dengan 'toast' ▼▼▼
   const saveSeoMutation = useMutation({
     mutationFn: (seoData: Partial<ArticleSeo>) => updateArticleSeo({ articleId: articleId!, seoData }),
     onSuccess: (updatedArticle) => {
       queryClient.setQueryData(['articleSeo', articleId], updatedArticle);
       queryClient.invalidateQueries({ queryKey: ['allAdminArticles'] });
       
-      alert('Pengaturan SEO berhasil disimpan!');
+      toast.success('Pengaturan SEO berhasil disimpan!');
       navigate('/admin/articles');
     },
     onError: (error: any) => {
       const message = error.response?.data?.error || error.message;
-      alert(`Gagal menyimpan SEO: ${message}`);
+      toast.error(`Gagal menyimpan SEO: ${message}`);
       console.error("Save SEO error:", error);
     }
   });

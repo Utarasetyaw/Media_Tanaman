@@ -2,7 +2,6 @@ import React, { Fragment } from "react";
 import type { FC } from "react";
 import { useOutletContext } from "react-router-dom";
 import { Disclosure, Transition } from "@headlessui/react";
-// ▼▼▼ Ikon untuk 'ValueCard' dihapus dari sini ▼▼▼
 import {
     ChevronUp,
     Mail,
@@ -17,7 +16,6 @@ import { useAboutData } from "../../hooks/public/useAboutData";
 import { aboutTranslations } from "../../assets/about.i18n";
 import SeoManager from "../../components/SeoManager";
 
-// ▼▼▼ PERUBAHAN DI SINI: Ikon dihapus dari ValueCard ▼▼▼
 interface ValueCardProps {
     title: string;
     description: string;
@@ -28,9 +26,7 @@ const ValueCard: FC<ValueCardProps> = ({ title, description }) => (
         <p className="mt-2 text-sm text-gray-300">{description}</p>
     </div>
 );
-// ▲▲▲ AKHIR PERUBAHAN ▲▲▲
 
-// FUNGSI BANTU
 const formatWhatsAppNumber = (phone: string): string => {
     let cleaned = phone.replace(/\D/g, "");
     if (cleaned.startsWith("0")) {
@@ -39,7 +35,6 @@ const formatWhatsAppNumber = (phone: string): string => {
     return cleaned;
 };
 
-// KOMPONEN UTAMA (HALAMAN TENTANG KAMI)
 const About: FC = () => {
     const { lang: currentLang } = useOutletContext<{ lang: "id" | "en" }>();
     const { data, isLoading, isError } = useAboutData();
@@ -71,9 +66,7 @@ const About: FC = () => {
         privacyPolicy,
     } = data;
 
-    // ▼▼▼ PERUBAHAN DI SINI: Array 'valueIcons' dihapus ▼▼▼
     const currentValues = companyValues || [];
-    // ▲▲▲ AKHIR PERUBAHAN ▲▲▲
 
     return (
         <>
@@ -94,7 +87,7 @@ const About: FC = () => {
                     <h1 className="font-serif mt-4 text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight">
                         {name}
                     </h1>
-                    <p className="mt-6 max-w-3xl mx-auto text-lg text-gray-300 leading-relaxed">
+                    <p className="mt-6 max-w-3xl mx-auto text-lg text-gray-300 leading-relaxed text-justify">
                         {businessDescription?.[currentLang]}
                     </p>
                 </header>
@@ -108,7 +101,6 @@ const About: FC = () => {
                             </h2>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            {/* ▼▼▼ PERUBAHAN DI SINI: Prop 'icon' dihapus dari pemanggilan ValueCard ▼▼▼ */}
                             {currentValues.map((value, index) => (
                                 <ValueCard
                                     key={index}
@@ -116,7 +108,6 @@ const About: FC = () => {
                                     description={value.description[currentLang]}
                                 />
                             ))}
-                            {/* ▲▲▲ AKHIR PERUBAHAN ▲▲▲ */}
                         </div>
                     </SectionWrapper>
                 )}
@@ -153,7 +144,7 @@ const About: FC = () => {
                                                 leaveFrom="opacity-100 translate-y-0"
                                                 leaveTo="opacity-0 -translate-y-2"
                                             >
-                                                <Disclosure.Panel className="pt-4 pb-2 text-base text-gray-300 leading-relaxed text-left">
+                                                <Disclosure.Panel className="pt-4 pb-2 text-base text-gray-300 leading-relaxed text-justify">
                                                     {faq.a[currentLang]}
                                                 </Disclosure.Panel>
                                             </Transition>
@@ -213,7 +204,7 @@ const About: FC = () => {
                         <h2 className="font-serif text-3xl sm:text-4xl font-bold text-lime-400 mb-4 text-center">
                             {t("privacy_policy_title")}
                         </h2>
-                        <p className="text-gray-300 leading-relaxed text-left">
+                        <p className="text-gray-300 leading-relaxed text-justify">
                             {privacyPolicy[currentLang]}
                         </p>
                     </SectionWrapper>

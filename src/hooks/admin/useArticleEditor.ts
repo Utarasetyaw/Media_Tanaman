@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/apiService';
 import type { Article, Category, PlantType, AdminArticleFormData } from '../../types/admin/adminarticleeditor.types';
+import { toast } from 'react-hot-toast';
 
 // --- Definisi Fungsi-fungsi API ---
 
@@ -19,28 +20,17 @@ const getPlantTypes = async (): Promise<PlantType[]> => {
   return data;
 };
 
-const uploadFile = async (folder: string, file: File): Promise<{ imageUrl: string }> => {
-    const formData = new FormData();
-    formData.append('image', file);
-    const { data } = await api.post(`/upload/${folder}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return data;
-};
-
-const createArticle = async (payload: AdminArticleFormData & { status: string }): Promise<Article> => {
+const createArticle = async (payload: FormData): Promise<Article> => {
     const { data } = await api.post('/articles/management', payload);
     return data;
 };
 
-const updateArticle = async (payload: { id: number } & Partial<AdminArticleFormData> & { status?: string }): Promise<Article> => {
-    const { id, ...dataToUpdate } = payload;
-    const { data } = await api.put(`/articles/management/${id}`, dataToUpdate);
+const updateArticle = async (payload: { id: number, data: FormData }): Promise<Article> => {
+    const { id, data: formData } = payload;
+    const { data } = await api.put(`/articles/management/${id}`, formData);
     return data;
 };
 
-
-// --- Tipe Data untuk Payload ---
 interface SaveArticlePayload {
   formData: AdminArticleFormData;
   imageFile: File | null;
@@ -66,27 +56,29 @@ export const useArticleEditor = (id?: string) => {
   // --- Mutation untuk Menyimpan (Create/Update) ---
   const saveMutation = useMutation({
     mutationFn: async ({ formData, imageFile, action }: SaveArticlePayload): Promise<Article> => {
-        let finalImageUrl = formData.imageUrl || '';
-        if (imageFile) {
-            const uploadRes = await uploadFile('artikel', imageFile);
-            finalImageUrl = uploadRes.imageUrl;
-        }
-
-        if (!finalImageUrl && action === 'publish') {
+        if (!imageFile && !formData.imageUrl && action === 'publish') {
             throw new Error('Gambar utama wajib diunggah untuk publikasi.');
         }
 
-        const payload = { ...formData, imageUrl: finalImageUrl };
+        const fd = new FormData();
+        fd.append('title', JSON.stringify(formData.title));
+        fd.append('excerpt', JSON.stringify(formData.excerpt));
+        fd.append('content', JSON.stringify(formData.content));
+        fd.append('categoryId', String(formData.categoryId));
+        if (formData.plantTypeId) {
+            fd.append('plantTypeId', String(formData.plantTypeId));
+        }
+        if (imageFile) {
+            fd.append('image', imageFile);
+        }
 
         if (isEditMode) {
-            const dataToUpdate: { id: number } & Partial<AdminArticleFormData> & { status?: string } = { id: articleId!, ...payload };
-            if (action === 'publish') {
-                dataToUpdate.status = 'PUBLISHED';
-            }
-            return updateArticle(dataToUpdate);
+            if (action === 'publish') fd.append('status', 'PUBLISHED');
+            return updateArticle({ id: articleId!, data: fd });
         } else {
             const status = action === 'publish' ? 'PUBLISHED' : 'DRAFT';
-            return createArticle({ ...payload, status });
+            fd.append('status', status);
+            return createArticle(fd);
         }
     },
     onSuccess: (savedArticle) => {
@@ -94,9 +86,9 @@ export const useArticleEditor = (id?: string) => {
         queryClient.setQueryData(['articleEditor', savedArticle.id], savedArticle);
     },
     onError: (error: any) => {
-        const message = error.response?.data?.error || error.message;
+        const message = error.response?.data?.error || error.message || "Gagal menyimpan artikel.";
+        toast.error(message);
         console.error("Save article error:", error);
-        throw new Error(message || "Gagal menyimpan artikel.");
     }
   });
 

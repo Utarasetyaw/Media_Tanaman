@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { Toaster } from 'react-hot-toast'; // <-- 1. Import Toaster
+import { Toaster } from 'react-hot-toast';
 
 // --- Layouts ---
 import MainLayout from './layouts/MainLayout';
@@ -38,6 +38,9 @@ import { EventDetailPage } from './pages/admin/EventDetailPage';
 import { ArticleEditorPage } from './pages/admin/ArticleEditorPage';
 import { ArticleSeoPage } from './pages/admin/ArticleSeoPage';
 import { ArticleAnalyticsPage } from './pages/admin/ArticleAnalyticsPage';
+import { PlantEditorPage } from './pages/admin/PlantEditorPage';
+import { PlantDetailPage } from './pages/admin/PlantDetailPage';
+import { EventEditorPage } from './pages/admin/EventEditorPage';
 
 // --- Halaman Jurnalis ---
 import { JournalistDashboardPage } from './pages/journalist/JournalistDashboardPage';
@@ -80,34 +83,32 @@ const ProtectedRoute: React.FC<{ allowedRoles: string[] }> = ({ allowedRoles }) 
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      {/* ▼▼▼ [PERUBAHAN] Tambahkan Toaster di sini ▼▼▼ */}
       <Toaster
         position="top-center"
         reverseOrder={false}
         toastOptions={{
           duration: 3000,
           style: {
-            background: '#1a202c', // Warna latar belakang gelap
-            color: '#e2e8f0', // Warna teks terang
-            border: '1px solid #4a5568', // Border
+            background: '#1a202c',
+            color: '#e2e8f0',
+            border: '1px solid #4a5568',
           },
           success: {
             duration: 2000,
             iconTheme: {
-              primary: '#38a169', // Warna ikon sukses
+              primary: '#38a169',
               secondary: 'white',
             },
           },
           error: {
             duration: 4000,
             iconTheme: {
-              primary: '#e53e3e', // Warna ikon error
+              primary: '#e53e3e',
               secondary: 'white',
             },
           },
         }}
       />
-      {/* ▲▲▲ AKHIR PERUBAHAN ▲▲▲ */}
 
       <Routes>
         {/* === Rute Publik dengan Layout Utama === */}
@@ -142,8 +143,15 @@ const App: React.FC = () => {
             <Route path="articles/edit/:id" element={<ArticleEditorPage />} />
             <Route path="articles/seo/:id" element={<ArticleSeoPage />} />
             <Route path="articles/analytics/:id" element={<ArticleAnalyticsPage />} />
+            
             <Route path="plants" element={<PlantManagementPage />} />
+            <Route path="plants/new" element={<PlantEditorPage />} />
+            <Route path="plants/edit/:id" element={<PlantEditorPage />} />
+            <Route path="plants/view/:id" element={<PlantDetailPage />} />
+            
             <Route path="events" element={<EventManagementPage />} />
+            <Route path="events/new" element={<EventEditorPage />} />
+            <Route path="events/edit/:id" element={<EventEditorPage />} />
             <Route path="events/:id" element={<EventDetailPage />} />
           </Route>
         </Route>

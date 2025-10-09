@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = "http://localhost:3009/api";
+// ▼▼▼ TAMBAHKAN 'export' DI SINI ▼▼▼
+export const API_BASE_URL = "http://localhost:3009/api";
 
 const api = axios.create({
     baseURL: API_BASE_URL,

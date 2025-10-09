@@ -1,11 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/apiService';
 import type { DashboardData, UserProfile } from '../../types/user/userDashboard.types';
+import type { AnnouncementSettings } from '../../types/admin/adminsettings';
+import { toast } from 'react-hot-toast';
 
 // --- API Functions ---
 
 const getDashboardData = async (): Promise<DashboardData> => {
     const { data } = await api.get('/users/me/dashboard');
+    return data;
+};
+
+const getAnnouncements = async (): Promise<AnnouncementSettings> => {
+    const { data } = await api.get('/settings/announcements');
     return data;
 };
 
@@ -33,9 +40,14 @@ const uploadFile = async (folder: string, file: File): Promise<{ imageUrl: strin
 export const useUserDashboard = () => {
     const queryClient = useQueryClient();
 
-    const { data, isLoading, isError, error } = useQuery<DashboardData, Error>({
+    const { data: dashboardData, isLoading: isLoadingDashboard, isError, error } = useQuery<DashboardData, Error>({
         queryKey: ['userDashboard'],
         queryFn: getDashboardData,
+    });
+
+    const { data: announcements, isLoading: isLoadingAnnouncements } = useQuery<AnnouncementSettings, Error>({
+        queryKey: ['announcements'],
+        queryFn: getAnnouncements,
     });
 
     const submitMutation = useMutation({
@@ -59,12 +71,12 @@ export const useUserDashboard = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['userDashboard'] });
-            alert("Karya berhasil dikirim/diperbarui!");
+            toast.success("Karya berhasil dikirim/diperbarui!");
         },
         onError: (err: any) => {
             const errorMessage = err.response?.data?.error || err.message;
             console.error("Submission Error:", errorMessage);
-            alert(`Gagal mengirim karya: ${errorMessage}`);
+            toast.error(`Gagal mengirim karya: ${errorMessage}`);
         }
     });
 
@@ -72,18 +84,19 @@ export const useUserDashboard = () => {
         mutationFn: updateUserProfile,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['userDashboard'] });
-            alert("Profil berhasil diperbarui!");
+            toast.success("Profil berhasil diperbarui!");
         },
         onError: (err: any) => {
             const errorMessage = err.response?.data?.error || err.message;
             console.error("Profile Update Error:", errorMessage);
-            alert(`Gagal memperbarui profil: ${errorMessage}`);
+            toast.error(`Gagal memperbarui profil: ${errorMessage}`);
         }
     });
 
     return {
-        dashboardData: data,
-        isLoading,
+        dashboardData,
+        announcements,
+        isLoading: isLoadingDashboard || isLoadingAnnouncements,
         isError,
         error,
         submitMutation,
