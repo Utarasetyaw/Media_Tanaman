@@ -32,6 +32,26 @@ const transformImageUrls = (req, data) => {
     return Array.isArray(data) ? data.map(transformItem) : transformItem(data);
 };
 
+// Helper function untuk menghapus file lama dengan aman
+const deleteOldFile = (filePath) => {
+    if (!filePath) return;
+    // 1. Hapus garis miring di awal jika ada untuk path joining yang benar
+    const relativePath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
+    const fullPath = path.join(__dirname, '../../public', relativePath);
+
+    // 2. Cek apakah file ada dan bukan URL eksternal sebelum menghapus
+    if (fs.existsSync(fullPath) && !filePath.startsWith('http')) {
+        try {
+            fs.unlinkSync(fullPath);
+            console.log(`Successfully deleted old file: ${fullPath}`);
+        } catch (err) {
+            // 3. Tangani error jika penghapusan gagal, tapi jangan hentikan proses
+            console.error(`Failed to delete old file: ${fullPath}`, err);
+        }
+    }
+};
+
+
 export const getSiteSettings = async (req, res) => {
   try {
     const settings = await prisma.siteSettings.findUnique({
@@ -56,32 +76,6 @@ export const getSiteSettings = async (req, res) => {
   }
 };
 
-export const addBannerImage = async (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: 'No image file uploaded.' });
-    }
-
-    try {
-        await prisma.bannerImage.create({
-            data: {
-                imageUrl: `/uploads/banners/${req.file.filename}`,
-                siteSettingsId: SETTINGS_ID,
-            }
-        });
-
-        const finalSettings = await prisma.siteSettings.findUnique({
-            where: { id: SETTINGS_ID },
-            include: { bannerImages: { orderBy: { id: 'asc' } }, seo: true }
-        });
-
-        res.status(201).json(transformImageUrls(req, finalSettings));
-
-    } catch (error) {
-        console.error("Add Banner Error:", error);
-        res.status(500).json({ error: 'Failed to add banner image.' });
-    }
-};
-
 export const updateSiteSettings = async (req, res) => {
   const { bannerImages, seo, ...siteSettingsData } = req.body;
 
@@ -90,26 +84,19 @@ export const updateSiteSettings = async (req, res) => {
       where: { id: SETTINGS_ID },
     });
 
-    // ▼▼▼ PERBAIKAN DIMULAI DI SINI ▼▼▼
     if (currentSettings) {
-      // Cek untuk PENGGANTIAN atau PENGHAPUSAN logo
-      if (siteSettingsData.logoUrl !== currentSettings.logoUrl && currentSettings.logoUrl) {
-          const oldLogoPath = path.join(__dirname, '../../public', currentSettings.logoUrl);
-          if (fs.existsSync(oldLogoPath) && !currentSettings.logoUrl.startsWith('http')) {
-              fs.unlinkSync(oldLogoPath);
-          }
+      // Cek dan hapus logo lama jika diubah
+      if (siteSettingsData.logoUrl && siteSettingsData.logoUrl !== currentSettings.logoUrl) {
+          deleteOldFile(currentSettings.logoUrl);
       }
       
-      // Cek untuk PENGGANTIAN atau PENGHAPUSAN favicon
-      if (siteSettingsData.faviconUrl !== currentSettings.faviconUrl && currentSettings.faviconUrl) {
-          const oldFaviconPath = path.join(__dirname, '../../public', currentSettings.faviconUrl);
-          if (fs.existsSync(oldFaviconPath) && !currentSettings.faviconUrl.startsWith('http')) {
-              fs.unlinkSync(oldFaviconPath);
-          }
+      // Cek dan hapus favicon lama jika diubah
+      if (siteSettingsData.faviconUrl && siteSettingsData.faviconUrl !== currentSettings.faviconUrl) {
+          deleteOldFile(currentSettings.faviconUrl);
       }
     }
-    // ▲▲▲ AKHIR PERBAIKAN ▲▲▲
 
+    // Lanjutkan dengan transaksi database
     await prisma.$transaction(async (tx) => {
       await tx.siteSettings.upsert({
         where: { id: SETTINGS_ID },
@@ -139,6 +126,32 @@ export const updateSiteSettings = async (req, res) => {
   }
 };
 
+export const addBannerImage = async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No image file uploaded.' });
+    }
+
+    try {
+        await prisma.bannerImage.create({
+            data: {
+                imageUrl: `/uploads/banners/${req.file.filename}`,
+                siteSettingsId: SETTINGS_ID,
+            }
+        });
+
+        const finalSettings = await prisma.siteSettings.findUnique({
+            where: { id: SETTINGS_ID },
+            include: { bannerImages: { orderBy: { id: 'asc' } }, seo: true }
+        });
+
+        res.status(201).json(transformImageUrls(req, finalSettings));
+
+    } catch (error) {
+        console.error("Add Banner Error:", error);
+        res.status(500).json({ error: 'Failed to add banner image.' });
+    }
+};
+
 export const deleteBannerImage = async (req, res) => {
     const { id } = req.params;
     const bannerId = parseInt(id, 10);
@@ -155,11 +168,9 @@ export const deleteBannerImage = async (req, res) => {
         if (!bannerToDelete) {
             return res.status(404).json({ error: 'Banner not found.' });
         }
-
-        const filePath = path.join(__dirname, '../../public', bannerToDelete.imageUrl);
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-        }
+        
+        // Gunakan helper function yang sudah ada
+        deleteOldFile(bannerToDelete.imageUrl);
 
         await prisma.bannerImage.delete({
             where: { id: bannerId },
