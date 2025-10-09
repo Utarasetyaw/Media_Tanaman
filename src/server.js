@@ -28,22 +28,13 @@ const __dirname = path.dirname(__filename);
 
 // --- MIDDLEWARE DASAR ---
 
-// Konfigurasi CORS yang lebih fleksibel
-const whitelist = process.env.CORS_ORIGIN_WHITELIST
-    ? process.env.CORS_ORIGIN_WHITELIST.split(',')
-    : [];
-
-const corsOptions = {
-    origin: function (origin, callback) {
-        if (!origin || whitelist.indexOf(origin) !== -1) {
-            callback(null, true);
-        } else {
-            callback(new Error("Not allowed by CORS"));
-        }
-    },
+// ▼▼▼ PERUBAHAN DI SINI: Konfigurasi CORS disederhanakan ▼▼▼
+// Mengizinkan semua origin untuk mengakses API, sambil tetap mengizinkan credentials (cookies, auth headers)
+app.use(cors({
+    origin: true,
     credentials: true,
-};
-app.use(cors(corsOptions));
+}));
+// ▲▲▲ AKHIR PERUBAHAN ▲▲▲
 
 app.use(express.json());
 
@@ -68,15 +59,12 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/plant-types", plantTypeRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/settings", settingsRoutes);
-app.use("/api", pageRoutes); // Pastikan rute ini tidak tumpang tindih dengan yang di atas
+app.use("/api", pageRoutes);
 
 // --- GLOBAL ERROR HANDLER ---
 app.use((err, req, res, next) => {
     console.error(err.stack);
-    // Secara khusus menangani error dari CORS
-    if (err.message === "Not allowed by CORS") {
-        return res.status(403).json({ error: "CORS Error", message: err.message });
-    }
+    // ▼▼▼ PERUBAHAN DI SINI: Penanganan error spesifik CORS dihapus ▼▼▼
     res
         .status(500)
         .json({ error: "Something went wrong!", message: err.message });
