@@ -28,22 +28,41 @@ const router = Router();
 router.use(authenticateToken);
 
 // --- RUTE UNTUK JURNALIS (Akses Pribadi) ---
-// contoh: GET /api/articles/management/my-articles
 router.get('/my-dashboard-stats', getJournalistDashboardStats);
 router.get('/my-articles', getMyArticles);
 router.get('/analytics/:id', getMyArticleAnalytics);
+
+// ▼▼▼ PERBAIKAN RUTE CREATE ARTICLE ▼▼▼
 router.post(
     '/',
     upload.single('image'),
-    convertToWebp('artikel'),
+    // 1. Set nama folder tujuan di request
+    (req, res, next) => {
+        req.uploadFolder = 'artikel';
+        next();
+    },
+    // 2. Panggil middleware convertToWebp secara langsung
+    convertToWebp,
     createArticle
 );
+// ▲▲▲ AKHIR PERBAIKAN ▲▲▲
+
+
+// ▼▼▼ PERBAIKAN RUTE UPDATE ARTICLE ▼▼▼
 router.put(
     '/:id',
     upload.single('image'),
-    convertToWebp('artikel'),
+    // 1. Set nama folder tujuan di request
+    (req, res, next) => {
+        req.uploadFolder = 'artikel';
+        next();
+    },
+    // 2. Panggil middleware convertToWebp secara langsung
+    convertToWebp,
     updateArticle
 );
+// ▲▲▲ AKHIR PERBAIKAN ▲▲▲
+
 router.delete('/:id', deleteMyArticle);
 
 // --- RUTE WORKFLOW JURNALIS ---
@@ -55,25 +74,13 @@ router.put('/:id/respond-edit', respondToEditRequest);
 
 
 // --- RUTE KHUSUS ADMIN ---
-// Rute di bawah ini memerlukan otorisasi sebagai ADMIN
 router.use(authorizeRoles(['ADMIN']));
 
-// GET /api/articles/management/all
 router.get('/all', getAllArticlesForAdmin);
-
-// GET /api/articles/management/admin-dashboard-stats
 router.get('/admin-dashboard-stats', getAdminDashboardStats);
-
-// PUT /api/articles/management/:id/status
 router.put('/:id/status', updateArticleStatus);
-
-// DELETE /api/articles/management/:id (versi admin)
 router.delete('/:id/admin', deleteArticle);
-
-// PUT /api/articles/management/:id/cancel-request
 router.put('/:id/cancel-request', cancelAdminEditRequest);
-
-// PUT /api/articles/management/:id/revert-approval
 router.put('/:id/revert-approval', revertAdminEditApproval);
 
 export default router;
