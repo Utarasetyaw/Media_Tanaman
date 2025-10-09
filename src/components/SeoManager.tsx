@@ -31,7 +31,7 @@ const SeoManager: FC<SeoProps> = ({
 	const seoData = settings?.seo;
 	const siteName = settings?.name || "Narapati Flora";
 	const apiBaseUrl =
-		import.meta.env.VITE_API_BASE_URL || "http://localhost:3009";
+		import.meta.env.VITE_API_BASE_URL || "https://backend.narapatiflora.com";
 
 	// Menggunakan semua data yang diakses untuk menentukan nilai final
 	const finalTitle = title

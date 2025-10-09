@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // ▼▼▼ TAMBAHKAN 'export' DI SINI ▼▼▼
-export const API_BASE_URL = "http://localhost:3009/api";
+export const API_BASE_URL = "https://backend.narapatiflora.com//api";
 
 const api = axios.create({
     baseURL: API_BASE_URL,
