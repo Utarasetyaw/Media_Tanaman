@@ -10,7 +10,8 @@ const __dirname = path.dirname(__filename);
 // --- HELPER UNTUK TRANSFORMASI URL GAMBAR ---
 const transformPlantImage = (req, plant) => {
   if (plant?.imageUrl && plant.imageUrl.startsWith('/')) {
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const baseUrl = `${protocol}://${req.get('host')}`;
     return { ...plant, imageUrl: `${baseUrl}${plant.imageUrl}` };
   }
   return plant;

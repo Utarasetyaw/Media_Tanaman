@@ -10,7 +10,8 @@ const __dirname = path.dirname(__filename);
 
 const transformArticleImage = (req, article) => {
   if (article && article.imageUrl && article.imageUrl.startsWith('/')) {
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const baseUrl = `${protocol}://${req.get('host')}`;
     return { ...article, imageUrl: `${baseUrl}${article.imageUrl}` };
   }
   return article;
@@ -136,9 +137,7 @@ export const updateArticle = async (req, res) => {
   const isOwner = article.authorId === user.userId;
   const isAdmin = user.role === 'ADMIN';
 
-  // ▼▼▼ PERUBAHAN DI BARIS INI ▼▼▼
   const canAdminEdit = isAdmin && (article.authorId === user.userId || article.adminEditRequest === 'APPROVED' || article.status === 'PUBLISHED');
-  // ▲▲▲ AKHIR PERUBAHAN ▲▲▲
   
   const isJournalistEditableStatus = ['DRAFT', 'NEEDS_REVISION', 'JOURNALIST_REVISING'].includes(article.status);
 

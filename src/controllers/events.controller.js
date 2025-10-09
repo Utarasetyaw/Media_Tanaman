@@ -9,7 +9,8 @@ const __dirname = path.dirname(__filename);
 
 const transformEventImage = (req, event) => {
   if (event?.imageUrl && event.imageUrl.startsWith('/')) {
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const baseUrl = `${protocol}://${req.get('host')}`;
     return { ...event, imageUrl: `${baseUrl}${event.imageUrl}` };
   }
   return event;
@@ -17,7 +18,8 @@ const transformEventImage = (req, event) => {
 
 const transformRelativePath = (req, relativePath) => {
   if (relativePath && relativePath.startsWith('/')) {
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const baseUrl = `${protocol}://${req.get('host')}`;
     return `${baseUrl}${relativePath}`;
   }
   return relativePath;
@@ -62,7 +64,7 @@ export const getEventByIdForAdmin = async (req, res) => {
         if (event.submissions) {
             event.submissions = event.submissions.map(sub => ({
                 ...sub,
-                submissionUrl: transformEventImage(req, { imageUrl: sub.submissionUrl }).imageUrl,
+                submissionUrl: transformRelativePath(req, sub.submissionUrl),
             }));
         }
 
