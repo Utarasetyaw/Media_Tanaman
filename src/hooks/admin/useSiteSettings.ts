@@ -10,7 +10,6 @@ const getSiteSettings = async (): Promise<SiteSettings> => {
   return data;
 };
 
-// Fungsi ini kembali menjadi helper internal
 const uploadFile = async (folder: string, file: File, isFavicon: boolean = false): Promise<{ imageUrl: string }> => {
     const formData = new FormData();
     formData.append('image', file);
@@ -58,24 +57,35 @@ export const useSiteSettings = () => {
   // --- MUTATIONS ---
   const updateSettingsMutation = useMutation({
     mutationFn: async ({ settingsData, logoFile, faviconFile }: UpdateSettingsPayload) => {
-      const dataToSave = { ...settingsData };
-      delete dataToSave.bannerImages;
+      
+      // 1. Buat salinan dari semua data pengaturan yang ada
+      const dataToUpdate: Partial<SiteSettings> = { ...settingsData };
+      
+      // Hapus properti yang tidak ingin kita kirim langsung
+      delete dataToUpdate.bannerImages;
 
-      // Proses upload terjadi di dalam mutasi
+      // 2. Proses Logo:
+      // Jika ada file logo BARU, unggah dan gunakan URL baru.
       if (logoFile) {
         toast.loading('Mengunggah logo...');
         const res = await uploadFile('settings', logoFile, false);
-        dataToSave.logoUrl = res.imageUrl;
+        dataToUpdate.logoUrl = res.imageUrl;
         toast.dismiss();
       }
+      // Jika tidak ada file baru, kita tidak melakukan apa-apa,
+      // karena `dataToUpdate.logoUrl` sudah berisi URL lama dari salinan `settingsData`.
+
+      // 3. Proses Favicon:
+      // Logikanya sama seperti logo.
       if (faviconFile) {
         toast.loading('Mengunggah favicon...');
         const res = await uploadFile('settings', faviconFile, true);
-        dataToSave.faviconUrl = res.imageUrl;
+        dataToUpdate.faviconUrl = res.imageUrl;
         toast.dismiss();
       }
       
-      const { data } = await api.put('/settings', dataToSave);
+      // 4. Kirim payload yang sudah diperbarui ke server
+      const { data } = await api.put('/settings', dataToUpdate);
       return data;
     },
     onSuccess: (savedData) => {
@@ -83,11 +93,12 @@ export const useSiteSettings = () => {
       toast.success('Pengaturan berhasil disimpan!');
     },
     onError: (error) => {
-      toast.dismiss(); // Hapus toast loading jika ada error
+      toast.dismiss();
       console.error("Failed to save settings:", error);
       toast.error('Gagal menyimpan pengaturan.');
     }
   });
+
 
   const addBannerMutation = useMutation({
     mutationFn: addBannerApi,
