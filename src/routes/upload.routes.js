@@ -12,27 +12,29 @@ const router = Router();
 router.use(authenticateToken, authorizeRoles(['ADMIN', 'JOURNALIST']));
 
 // RUTE KHUSUS UNTUK FAVICON (TANPA KONVERSI WEBP)
-// Middleware berjalan berurutan: autentikasi -> upload -> handleUpload
+// Rute ini sudah benar, tidak perlu diubah.
 router.post(
   '/favicon',
   (req, res, next) => {
-    // Set folder tujuan secara manual untuk controller
     req.uploadFolder = 'settings'; 
     next();
   },
-  upload.single('image'), // Middleware Multer untuk menyimpan file
-  handleUpload          // Controller untuk mengirim respons
+  upload.single('image'),
+  handleUpload
 );
 
 
 // RUTE UMUM UNTUK GAMBAR LAIN (DENGAN KONVERSI WEBP)
-// Middleware berjalan berurutan: autentikasi -> validasi -> upload -> konversi -> handleUpload
 router.post(
   '/:folder',
-  validateFolder,              // Pastikan nama folder valid
-  upload.single('image'),      // Middleware Multer untuk menyimpan file
-  convertToWebp(),             // Middleware untuk konversi ke WebP
-  handleUpload                 // Controller untuk mengirim respons
+  validateFolder,
+  upload.single('image'),
+  // ▼▼▼ PERBAIKAN DI SINI ▼▼▼
+  // Ubah dari: convertToWebp()
+  // Menjadi:
+  convertToWebp,
+  // ▲▲▲ AKHIR PERBAIKAN ▲▲▲
+  handleUpload
 );
 
 export default router;

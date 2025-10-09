@@ -13,8 +13,23 @@ const router = Router();
 router.get('/', getSiteSettings);
 router.put('/', authenticateToken, authorizeRoles(['ADMIN']), updateSiteSettings);
 
-// Rute untuk Banner (tetap menggunakan convertToWebp)
-router.post('/banners', authenticateToken, authorizeRoles(['ADMIN']), upload.single('image'), convertToWebp('banners'), addBannerImage);
+// ▼▼▼ PERBAIKAN RUTE BANNER ▼▼▼
+router.post(
+    '/banners', 
+    authenticateToken, 
+    authorizeRoles(['ADMIN']), 
+    upload.single('image'), 
+    // 1. Set nama folder tujuan di request
+    (req, res, next) => {
+        req.uploadFolder = 'banners';
+        next();
+    },
+    // 2. Panggil middleware convertToWebp secara langsung
+    convertToWebp,
+    addBannerImage
+);
+// ▲▲▲ AKHIR PERBAIKAN ▲▲▲
+
 router.delete('/banners/:id', authenticateToken, authorizeRoles(['ADMIN']), deleteBannerImage);
 
 // --- RUTE PENGUMUMAN ---

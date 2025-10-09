@@ -16,23 +16,26 @@ import { convertToWebp } from '../middlewares/image.middleware.js';
 
 const router = Router();
 
-// --- RUTE PUBLIK & PENGGUNA (TIDAK TERMASUK DALAM /management) ---
-// Rute ini harus dipisahkan ke file lain atau server.js
-// Untuk saat ini, kita fokus pada rute admin
-
-// --- RUTE ADMIN (SEMUA DI BAWAH PREFIX /management) ---
+// Fokus pada rute admin untuk saat ini
 router.use(authenticateToken, authorizeRoles(['ADMIN']));
 
 // GET /api/events/management/
 router.get('/', getManagementEvents);
 
-// POST /api/events/management/
+// ▼▼▼ PERBAIKAN RUTE CREATE EVENT ▼▼▼
 router.post(
   '/', 
   upload.single('image'),
-  convertToWebp('events'),
+  // 1. Set nama folder tujuan di request
+  (req, res, next) => {
+      req.uploadFolder = 'events';
+      next();
+  },
+  // 2. Panggil middleware convertToWebp secara langsung
+  convertToWebp,
   createEvent
 );
+// ▲▲▲ AKHIR PERBAIKAN ▲▲▲
 
 // PUT /api/events/management/submissions/:submissionId/placement
 router.put('/submissions/:submissionId/placement', setSubmissionPlacement);
@@ -40,13 +43,20 @@ router.put('/submissions/:submissionId/placement', setSubmissionPlacement);
 // GET /api/events/management/:id
 router.get('/:id', getEventByIdForAdmin);
 
-// PUT /api/events/management/:id
+// ▼▼▼ PERBAIKAN RUTE UPDATE EVENT ▼▼▼
 router.put(
   '/:id', 
   upload.single('image'),
-  convertToWebp('events'),
+  // 1. Set nama folder tujuan di request
+  (req, res, next) => {
+      req.uploadFolder = 'events';
+      next();
+  },
+  // 2. Panggil middleware convertToWebp secara langsung
+  convertToWebp,
   updateEvent
 );
+// ▲▲▲ AKHIR PERBAIKAN ▲▲▲
 
 // DELETE /api/events/management/:id
 router.delete('/:id', deleteEvent);
