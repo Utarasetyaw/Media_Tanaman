@@ -1,25 +1,27 @@
 // src/controllers/upload.controller.js
 
-// REVISED: Add 'submissions' to the list of allowed upload folders
-const allowedTypes = ['artikel', 'events', 'plants', 'banners', 'settings', 'submissions'];
+const allowedFolders = ['artikel', 'events', 'plants', 'banners', 'settings', 'submissions'];
 
-// Middleware to validate the upload type
-export const validateUploadType = (req, res, next) => {
-  const { type } = req.params;
-  if (!allowedTypes.includes(type)) {
-    return res.status(400).json({ error: 'Invalid upload type specified.' });
+// Middleware untuk memvalidasi nama folder
+export const validateFolder = (req, res, next) => {
+  const { folder } = req.params;
+  if (!allowedFolders.includes(folder)) {
+    return res.status(400).json({ error: 'Tipe unggahan tidak valid.' });
   }
+  // Teruskan nama folder ke middleware selanjutnya jika diperlukan
+  req.uploadFolder = folder;
   next();
 };
 
-// Controller to handle the response after a successful upload
-export const uploadImage = (req, res) => {
+// Controller untuk merespons setelah unggahan berhasil
+export const handleUpload = (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ error: 'No file was uploaded.' });
+    return res.status(400).json({ error: 'Tidak ada file yang diunggah.' });
   }
 
-  // Return the relative path to be stored in the database
-  // Note: The base URL (e.g., http://localhost:5000) is added by the frontend or other helpers
-  const relativePath = `/uploads/${req.params.type}/${req.file.filename}`;
+  // req.file.filename sudah diperbarui oleh middleware (baik multer atau convertToWebp)
+  // req.uploadFolder berasal dari middleware validateFolder atau di-set manual di rute
+  const relativePath = `/uploads/${req.uploadFolder}/${req.file.filename}`;
+  
   res.status(201).json({ imageUrl: relativePath });
 };

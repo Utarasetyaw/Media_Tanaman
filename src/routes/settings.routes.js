@@ -1,5 +1,4 @@
 import { Router } from 'express';
-// ▼▼▼ Import semua fungsi dari satu controller ▼▼▼
 import { 
     getSiteSettings, updateSiteSettings, addBannerImage, deleteBannerImage, 
     getAnnouncements, updateAnnouncements 
@@ -13,6 +12,8 @@ const router = Router();
 // --- RUTE PENGATURAN SITUS ---
 router.get('/', getSiteSettings);
 router.put('/', authenticateToken, authorizeRoles(['ADMIN']), updateSiteSettings);
+
+// Rute untuk Banner (tetap menggunakan convertToWebp)
 router.post('/banners', authenticateToken, authorizeRoles(['ADMIN']), upload.single('image'), convertToWebp('banners'), addBannerImage);
 router.delete('/banners/:id', authenticateToken, authorizeRoles(['ADMIN']), deleteBannerImage);
 
