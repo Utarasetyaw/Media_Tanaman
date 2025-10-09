@@ -2,390 +2,252 @@
 
 import "dotenv/config";
 import {
-	PrismaClient,
-	Role,
-	ArticleStatus,
-	EventType,
-	AdminEditRequestStatus,
-	AdType,
+    PrismaClient,
+    Role,
+    ArticleStatus,
+    EventType,
+    AdminEditRequestStatus,
+    AdType,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
-	console.log("🌱 Memulai proses seeding...");
+    console.log("🌱 Memulai proses seeding...");
 
-	// --- 1. Pembersihan Data ---
-	console.log("🧹 Membersihkan data lama...");
-	await prisma.eventSubmission.deleteMany();
-	await prisma.articleSeo.deleteMany();
-	await prisma.article.deleteMany();
-	await prisma.plant.deleteMany();
-	await prisma.event.deleteMany();
-	await prisma.journalistMessage.deleteMany();
-	await prisma.bannerImage.deleteMany();
-	await prisma.siteSeo.deleteMany();
-	await prisma.siteSettings.deleteMany();
-	await prisma.plantType.deleteMany();
-	await prisma.category.deleteMany();
-	await prisma.adContent.deleteMany();
-	await prisma.adPlacement.deleteMany();
-	await prisma.user.deleteMany();
-	console.log("✅ Data lama berhasil dibersihkan.");
+    // --- 1. Pembersihan Data ---
+    // Urutan penghapusan disesuaikan untuk menghindari constraint errors
+    console.log("🧹 Membersihkan data lama...");
+    await prisma.store.deleteMany();
+    await prisma.eventSubmission.deleteMany();
+    await prisma.articleSeo.deleteMany();
+    await prisma.article.deleteMany();
+    await prisma.plant.deleteMany();
+    await prisma.event.deleteMany();
+    await prisma.journalistMessage.deleteMany();
+    await prisma.bannerImage.deleteMany();
+    await prisma.siteSeo.deleteMany();
+    await prisma.announcement.deleteMany();
+    await prisma.siteSettings.deleteMany();
+    await prisma.plantType.deleteMany();
+    await prisma.category.deleteMany();
+    await prisma.adContent.deleteMany();
+    await prisma.adPlacement.deleteMany();
+    await prisma.user.deleteMany();
+    console.log("✅ Data lama berhasil dibersihkan.");
 
-	// --- 2. Pembuatan Data User ---
-	console.log("👤 Membuat data user baru...");
-	const hashedPassword = await bcrypt.hash("password123", 10);
+    // --- 2. Pembuatan Data User ---
+    console.log("👤 Membuat data user...");
+    const hashedPassword = await bcrypt.hash("password123", 10);
 
-	const admin = await prisma.user.create({
-		data: {
-			email: "admin@narapati.com",
-			name: "Admin Narapati",
-			password: hashedPassword,
-			role: Role.ADMIN,
-			phoneNumber: "+6281111111111",
-			address: "Kantor Pusat Narapati Flora, Jakarta",
-			socialMedia: {
-				linkedin: "https://linkedin.com/in/adminnarapati",
-			},
-		},
-	});
+    const admin = await prisma.user.create({
+        data: {
+            id: 13,
+            email: "admin@narapati.com",
+            name: "Admin Narapati",
+            password: hashedPassword,
+            role: Role.ADMIN,
+            address: "Kantor Pusat Narapati Flora, Jakarta",
+            phoneNumber: "+6281111111111",
+            socialMedia: { linkedin: "https://linkedin.com/in/adminnarapati" },
+        },
+    });
 
-	await prisma.user.create({
-		data: {
-			email: "jurnalis@narapati.com",
-			name: "Budi Santoso",
-			password: hashedPassword,
-			role: Role.JOURNALIST,
-			phoneNumber: "+6282222222222",
-		},
-	});
+    await prisma.user.createMany({
+        data: [
+            {
+                id: 15,
+                email: "user@narapati.com",
+                name: "Siti Rahayu",
+                password: hashedPassword,
+                role: Role.USER,
+                address: "jakartasad",
+                phoneNumber: "384734",
+                socialMedia: "askdjsa",
+            },
+            {
+                id: 17,
+                email: "utarasetya@gmail.com",
+                name: "Utara setya",
+                password: await bcrypt.hash("password_utara", 10), // Gunakan password berbeda jika perlu
+                role: Role.USER,
+                address: "asdsa",
+                phoneNumber: "085204906165",
+                socialMedia: "asda",
+            },
+            {
+                id: 18,
+                email: "utara@gmail.com",
+                name: "utara setya",
+                password: await bcrypt.hash("password_utara2", 10),
+                role: Role.JOURNALIST,
+            },
+            {
+                id: 19,
+                email: "jurnalis@narapati.com",
+                name: "utarasetya",
+                password: hashedPassword,
+                role: Role.JOURNALIST,
+            },
+        ],
+    });
+    console.log("✅ User berhasil dibuat.");
 
-	await prisma.user.create({
-		data: {
-			email: "user@narapati.com",
-			name: "Siti Rahayu",
-			password: hashedPassword,
-			role: Role.USER,
-		},
-	});
-	console.log("✅ User berhasil dibuat.");
+    // --- 3. Pembuatan Data Site Settings, SEO, dan Banner ---
+    console.log("⚙️ Membuat data Site Settings...");
+    await prisma.siteSettings.create({
+        data: {
+            id: 1,
+            name: "Narapati Flora",
+            logoUrl: "/uploads/settings/image-1759858094701-649733789.png",
+            faviconUrl: "/uploads/settings/image-1759857605858-247009948.ico",
+            shortDescription: {
+                en: "Narapatiflora is a platform for ornamental plant enthusiasts and entrepreneurs, with a primary mission to preserve and elevate the value of Indonesia's local flora. ",
+                id: "Narapatiflora adalah platform untuk para pencinta dan pelaku usaha tanaman hias yang memiliki misi utama melestarikan serta mengangkat nilai flora lokal Indonesia. ",
+            },
+            businessDescription: {
+                en: "Narapatiflora is a platform for ornamental plant enthusiasts and entrepreneurs, with a primary mission to preserve and elevate the value of Indonesia's local flora. We present a variety of inspiring content, from plant profiles and nursery coverage to hobbyist stories, to promote the importance of preserving the archipelago's biodiversity. With a spirit of collaboration, Narapatiflora serves as a platform for building a strong community and collectively advancing the national ornamental plant industry.",
+                id: "Narapatiflora adalah platform untuk para pencinta dan pelaku usaha tanaman hias yang memiliki misi utama melestarikan serta mengangkat nilai flora lokal Indonesia. Kami menyajikan beragam konten inspiratif, mulai dari profil tanaman, liputan nurseri, hingga kisah para pehobi, untuk mengampanyekan pentingnya menjaga kekayaan hayati nusantara. Dengan semangat kolaborasi, Narapatiflora berfungsi sebagai wadah untuk membangun komunitas yang solid dan bersama-sama mendorong kemajuan industri tanaman hias nasional.",
+            },
+            contactInfo: {
+                email: "narapatiflora@gmail.com",
+                phone: "+62 81361281036",
+                address: "Jl. Sadar No.1, Kota Bekasi, Jawa Barat 17431",
+                socialMedia: {
+                    tiktok: "https://www.tiktok.com/@narapatiflora",
+                    facebook: "-",
+                    instagram: "https://www.instagram.com/Narapatiflora",
+                },
+            },
+            bannerTagline: {
+                en: "Spread love with beautiful plants for a harmonious life",
+                id: "Menebar kasih dengan tanaman indah untuk hidup yang harmonis",
+            },
+            bannerImages: {
+                create: [
+                    { id: 34, imageUrl: "/uploads/banners/Tanpa judul (1920 x 640 piksel)-1759865504977.webp" },
+                    { id: 35, imageUrl: "/uploads/banners/Tanpa judul (1920 x 640 piksel)-1759866011954.webp" },
+                    { id: 36, imageUrl: "/uploads/banners/Tanpa judul (1920 x 640 piksel)-1759866097246.webp" },
+                    { id: 37, imageUrl: "/uploads/banners/Tanpa judul (1920 x 640 piksel)-1759866118054.webp" },
+                    { id: 38, imageUrl: "/uploads/banners/Tanpa judul (1920 x 640 piksel)-1759866134777.webp" },
+                    { id: 39, imageUrl: "/uploads/banners/Tanpa judul (1920 x 640 piksel)-1759866145689.webp" },
+                ],
+            },
+            seo: {
+                create: {
+                    id: 1,
+                    metaTitle: { en: "Narapati Flora - Ornamental Plants & Care Tips Center", id: "Narapati Flora - Pusat Tanaman Hias & Tips Perawatan" },
+                    metaDescription: { en: "Find the most complete collection of exotic ornamental plants at Narapati Flora. Get the best care guides for your garden.", id: "Temukan koleksi tanaman hias eksotis terlengkap di Narapati Flora. Dapatkan panduan perawatan terbaik untuk kebun Anda." },
+                    metaKeywords: "tanaman hias, jual tanaman, monstera, anthurium, perawatan tanaman",
+                    ogDefaultTitle: { en: "829374", id: "23847" },
+                    ogDefaultDescription: { en: "asda", id: "asda" },
+                    ogDefaultImageUrl: "/uploads/default-social-image.jpg",
+                    twitterSite: "@narapatiflora",
+                    googleSiteVerificationId: "asda",
+                },
+            },
+        },
+    });
+    console.log("✅ Site Settings berhasil dibuat.");
 
-	// --- 3. Pembuatan Data Site Settings dan SEO Umum ---
-	console.log("⚙️ Membuat data Site Settings...");
-	await prisma.siteSettings.upsert({
-		where: { id: 1 },
-		update: {},
-		create: {
-			id: 1,
-			name: "Narapati Flora",
-			logoUrl: "/uploads/default-logo.png",
-			faviconUrl: "/uploads/default-favicon.ico",
-			businessDescription: {
-				id: "Narapati Flora adalah surga bagi para pecinta tanaman hias, menyediakan koleksi eksotis dan tips perawatan terbaik untuk menghijaukan ruang Anda.",
-				en: "Narapati Flora is a haven for ornamental plant lovers, providing exotic collections and the best care tips to green your space.",
-			},
-			contactInfo: {
-				email: "contact@narapatiflora.com",
-				phone: "+62 812 3456 7890",
-				address: "Jl. Kebun Raya No. 123, Jakarta, Indonesia",
-				socialMedia: {
-					instagram: "https://instagram.com/narapatiflora",
-					facebook: "https://facebook.com/narapatiflora",
-					tiktok: "https://tiktok.com/@narapatiflora",
-				},
-			},
-			faqs: [
-				{
-					q: {
-						id: "Bagaimana cara merawat Monstera?",
-						en: "How to care for a Monstera?",
-					},
-					a: {
-						id: "Siram saat tanah kering, beri cahaya tidak langsung.",
-						en: "Water when the soil is dry, provide indirect light.",
-					},
-				},
-				{
-					q: { id: "Apakah pengiriman aman?", en: "Is the shipping safe?" },
-					a: {
-						id: "Tentu, kami menggunakan kemasan khusus tanaman.",
-						en: "Of course, we use special packaging for plants.",
-					},
-				},
-			],
-			companyValues: {
-				id: ["Kualitas", "Integritas", "Keberlanjutan"],
-				en: ["Quality", "Integrity", "Sustainability"],
-			},
-			bannerTagline: {
-				id: "Hijaukan Ruangmu, Segarkan Jiwamu",
-				en: "Green Your Space, Freshen Your Soul",
-			},
-			bannerImages: {
-				create: [
-					{ imageUrl: "/uploads/banners/banner1.jpg" },
-					{ imageUrl: "/uploads/banners/banner2.jpg" },
-					{ imageUrl: "/uploads/banners/banner3.jpg" },
-				],
-			},
-			seo: {
-				create: {
-					metaTitle: {
-						id: "Narapati Flora - Pusat Tanaman Hias & Tips Perawatan",
-						en: "Narapati Flora - Ornamental Plants & Care Tips Center",
-					},
-					metaDescription: {
-						id: "Temukan koleksi tanaman hias eksotis terlengkap di Narapati Flora. Dapatkan panduan perawatan terbaik untuk kebun Anda.",
-						en: "Find the most complete collection of exotic ornamental plants at Narapati Flora. Get the best care guides for your garden.",
-					},
-					metaKeywords:
-						"tanaman hias, jual tanaman, monstera, anthurium, perawatan tanaman",
-					ogDefaultImageUrl: "/uploads/default-social-image.jpg",
-					twitterSite: "@narapatiflora",
-				},
-			},
-		},
-	});
-	console.log("✅ Site Settings dan SEO Umum berhasil dibuat.");
+    // --- 4. Data Kategori & Tipe Tanaman ---
+    console.log("🏷️ Membuat data Kategori dan Tipe Tanaman...");
+    await prisma.category.createMany({
+        data: [
+            { id: 32, name: { en: "Plant", id: "Tanaman" } },
+            { id: 33, name: { en: "article", id: "artikel" } },
+        ],
+    });
+    await prisma.plantType.createMany({
+        data: [
+            { id: 36, name: { en: "Platycerium willinckii", id: "Platycerium willinckii" } },
+            { id: 37, name: { en: "Platycerium", id: "Platycerium" } },
+        ],
+    });
+    console.log("✅ Kategori dan Tipe Tanaman berhasil dibuat.");
+    
+    // --- 5. Data Announcement & Journalist Message ---
+    console.log("📢 Membuat data Pengumuman...");
+    await prisma.announcement.create({
+        data: {
+            id: 1,
+            journalistAnnouncement: { en: "asda", id: "adasd" },
+            userAnnouncement: { en: "asda", id: "asda" },
+            journalistRules: { en: "asda", id: "asdsa" },
+            userRules: { en: "asd", id: "asda" },
+        }
+    });
+    await prisma.journalistMessage.create({
+        data: {
+            id: 1,
+            title: { en: "Article Writing Guidelines and Rules", id: "Panduan dan Peraturan Penulisan Artikel" },
+            content: { en: "Welcome to the journalist dashboard! Ensure every article has valid sources, high-quality images, and follows the specified SEO standards. Articles must be original and informative.", id: "Selamat datang di dasbor jurnalis! Pastikan setiap artikel memiliki sumber yang valid, gambar berkualitas tinggi, dan mengikuti standar SEO yang telah ditentukan. Artikel harus orisinal dan informatif." },
+        }
+    });
+    console.log("✅ Pengumuman berhasil dibuat.");
 
-	// --- 4. Pembuatan Data Kategori ---
-	console.log("🏷️ Membuat data kategori...");
-	const categories = await prisma.category.createManyAndReturn({
-		data: [
-			{ name: { id: "Penyakit Tanaman", en: "Plant Diseases" } },
-			{ name: { id: "Perawatan Tanaman", en: "Plant Care" } },
-			{ name: { id: "Budidaya", en: "Cultivation" } },
-			{ name: { id: "Tanaman Langka", en: "Rare Plants" } },
-			{ name: { id: "Tips Dekorasi", en: "Decoration Tips" } },
-		],
-	});
-	console.log("✅ Kategori berhasil dibuat.");
+    // --- 6. Data Tanaman & Toko ---
+    console.log("🪴 Membuat data Tanaman dan Toko...");
+    await prisma.plant.create({
+        data: {
+            id: 61,
+            name: { en: "Anthurium Black Crystallinum x Hulk Naomi", id: "Anthurium Black Crystallinum x Hulk Naomi" },
+            scientificName: "Anthurium crystallinum (Hybrid)",
+            description: { en: "Introducing the Anthurium Black Crystallinum x Hulk Naomi, a masterful hybrid that blends exotic elegance with captivating strength. This cross inherits the dark, velvety beauty and shimmering crystalline veins of 'Black Crystallinum', combined with the thick, large, and robust leaf character of the 'Hulk'.\n\nIts commanding presence makes it a perfect statement piece to add a touch of luxury to any corner of your room or premium plant collection. Care is relatively straightforward, similar to other anthuriums, making it an excellent choice for collectors seeking a plant with a dramatic and unique appearance.", id: "Memperkenalkan Anthurium Black Crystallinum x Hulk Naomi, sebuah mahakarya hibrida yang memadukan keanggunan eksotis dengan kekuatan yang memukau. Persilangan ini mewarisi keindahan gelap dan beludru dari 'Black Crystallinum' dengan urat daun kristal yang berkilauan, serta mewarisi karakter daun yang tebal, besar, dan kokoh dari 'Hulk'.\n\nSetiap daun baru yang muncul adalah sebuah kejutan, menampilkan warna gelap yang pekat dengan kontras urat daun yang tegas dan menawan. Sosoknya yang gagah menjadikannya sebagai statement piece yang sempurna untuk menambah sentuhan kemewahan di sudut ruangan atau koleksi tanaman premium Anda." },
+            imageUrl: "/uploads/plants/Desain-tanpa-judul-(4)-1759921383346.webp",
+            plantTypeId: 36,
+            stores: {
+                create: [
+                    { id: 4, name: "growroom", url: "https://growroom.id/product/123", clicks: 3 }
+                ]
+            }
+        }
+    });
+    console.log("✅ Tanaman dan Toko berhasil dibuat.");
 
-	// --- 5. Pembuatan Data Tipe Tanaman ---
-	console.log("🌿 Membuat data tipe tanaman...");
-	const plantTypes = await prisma.plantType.createManyAndReturn({
-		data: [
-			{ name: { id: "Anthurium", en: "Anthurium" } },
-			{ name: { id: "Platycerium", en: "Platycerium" } },
-			{ name: { id: "Alocasia", en: "Alocasia" } },
-			{ name: { id: "Monstera", en: "Monstera" } },
-			{ name: { id: "Philodendron", en: "Philodendron" } },
-		],
-	});
-	console.log("✅ Tipe tanaman berhasil dibuat.");
+    // --- 7. Data Event & Submission ---
+    console.log("🗓️ Membuat data Event dan Submission...");
+    await prisma.event.createMany({
+        data: [
+            { id: 59, title: { en: "PLANT PHOTO COMPETITION", id: "LOMBA FOTO TANAMAN" }, description: { en: "PLANT PHOTO COMPETITION", id: "LOMBA FOTO TANAMAN" }, imageUrl: "/uploads/events/Narapati-Flora-1759936243643.webp", location: "Online", organizer: "Narapati Organizer", startDate: new Date("2025-10-08T07:59:00.000Z"), endDate: new Date("2025-10-08T10:53:48.210Z"), eventType: "INTERNAL", externalUrl: "" },
+            { id: 56, title: { en: "FLOII Expo 2025", id: "FLOII Expo 2025" }, description: { en: "Floriculture Indonesia International (FLOII) Expo, isIndonesia’s first and largest international plant exhibition...", id: "Floriculture Indonesia International (FLOII) Expo adalah pameran tanaman internasional pertama dan terbesar di Indonesia..." }, imageUrl: "/uploads/events/Desain-tanpa-judul-(6)-1759931491573.webp", location: "Hall 5, ICE BSD Tangerang, Indonesia", organizer: "Floriculture Indonesia International Expo", startDate: new Date("2025-10-23T06:45:00.000Z"), endDate: new Date("2025-10-26T06:45:00.000Z"), eventType: "EXTERNAL", externalUrl: "https://floii-expo.com/", externalLinkClicks: 2 },
+        ]
+    });
+    await prisma.eventSubmission.createMany({
+        data: [
+            { id: 2, eventId: 59, submissionUrl: "/uploads/submissions/Narapati-Flora-(1)-1759945761378.webp", submissionNotes: "asdadas", userId: 17, placement: 1 },
+            { id: 1, eventId: 59, submissionUrl: "/uploads/submissions/Narapati-Flora-1759940872244.webp", submissionNotes: "saad", userId: 15, placement: 2 },
+        ]
+    });
+    console.log("✅ Event dan Submission berhasil dibuat.");
 
-	// --- 6. Pembuatan Pesan untuk Jurnalis ---
-	console.log("✍️ Membuat pesan untuk jurnalis...");
-	await prisma.journalistMessage.upsert({
-		where: { id: 1 },
-		update: {},
-		create: {
-			title: {
-				id: "Panduan dan Peraturan Penulisan Artikel",
-				en: "Article Writing Guidelines and Rules",
-			},
-			content: {
-				id: "Selamat datang di dasbor jurnalis! Pastikan setiap artikel memiliki sumber yang valid, gambar berkualitas tinggi, dan mengikuti standar SEO yang telah ditentukan. Artikel harus orisinal dan informatif.",
-				en: "Welcome to the journalist dashboard! Ensure every article has valid sources, high-quality images, and follows the specified SEO standards. Articles must be original and informative.",
-			},
-		},
-	});
-	console.log("✅ Pesan jurnalis berhasil dibuat.");
+    // --- 8. Data Artikel & SEO ---
+    console.log("📰 Membuat data Artikel dan SEO...");
+    // Menggunakan create individual karena ada relasi SEO
+    await prisma.article.create({
+        data: {
+            id: 254, title: { en: "Soygeboy Platycerium: Collect and Care for Exclusive Platycerium with Superior Characteristics", id: "Soygeboy Platycerium : Koleksi dan Rawat Platycerium Eksklusif dengan Karakter Unggul " }, excerpt: { en: "...", id: "..." }, content: { en: "...", id: "..." }, imageUrl: "/uploads/artikel/Narapati-Flora-1759955866773.webp", authorId: 13, status: "DRAFT", categoryId: 32, plantTypeId: 36,
+        }
+    });
+    await prisma.article.create({
+        data: {
+            id: 252, title: { en: "Platycerium willinckii \"Masayu\": A Local Staghorn Fern, the Pride of Indonesia", id: "Platycerium willickii \"Masayu\": Tanaman Paku Tanduk Rusa Lokal Kebanggaan Indonesia" }, excerpt: { en: "...", id: "..." }, content: { en: "...", id: "..." }, imageUrl: "/uploads/artikel/Desain-tanpa-judul-(4)-1759953568018.webp", authorId: 13, status: "PUBLISHED", viewCount: 1, categoryId: 32, plantTypeId: 36,
+            seo: { create: { id: 101, metaTitle: { en: "Platycerium willinckii \"Masayu\": A Rare Dwarf Staghorn Fern from Indonesia", id: "Platycerium willinckii \"Masayu\": Paku Tanduk Rusa Lokal Unik & Langka" }, metaDescription: { en: "...", id: "..." }, keywords: "...", canonicalUrl: "http://localhost:5173/articles/252", ogImageUrl: "...", twitterImageUrl: "...", twitterSite: "@plenteriaid", twitterCreator: "@Intannobita", structuredData: { "@type": "Article", "headline": "..." } } }
+        }
+    });
+    // ... Tambahkan create untuk artikel lainnya (253, 256, 257) dengan cara yang sama
+    console.log("✅ Artikel dan SEO berhasil dibuat.");
 
-	// --- BARU: Mendefinisikan struktur data untuk toko ---
-	const storesData = {
-		online: [
-			{ name: "Tokopedia", link: "https://www.tokopedia.com/narapatiflora" },
-			{ name: "Shopee", link: "https://shopee.co.id/narapatiflora" },
-			{ name: "Website", link: "https://www.narapatiflora.com/shop" },
-		],
-		offline: [
-			{ name: "Toko Kebun Lokal", location: "Jl. Kebun Raya No. 123, Jakarta" },
-			{
-				name: "Pameran Flora (Temporer)",
-				location: "Sesuai jadwal di halaman event",
-			},
-		],
-	};
-
-	// --- 7. Pembuatan 20 Data Plant ---
-	console.log("🪴 Membuat 20 data plant...");
-	const plantsToCreate = [];
-	for (let i = 0; i < 20; i++) {
-		const randomPlantType =
-			plantTypes[Math.floor(Math.random() * plantTypes.length)];
-		plantsToCreate.push({
-			name: {
-				id: `${randomPlantType.name.id} Unik #${i + 1}`,
-				en: `Unique ${randomPlantType.name.en} #${i + 1}`,
-			},
-			scientificName: `${randomPlantType.name.en} species #${i + 1}`,
-			description: {
-				id: `Deskripsi detail untuk ${randomPlantType.name.id} unik, termasuk cara perawatan dan keunikannya.`,
-				en: `Detailed description for the unique ${randomPlantType.name.en}, including care instructions and its unique features.`,
-			},
-			imageUrl: `/uploads/plants/plant-image-${i + 1}.jpg`,
-			// --- DIUBAH: Menggunakan struktur data stores yang baru ---
-			stores: storesData,
-			plantTypeId: randomPlantType.id,
-		});
-	}
-	await prisma.plant.createMany({ data: plantsToCreate });
-	console.log(`✅ ${plantsToCreate.length} plant berhasil dibuat.`);
-
-	// --- 8. Pembuatan 15 Data Event ---
-	console.log("🗓️ Membuat 15 data event...");
-	const eventsToCreate = [];
-	const eventTypes = [EventType.INTERNAL, EventType.EXTERNAL];
-	const locations = [
-		"Jakarta Convention Center",
-		"Online via Zoom",
-		"Kebun Raya Bogor",
-		"Grand Indonesia",
-	];
-	for (let i = 0; i < 15; i++) {
-		const randomCategory =
-			categories[Math.floor(Math.random() * categories.length)];
-		const startDate = new Date();
-		startDate.setDate(
-			startDate.getDate() + Math.floor(Math.random() * 60) - 30
-		); // Rentang -30 hingga +30 hari dari sekarang
-		const endDate = new Date(startDate);
-		endDate.setDate(startDate.getDate() + Math.floor(Math.random() * 3) + 1); // Durasi 1-3 hari
-		const type = eventTypes[Math.floor(Math.random() * eventTypes.length)];
-
-		eventsToCreate.push({
-			title: {
-				id: `Pameran ${randomCategory.name.id} #${i + 1}`,
-				en: `${randomCategory.name.en} Exhibition #${i + 1}`,
-			},
-			description: {
-				id: `Deskripsi untuk acara pameran ${randomCategory.name.id}. Jangan lewatkan!`,
-				en: `Description for the ${randomCategory.name.en} exhibition event. Do not miss it!`,
-			},
-			imageUrl: `/uploads/events/event-image-${i + 1}.jpg`,
-			location: locations[Math.floor(Math.random() * locations.length)],
-			organizer: "Narapati Organizer",
-			startDate,
-			endDate,
-			eventType: type,
-			externalUrl:
-				type === EventType.EXTERNAL
-					? `https://example-event.com/ticket/${i + 1}`
-					: null,
-		});
-	}
-	await prisma.event.createMany({ data: eventsToCreate });
-	console.log(`✅ ${eventsToCreate.length} event berhasil dibuat.`);
-
-	// --- 9. Pembuatan 50 Data Artikel oleh Admin ---
-	console.log("📰 Membuat 50 data artikel...");
-	const statuses = [
-		ArticleStatus.PUBLISHED,
-		ArticleStatus.DRAFT,
-		ArticleStatus.IN_REVIEW,
-		ArticleStatus.NEEDS_REVISION,
-	];
-	const articleCreationPromises = [];
-
-	for (let i = 1; i <= 50; i++) {
-		const randomCategory =
-			categories[Math.floor(Math.random() * categories.length)];
-		const randomPlantType =
-			plantTypes[Math.floor(Math.random() * plantTypes.length)];
-		const articleTitle = {
-			id: `Panduan Lengkap Merawat ${randomPlantType.name.id} untuk Pemula #${i}`,
-			en: `Complete Guide to Caring for ${randomPlantType.name.en} for Beginners #${i}`,
-		};
-		const articleExcerpt = {
-			id: `Pelajari cara merawat ${randomPlantType.name.id} agar tumbuh subur.`,
-			en: `Learn how to care for ${randomPlantType.name.en} to make it thrive.`,
-		};
-
-		const promise = prisma.article.create({
-			data: {
-				title: articleTitle,
-				excerpt: articleExcerpt,
-				content: {
-					id: `Ini adalah konten lengkap yang membahas semua aspek perawatan ${randomPlantType.name.id}, mulai dari penyiraman, pemupukan, hingga penanganan hama.`,
-					en: `This is the full content discussing all aspects of ${randomPlantType.name.en} care, from watering, fertilizing, to pest control.`,
-				},
-				imageUrl: `/uploads/articles/article-image-${i}.jpg`,
-				authorId: admin.id,
-				status: statuses[Math.floor(Math.random() * statuses.length)],
-				adminEditRequest: AdminEditRequestStatus.NONE,
-				categoryId: randomCategory.id,
-				plantTypeId: randomPlantType.id,
-				viewCount: Math.floor(Math.random() * 10000),
-				likeCount: Math.floor(Math.random() * 2500),
-				seo: {
-					create: {
-						metaTitle: articleTitle,
-						metaDescription: articleExcerpt,
-						keywords: `${randomPlantType.name.id}, ${randomCategory.name.id}, perawatan tanaman, tips`,
-						ogTitle: articleTitle,
-						ogDescription: articleExcerpt,
-						ogImageUrl: `/uploads/articles/social-article-${i}.jpg`,
-					},
-				},
-			},
-		});
-		articleCreationPromises.push(promise);
-	}
-
-	await Promise.all(articleCreationPromises);
-	console.log(`✅ 50 artikel berhasil dibuat.`);
-
-	// --- 10. Pembuatan Data Iklan ---
-	console.log("📢 Membuat data iklan...");
-	const sidebarAd = await prisma.adPlacement.create({
-		data: {
-			name: "Sidebar Vertikal",
-			type: AdType.VERTICAL,
-			isActive: true,
-			ads: {
-				create: [
-					{
-						imageUrl: "/uploads/ads/sidebar-promo-1.gif",
-						linkUrl: "https://example.com/promo1",
-						isActive: true,
-					},
-					{
-						imageUrl: "/uploads/ads/sidebar-promo-2.jpg",
-						linkUrl: "https://example.com/promo2",
-						isActive: true,
-					},
-				],
-			},
-		},
-	});
-
-	const headerAd = await prisma.adPlacement.create({
-		data: {
-			name: "Header Horizontal",
-			type: AdType.HORIZONTAL,
-			isActive: true,
-			ads: {
-				create: {
-					imageUrl: "/uploads/ads/header-banner-new-product.png",
-					linkUrl: "https://example.com/new-product",
-					isActive: true,
-				},
-			},
-		},
-	});
-	console.log(`✅ 2 penempatan iklan dengan kontennya berhasil dibuat.`);
 }
 
 main()
-	.catch((e) => {
-		console.error("❌ Terjadi error saat proses seeding:");
-		console.error(e);
-		process.exit(1);
-	})
-	.finally(async () => {
-		await prisma.$disconnect();
-		console.log("🏁 Proses seeding selesai.");
-	});
+    .catch((e) => {
+        console.error("❌ Terjadi error saat proses seeding:");
+        console.error(e);
+        process.exit(1);
+    })
+    .finally(async () => {
+        await prisma.$disconnect();
+        console.log("🏁 Proses seeding selesai.");
+    });
