@@ -103,12 +103,21 @@ model Plant {
   scientificName String
   description    Json
   imageUrl       String
-  stores         Json
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   plantType   PlantType? @relation("PlantToPlantType", fields: [plantTypeId], references: [id])
   plantTypeId Int?
+  stores      Store[] 
+}
+
+model Store {
+  id      Int    @id @default(autoincrement())
+  name    String
+  url     String
+  clicks  Int    @default(0) // Kolom untuk melacak klik
+  plant   Plant  @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  plantId Int
 }
 
 model Event {
@@ -149,6 +158,7 @@ model SiteSettings {
   name                String?
   logoUrl             String?
   faviconUrl          String?
+  shortDescription    Json?
   businessDescription Json?
   contactInfo         Json?
   faqs                Json?
@@ -195,6 +205,16 @@ model JournalistMessage {
   title     Json
   content   Json
   updatedAt DateTime @updatedAt
+}
+
+model Announcement {
+  id                     Int     @id @default(1)
+  journalistAnnouncement Json?
+  userAnnouncement       Json?
+  journalistRules        Json?
+  userRules              Json?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 }
 
 // =================================================================

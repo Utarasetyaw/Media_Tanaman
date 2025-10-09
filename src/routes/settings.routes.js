@@ -1,15 +1,23 @@
 import { Router } from 'express';
-import { getSiteSettings, updateSiteSettings } from '../controllers/settings.controller.js';
-// REVISI: Gunakan nama fungsi middleware yang baru
+// ▼▼▼ Import semua fungsi dari satu controller ▼▼▼
+import { 
+    getSiteSettings, updateSiteSettings, addBannerImage, deleteBannerImage, 
+    getAnnouncements, updateAnnouncements 
+} from '../controllers/settings.controller.js';
 import { authenticateToken, authorizeRoles } from '../middlewares/auth.middleware.js';
+import { upload } from '../middlewares/upload.middleware.js';
+import { convertToWebp } from '../middlewares/image.middleware.js';
 
 const router = Router();
 
-// Rute Publik untuk mengambil data pengaturan
+// --- RUTE PENGATURAN SITUS ---
 router.get('/', getSiteSettings);
-
-// Rute Admin untuk mengupdate data pengaturan
-// REVISI: Gunakan nama fungsi middleware yang baru
 router.put('/', authenticateToken, authorizeRoles(['ADMIN']), updateSiteSettings);
+router.post('/banners', authenticateToken, authorizeRoles(['ADMIN']), upload.single('image'), convertToWebp('banners'), addBannerImage);
+router.delete('/banners/:id', authenticateToken, authorizeRoles(['ADMIN']), deleteBannerImage);
+
+// --- RUTE PENGUMUMAN ---
+router.get('/announcements', authenticateToken, getAnnouncements);
+router.put('/announcements', authenticateToken, authorizeRoles(['ADMIN']), updateAnnouncements);
 
 export default router;

@@ -7,7 +7,6 @@ const prisma = new PrismaClient();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// --- HELPER UNTUK TRANSFORMASI URL GAMBAR ---
 const transformEventImage = (req, event) => {
   if (event?.imageUrl && event.imageUrl.startsWith('/')) {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -16,7 +15,6 @@ const transformEventImage = (req, event) => {
   return event;
 };
 
-// HELPER BARU UNTUK MENGUBAH PATH RELATIF MENJADI URL LENGKAP
 const transformRelativePath = (req, relativePath) => {
   if (relativePath && relativePath.startsWith('/')) {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -25,14 +23,6 @@ const transformRelativePath = (req, relativePath) => {
   return relativePath;
 };
 
-
-// =================================================================
-// RUTE-RUTE MANAJEMEN ADMIN
-// =================================================================
-
-/**
- * ADMIN: Mengambil semua event untuk halaman manajemen.
- */
 export const getManagementEvents = async (req, res) => {
     try {
         const events = await prisma.event.findMany({
@@ -45,9 +35,6 @@ export const getManagementEvents = async (req, res) => {
     }
 };
 
-/**
- * ADMIN: Mengambil detail satu event untuk halaman manajemen.
- */
 export const getEventByIdForAdmin = async (req, res) => {
     const { id } = req.params;
     const eventId = parseInt(id);
@@ -86,18 +73,24 @@ export const getEventByIdForAdmin = async (req, res) => {
     }
 };
 
-/**
- * ADMIN: Membuat event baru.
- */
 export const createEvent = async (req, res) => {
-  const { title, description, imageUrl, location, organizer, startDate, endDate, eventType, externalUrl } = req.body;
-  if (!title || !description || !imageUrl || !location || !organizer || !startDate || !endDate || !eventType) {
-    return res.status(400).json({ error: 'Please provide all required fields.' });
+  const { title, description, location, organizer, startDate, endDate, eventType, externalUrl } = req.body;
+  
+  if (!req.file) {
+    return res.status(400).json({ error: 'File gambar wajib diunggah.' });
+  }
+  const imageUrl = `/uploads/events/${req.file.filename}`;
+
+  if (!title || !startDate || !endDate || !eventType) {
+    return res.status(400).json({ error: 'Field yang wajib diisi belum lengkap.' });
   }
   try {
     const newEvent = await prisma.event.create({
       data: {
-        title, description, imageUrl, location, organizer, eventType, externalUrl,
+        title: JSON.parse(title),
+        description: JSON.parse(description),
+        imageUrl,
+        location, organizer, eventType, externalUrl,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
       },
@@ -105,66 +98,101 @@ export const createEvent = async (req, res) => {
     res.status(201).json(transformEventImage(req, newEvent));
   } catch (error) {
     console.error("Create Event Error:", error);
-    res.status(400).json({ error: 'Failed to create event.' });
+    res.status(400).json({ error: 'Gagal membuat event. Periksa format data Anda.' });
   }
 };
 
-/**
- * ADMIN: Memperbarui data event.
- */
 export const updateEvent = async (req, res) => {
   const { id } = req.params;
   const eventId = parseInt(id);
   if (isNaN(eventId)) return res.status(400).json({ error: 'Invalid event ID' });
 
-  const data = req.body;
-  if (data.startDate) data.startDate = new Date(data.startDate);
-  if (data.endDate) data.endDate = new Date(data.endDate);
+  const { title, description, location, organizer, startDate, endDate, eventType, externalUrl } = req.body;
+  const dataToUpdate = {};
+
+  if (title) dataToUpdate.title = JSON.parse(title);
+  if (description) dataToUpdate.description = JSON.parse(description);
+  if (location) dataToUpdate.location = location;
+  if (organizer) dataToUpdate.organizer = organizer;
+  if (eventType) dataToUpdate.eventType = eventType;
+  if (externalUrl !== undefined) dataToUpdate.externalUrl = externalUrl;
+  if (startDate) dataToUpdate.startDate = new Date(startDate);
+  if (endDate) dataToUpdate.endDate = new Date(endDate);
+
+  if (req.file) {
+      dataToUpdate.imageUrl = `/uploads/events/${req.file.filename}`;
+  }
 
   try {
-    if (data.imageUrl) {
+    if (req.file) {
       const oldEvent = await prisma.event.findUnique({ where: { id: eventId } });
-      if (oldEvent?.imageUrl && oldEvent.imageUrl !== data.imageUrl && !oldEvent.imageUrl.startsWith('http')) {
-        const oldImageName = oldEvent.imageUrl.split('/').pop();
-        const oldImagePath = path.join(__dirname, '..', '..', 'public', 'uploads', 'events', oldImageName);
+      if (oldEvent?.imageUrl && !oldEvent.imageUrl.startsWith('http')) {
+        const oldImagePath = path.join(__dirname, '../../public', oldEvent.imageUrl);
         if (fs.existsSync(oldImagePath)) fs.unlinkSync(oldImagePath);
       }
     }
-    const updatedEvent = await prisma.event.update({ where: { id: eventId }, data });
+    const updatedEvent = await prisma.event.update({ where: { id: eventId }, data: dataToUpdate });
     res.json(transformEventImage(req, updatedEvent));
   } catch (error) {
+    console.error("Update Event Error:", error);
     res.status(404).json({ error: 'Event not found or failed to update' });
   }
 };
 
-/**
- * ADMIN: Menghapus event.
- */
 export const deleteEvent = async (req, res) => {
   const { id } = req.params;
   const eventId = parseInt(id);
   if (isNaN(eventId)) return res.status(400).json({ error: 'Invalid Event ID.' });
+
   try {
-    const event = await prisma.event.findUnique({ where: { id: eventId } });
-    if (event?.imageUrl && !event.imageUrl.startsWith('http')) {
-        const imageName = event.imageUrl.split('/').pop();
-        const imagePath = path.join(__dirname, '..', '..', 'public', 'uploads', 'events', imageName);
-        if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+    const event = await prisma.event.findUnique({ 
+        where: { id: eventId },
+        include: {
+            submissions: true // Ambil SEMUA submission
+        } 
+    });
+
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found.' });
     }
+
+    const isEventFinished = new Date(event.endDate) < new Date();
+    const hasWinner = event.submissions.some(sub => sub.placement !== null);
+
+    if (isEventFinished && hasWinner) {
+        return res.status(403).json({ error: 'Event yang sudah selesai dan memiliki pemenang tidak dapat dihapus.' });
+    }
+
+    // 1. Hapus semua file gambar dari submission peserta
+    if (event.submissions && event.submissions.length > 0) {
+        for (const submission of event.submissions) {
+            if (submission.submissionUrl && !submission.submissionUrl.startsWith('http')) {
+                const submissionImagePath = path.join(__dirname, '../../public', submission.submissionUrl);
+                if (fs.existsSync(submissionImagePath)) {
+                    fs.unlinkSync(submissionImagePath);
+                }
+            }
+        }
+    }
+
+    // 2. Hapus file gambar utama event
+    if (event.imageUrl && !event.imageUrl.startsWith('http')) {
+        const imagePath = path.join(__dirname, '../../public', event.imageUrl);
+        if (fs.existsSync(imagePath)) {
+            fs.unlinkSync(imagePath);
+        }
+    }
+    
+    // 3. Hapus data event dari database (submission akan ikut terhapus otomatis)
     await prisma.event.delete({ where: { id: eventId } });
     res.status(204).send();
+    
   } catch (error) {
-    res.status(404).json({ error: 'Event not found' });
+    console.error("Delete Event Error:", error);
+    res.status(500).json({ error: 'Failed to delete event.' });
   }
 };
 
-// =================================================================
-// --- DASHBOARD DAN FUNGSI PENGGUNA ---
-// =================================================================
-
-/**
- * USER: Mengambil data komprehensif untuk dashboard peserta.
- */
 export const getUserDashboardData = async (req, res) => {
     const userId = req.user.userId;
     const now = new Date();
@@ -231,6 +259,13 @@ export const getUserDashboardData = async (req, res) => {
             }
         });
         
+        const currentUserProfile = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { address: true, phoneNumber: true, socialMedia: true }
+        });
+
+        const isProfileComplete = !!(currentUserProfile?.address && currentUserProfile?.phoneNumber);
+        
         const dashboardData = {
             stats: {
                 participated: pastEventsHistory.length,
@@ -239,7 +274,9 @@ export const getUserDashboardData = async (req, res) => {
             },
             openForSubmission,
             upcomingEvents,
-            pastEventsHistory: pastEventsHistory.sort((a, b) => new Date(b.endDate) - new Date(a.endDate))
+            pastEventsHistory: pastEventsHistory.sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime()),
+            isProfileComplete,
+            currentUserProfile,
         };
 
         res.json(dashboardData);
@@ -250,13 +287,6 @@ export const getUserDashboardData = async (req, res) => {
     }
 };
 
-// =================================================================
-// --- MANAJEMEN SUBMISSION OLEH PESERTA & ADMIN ---
-// =================================================================
-
-/**
- * PESERTA: Mengirimkan atau memperbarui karya/submission ke sebuah event.
- */
 export const createSubmission = async (req, res) => {
   const { id } = req.params;
   const eventId = parseInt(id);
@@ -295,9 +325,6 @@ export const createSubmission = async (req, res) => {
   }
 };
 
-/**
- * ADMIN: Melihat semua submission untuk sebuah event.
- */
 export const getSubmissionsForEvent = async (req, res) => {
     const { id } = req.params;
     const eventId = parseInt(id);
@@ -314,9 +341,6 @@ export const getSubmissionsForEvent = async (req, res) => {
     }
 };
 
-/**
- * ADMIN: Menentukan peringkat/juara untuk sebuah submission.
- */
 export const setSubmissionPlacement = async (req, res) => {
     const { submissionId } = req.params;
     const { placement } = req.body;

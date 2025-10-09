@@ -26,10 +26,10 @@ const transformPlantImage = (req, plant) => {
 export const getManagementPlants = async (req, res) => {
   try {
     const plants = await prisma.plant.findMany({
-      orderBy: { name: 'asc' },
-      // ▼▼▼ PERBAIKAN DI SINI ▼▼▼
+      orderBy: { 'name': 'asc' },
       include: {
-        plantType: true, // Ganti 'family' menjadi 'plantType'
+        plantType: true,
+        stores: true, // Sertakan data toko
       }
     });
     const transformedPlants = plants.map(plant => transformPlantImage(req, plant));
@@ -44,23 +44,37 @@ export const getManagementPlants = async (req, res) => {
  * ADMIN: Membuat tanaman baru.
  */
 export const createPlant = async (req, res) => {
-  // ▼▼▼ PERBAIKAN DI SINI ▼▼▼
-  const { name, scientificName, description, imageUrl, stores, plantTypeId } = req.body;
+  const { name, scientificName, description, stores, plantTypeId } = req.body;
   
-  if (!name || !scientificName || !description || !imageUrl || !stores) {
-    return res.status(400).json({ error: 'Please provide all required fields.' });
+  if (!req.file) {
+    return res.status(400).json({ error: 'File gambar wajib diunggah.' });
   }
+  const imageUrl = `/uploads/plants/${req.file.filename}`;
+
+  if (!name || !plantTypeId) {
+    return res.status(400).json({ error: 'Nama dan Tipe Tanaman wajib diisi.' });
+  }
+
   try {
+    const storesData = stores ? JSON.parse(stores) : [];
+
     const plant = await prisma.plant.create({
       data: {
-        name, scientificName, description, imageUrl, stores,
-        plantTypeId: plantTypeId ? parseInt(plantTypeId) : null, // Ganti 'familyId' menjadi 'plantTypeId'
+        name: JSON.parse(name),
+        scientificName,
+        description: description ? JSON.parse(description) : { id: '', en: '' },
+        imageUrl,
+        plantTypeId: parseInt(plantTypeId),
+        stores: {
+          create: storesData.map(store => ({ name: store.name, url: store.url })),
+        },
       },
+      include: { stores: true },
     });
     res.status(201).json(transformPlantImage(req, plant));
   } catch (error) {
     console.error("Create Plant Error:", error);
-    res.status(400).json({ error: 'Failed to create plant. Please check your data format.' });
+    res.status(400).json({ error: 'Failed to create plant. Please check data format.' });
   }
 };
 
@@ -72,23 +86,41 @@ export const updatePlant = async (req, res) => {
   const plantId = parseInt(id);
   if (isNaN(plantId)) return res.status(400).json({ error: 'Invalid Plant ID.' });
 
-  const dataToUpdate = req.body;
-  // ▼▼▼ PERBAIKAN DI SINI ▼▼▼
-  if (dataToUpdate.plantTypeId) dataToUpdate.plantTypeId = parseInt(dataToUpdate.plantTypeId); // Ganti 'familyId'
+  const { name, scientificName, description, stores, plantTypeId } = req.body;
+  const dataToUpdate = {};
+
+  if (name) dataToUpdate.name = JSON.parse(name);
+  if (scientificName) dataToUpdate.scientificName = scientificName;
+  if (description) dataToUpdate.description = JSON.parse(description);
+  if (plantTypeId) dataToUpdate.plantTypeId = parseInt(plantTypeId);
+  if (req.file) dataToUpdate.imageUrl = `/uploads/plants/${req.file.filename}`;
 
   try {
-    if (dataToUpdate.imageUrl) {
+    if (req.file) {
         const oldPlant = await prisma.plant.findUnique({ where: { id: plantId } });
-        if (oldPlant?.imageUrl && oldPlant.imageUrl !== dataToUpdate.imageUrl && !oldPlant.imageUrl.startsWith('http')) {
-            const oldImageName = oldPlant.imageUrl.split('/').pop();
-            const oldImagePath = path.join(__dirname, '..', '..', 'public', 'uploads', 'plants', oldImageName);
+        if (oldPlant?.imageUrl && !oldPlant.imageUrl.startsWith('http')) {
+            const oldImagePath = path.join(__dirname, '../../public', oldPlant.imageUrl);
             if (fs.existsSync(oldImagePath)) fs.unlinkSync(oldImagePath);
         }
     }
-    const updatedPlant = await prisma.plant.update({
-      where: { id: plantId },
-      data: dataToUpdate,
+
+    const storesData = stores ? JSON.parse(stores) : [];
+
+    const updatedPlant = await prisma.$transaction(async (tx) => {
+      await tx.store.deleteMany({ where: { plantId: plantId } });
+
+      return tx.plant.update({
+        where: { id: plantId },
+        data: {
+          ...dataToUpdate,
+          stores: {
+            create: storesData.map(store => ({ name: store.name, url: store.url })),
+          },
+        },
+        include: { stores: true },
+      });
     });
+
     res.json(transformPlantImage(req, updatedPlant));
   } catch (error) {
     console.error("Update Plant Error:", error);
@@ -107,9 +139,10 @@ export const deletePlant = async (req, res) => {
   try {
     const plant = await prisma.plant.findUnique({ where: { id: plantId } });
     if (plant?.imageUrl && !plant.imageUrl.startsWith('http')) {
-        const imageName = plant.imageUrl.split('/').pop();
-        const imagePath = path.join(__dirname, '..', '..', 'public', 'uploads', 'plants', imageName);
-        if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+        const imagePath = path.join(__dirname, '../../public', plant.imageUrl);
+        if (fs.existsSync(imagePath)) {
+            fs.unlinkSync(imagePath);
+        }
     }
     await prisma.plant.delete({ where: { id: plantId } });
     res.status(204).send();
@@ -125,26 +158,48 @@ export const deletePlant = async (req, res) => {
 export const getPlantByIdForAdmin = async (req, res) => {
   const { id } = req.params;
   const plantId = parseInt(id);
-
-  if (isNaN(plantId)) {
-    return res.status(400).json({ error: 'Invalid Plant ID.' });
-  }
+  if (isNaN(plantId)) return res.status(400).json({ error: 'Invalid Plant ID.' });
 
   try {
     const plant = await prisma.plant.findUnique({
       where: { id: plantId },
-      // ▼▼▼ PERBAIKAN DI SINI ▼▼▼
       include: {
-        plantType: true, // Ganti 'family' menjadi 'plantType'
+        plantType: true,
+        stores: true, // Sertakan data toko
       }
     });
-
-    if (!plant) {
-      return res.status(404).json({ error: 'Plant not found' });
-    }
+    if (!plant) return res.status(404).json({ error: 'Plant not found' });
     res.json(transformPlantImage(req, plant));
   } catch (error) {
     console.error("Get Plant By ID for Admin Error:", error);
     res.status(500).json({ error: 'Failed to fetch plant details.' });
   }
+};
+
+// =================================================================
+// RUTE PUBLIK & PELACAKAN
+// =================================================================
+
+/**
+ * PUBLIK: Melacak klik toko dan me-redirect.
+ */
+export const trackStoreClick = async (req, res) => {
+    const { id } = req.params;
+    const storeId = parseInt(id);
+
+    if (isNaN(storeId)) {
+        return res.status(400).json({ error: 'Invalid store ID.' });
+    }
+
+    try {
+        const store = await prisma.store.update({
+            where: { id: storeId },
+            data: { clicks: { increment: 1 } },
+        });
+        
+        res.redirect(store.url);
+    } catch (error) {
+        console.error("Track click error:", error);
+        res.redirect('/'); 
+    }
 };

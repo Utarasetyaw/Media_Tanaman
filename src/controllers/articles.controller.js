@@ -8,7 +8,6 @@ const prisma = new PrismaClient();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Helper #1: Mengubah path gambar menjadi URL lengkap
 const transformArticleImage = (req, article) => {
   if (article && article.imageUrl && article.imageUrl.startsWith('/')) {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -17,7 +16,6 @@ const transformArticleImage = (req, article) => {
   return article;
 };
 
-// Helper #2: Fungsi gabungan untuk mengubah gambar dan menambahkan objek _count
 const transformArticleForResponse = (req, article) => {
   if (!article) return null;
   const articleWithImageUrl = transformArticleImage(req, article);
@@ -29,7 +27,6 @@ const transformArticleForResponse = (req, article) => {
   };
 };
 
-// Objek `include` yang sudah diperbaiki
 const articleInclude = {
   author: { select: { name: true, role: true } }, 
   category: { select: { id: true, name: true } },
@@ -37,38 +34,36 @@ const articleInclude = {
   seo: true,
 };
 
-// === Endpoint untuk Pengguna Terautentikasi (Jurnalis & Admin) ===
-
 export const createArticle = async (req, res) => {
-  const { title, excerpt, content, imageUrl, categoryId, plantTypeId, seo, status: requestedStatus } = req.body;
+  const { title, excerpt, content, categoryId, plantTypeId, seo, status: requestedStatus } = req.body;
   const authorId = req.user.userId;
 
-  if (!title?.id || !excerpt?.id || !content?.id || !categoryId) {
-    return res.status(400).json({ error: 'Title, excerpt, content, and categoryId are required.' });
+  if (!title || !excerpt || !content || !categoryId) {
+    return res.status(400).json({ error: 'Field yang wajib diisi belum lengkap.' });
+  }
+
+  const imageUrl = req.file ? `/uploads/artikel/${req.file.filename}` : '';
+
+  if (!imageUrl && requestedStatus === 'PUBLISHED') {
+      return res.status(400).json({ error: 'Gambar utama wajib diunggah untuk publikasi.' });
   }
 
   const userRole = req.user.role;
-  let finalStatus;
-
-  if (userRole === 'ADMIN' && (requestedStatus === 'PUBLISHED' || requestedStatus === 'DRAFT')) {
-    finalStatus = requestedStatus;
-  } else {
-    finalStatus = 'DRAFT';
-  }
-
-  const data = {
-    title, 
-    excerpt, 
-    content, 
-    imageUrl,
-    authorId, 
-    status: finalStatus,
-    categoryId: parseInt(categoryId),
-    plantTypeId: plantTypeId ? parseInt(plantTypeId) : null,
-    seo: userRole === 'ADMIN' && seo ? { create: seo } : undefined,
-  };
+  let finalStatus = (userRole === 'ADMIN' && (requestedStatus === 'PUBLISHED' || requestedStatus === 'DRAFT')) ? requestedStatus : 'DRAFT';
 
   try {
+    const data = {
+      title: JSON.parse(title), 
+      excerpt: JSON.parse(excerpt), 
+      content: JSON.parse(content), 
+      imageUrl,
+      authorId, 
+      status: finalStatus,
+      categoryId: parseInt(categoryId),
+      plantTypeId: plantTypeId ? parseInt(plantTypeId) : null,
+      seo: userRole === 'ADMIN' && seo ? { create: JSON.parse(seo) } : undefined,
+    };
+
     const articleFromDb = await prisma.article.create({ 
         data,
         include: articleInclude
@@ -128,16 +123,11 @@ export const getMyArticleAnalytics = async (req, res) => {
 export const updateArticle = async (req, res) => {
   const { id } = req.params;
   const articleId = parseInt(id);
-  const { seo, ...dataToUpdate } = req.body;
+  const { title, excerpt, content, categoryId, plantTypeId, seo } = req.body;
   const user = req.user;
 
   if (isNaN(articleId)) {
     return res.status(400).json({ error: 'Invalid Article ID' });
-  }
-
-  if (dataToUpdate.categoryId) dataToUpdate.categoryId = parseInt(dataToUpdate.categoryId);
-  if ('plantTypeId' in dataToUpdate) {
-    dataToUpdate.plantTypeId = dataToUpdate.plantTypeId ? parseInt(dataToUpdate.plantTypeId) : null;
   }
 
   const article = await prisma.article.findUnique({ where: { id: articleId } });
@@ -145,13 +135,28 @@ export const updateArticle = async (req, res) => {
 
   const isOwner = article.authorId === user.userId;
   const isAdmin = user.role === 'ADMIN';
-  const canAdminEdit = isAdmin && (article.authorId === user.userId || article.adminEditRequest === 'APPROVED');
+
+  // ▼▼▼ PERUBAHAN DI BARIS INI ▼▼▼
+  const canAdminEdit = isAdmin && (article.authorId === user.userId || article.adminEditRequest === 'APPROVED' || article.status === 'PUBLISHED');
+  // ▲▲▲ AKHIR PERUBAHAN ▲▲▲
+  
   const isJournalistEditableStatus = ['DRAFT', 'NEEDS_REVISION', 'JOURNALIST_REVISING'].includes(article.status);
 
   if (!canAdminEdit && !(isOwner && isJournalistEditableStatus)) {
       return res.status(403).json({ error: 'You do not have permission to edit this article at its current state.' });
   }
   
+  const dataToUpdate = {};
+  if (title) dataToUpdate.title = JSON.parse(title);
+  if (excerpt) dataToUpdate.excerpt = JSON.parse(excerpt);
+  if (content) dataToUpdate.content = JSON.parse(content);
+  if (categoryId) dataToUpdate.categoryId = parseInt(categoryId);
+  if (plantTypeId !== undefined) dataToUpdate.plantTypeId = plantTypeId ? parseInt(plantTypeId) : null;
+  
+  if (req.file) {
+      dataToUpdate.imageUrl = `/uploads/artikel/${req.file.filename}`;
+  }
+
   if (seo) {
     dataToUpdate.seo = {
       upsert: {
@@ -162,12 +167,9 @@ export const updateArticle = async (req, res) => {
   }
 
   try {
-    if (dataToUpdate.imageUrl && article.imageUrl && dataToUpdate.imageUrl !== article.imageUrl && !article.imageUrl.startsWith('http')) {
-        const oldImageName = article.imageUrl.split('/').pop();
-        const oldImagePath = path.join(__dirname, '..', '..', 'public', 'uploads', 'artikel', oldImageName);
-        if (fs.existsSync(oldImagePath)) {
-            fs.unlinkSync(oldImagePath);
-        }
+    if (req.file && article.imageUrl && !article.imageUrl.startsWith('http')) {
+        const oldImagePath = path.join(__dirname, '../../public', article.imageUrl);
+        if (fs.existsSync(oldImagePath)) fs.unlinkSync(oldImagePath);
     }
     
     const updatedArticleFromDb = await prisma.article.update({
@@ -194,8 +196,7 @@ export const deleteMyArticle = async (req, res) => {
         const deletableStatuses = ['DRAFT', 'REJECTED', 'NEEDS_REVISION', 'PUBLISHED'];
         if (!deletableStatuses.includes(article.status)) return res.status(403).json({ error: `Cannot delete article with status '${article.status}'.` });
         if (article.imageUrl && !article.imageUrl.startsWith('http')) {
-            const imageName = article.imageUrl.split('/').pop();
-            const imagePath = path.join(__dirname, '..', '..', 'public', 'uploads', 'artikel', imageName);
+            const imagePath = path.join(__dirname, '../../public', article.imageUrl);
             if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
         }
         await prisma.article.delete({ where: { id: articleId } });
@@ -238,7 +239,7 @@ export const getJournalistDashboardStats = async (req, res) => {
     const needsRevision = await prisma.article.count({ where: { authorId, status: { in: ['NEEDS_REVISION', 'JOURNALIST_REVISING'] } } });
     const adminRequest = await prisma.article.count({ where: { authorId, adminEditRequest: 'PENDING' } });
     const rejected = await prisma.article.count({ where: { authorId, status: 'REJECTED' } });
-    const draft = await prisma.article.count({ where: { authorId, status: 'DRAFT' } }); // <-- Data Draf ditambahkan
+    const draft = await prisma.article.count({ where: { authorId, status: 'DRAFT' } });
 
     const recentArticlesFromDb = await prisma.article.findMany({
       where: { authorId },
@@ -250,7 +251,7 @@ export const getJournalistDashboardStats = async (req, res) => {
     const recentArticles = recentArticlesFromDb.map(article => transformArticleForResponse(req, article));
 
     res.json({
-      stats: { published, inReview, needsRevision, adminRequest, rejected, draft }, // <-- draft dikirim dalam respons
+      stats: { published, inReview, needsRevision, adminRequest, rejected, draft },
       recentArticles,
     });
   } catch (error) {
@@ -258,8 +259,6 @@ export const getJournalistDashboardStats = async (req, res) => {
   }
 };
 
-
-// === Endpoint Khusus Admin ===
 
 export const getAllArticlesForAdmin = async (req, res) => {
   try {
@@ -304,8 +303,7 @@ export const deleteArticle = async (req, res) => {
     try {
         const article = await prisma.article.findUnique({ where: { id: articleId }});
         if (article && article.imageUrl && !article.imageUrl.startsWith('http')) {
-            const imageName = article.imageUrl.split('/').pop();
-            const imagePath = path.join(__dirname, '..', '..', 'public', 'uploads', 'artikel', imageName);
+            const imagePath = path.join(__dirname, '../../public', article.imageUrl);
              if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
         }
         await prisma.article.delete({ where: { id: articleId } });
@@ -338,7 +336,6 @@ export const getAdminDashboardStats = async (req, res) => {
     }
 };
 
-// --- Alur Kerja Edit, & Revisi Jurnalis ---
 const genericArticleUpdate = async (req, res, where, data, successMessage) => {
     try {
         const articleFromDb = await prisma.article.update({

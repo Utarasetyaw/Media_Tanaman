@@ -11,11 +11,12 @@ import {
     toggleArticleLike,
     getPlants, 
     getPlantById,
+    trackStoreClick, // <-- Pastikan ini diimpor
     getEvents, 
     getEventById, 
     trackEventClick,
     getAboutPageData,
-    getAdPlacementsByType // <-- Impor controller baru
+    getAdPlacementsByType
 } from '../controllers/page.controller.js';
 
 const router = Router();
@@ -37,6 +38,7 @@ router.post('/articles/:id/like', authenticateToken, toggleArticleLike);
 // Rute Tanaman (Publik)
 router.get('/plants', getPlants);
 router.get('/plants/:id', getPlantById);
+router.get('/plants/track/store/:id', trackStoreClick); // <-- TAMBAHKAN RUTE INI
 
 // Rute Event (Publik)
 router.get('/events', getEvents);
@@ -44,7 +46,6 @@ router.get('/events/:id', getEventById);
 router.post('/events/:id/track-click', trackEventClick);
 
 // Rute Baru untuk Iklan
-// Endpoint ini akan merespons pada /api/page/ads/vertical, /api/page/ads/horizontal, dll.
 router.get('/ads/:type', getAdPlacementsByType);
 
 

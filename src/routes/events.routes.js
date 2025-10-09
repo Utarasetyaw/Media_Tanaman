@@ -1,7 +1,5 @@
 import { Router } from 'express';
 import { authenticateToken, authorizeRoles } from '../middlewares/auth.middleware.js';
-
-// Impor semua fungsi controller yang relevan
 import {
   createEvent,
   updateEvent,
@@ -13,50 +11,47 @@ import {
   getEventByIdForAdmin,
   getUserDashboardData,
 } from '../controllers/events.controller.js';
+import { upload } from '../middlewares/upload.middleware.js';
+import { convertToWebp } from '../middlewares/image.middleware.js';
 
 const router = Router();
 
-// =================================================================
-// PENDAFTARAN RUTE PUBLIK & PENGGUNA (NON-ADMIN)
-// =================================================================
+// --- RUTE PUBLIK & PENGGUNA (TIDAK TERMASUK DALAM /management) ---
+// Rute ini harus dipisahkan ke file lain atau server.js
+// Untuk saat ini, kita fokus pada rute admin
 
-// --- Rute Dashboard Pengguna ---
-// Diletakkan di sini, terpisah dari logika admin
-router.get('/dashboard', authenticateToken, getUserDashboardData);
+// --- RUTE ADMIN (SEMUA DI BAWAH PREFIX /management) ---
+router.use(authenticateToken, authorizeRoles(['ADMIN']));
 
-// --- Rute Submission oleh Pengguna ---
-router.post('/:id/submissions', authenticateToken, createSubmission);
+// GET /api/events/management/
+router.get('/', getManagementEvents);
 
+// POST /api/events/management/
+router.post(
+  '/', 
+  upload.single('image'),
+  convertToWebp('events'),
+  createEvent
+);
 
-// =================================================================
-// PENDAFTARAN RUTE ADMIN
-// =================================================================
-// Rute di bawah ini akan aktif jika server.js menunjuk ke file ini
-// melalui /api/events/management
-
-// Middleware untuk semua rute admin di file ini
-router.use(authenticateToken);
-router.use(authorizeRoles(['ADMIN']));
-
-// --- Rute Utama Manajemen ---
-// Cocok untuk: GET /api/events/management & POST /api/events/management
-router.route('/')
-    .get(getManagementEvents)
-    .post(createEvent);
-
-// --- Rute Spesifik Submission Admin ---
-// Cocok untuk: PUT /api/events/management/submissions/:submissionId/placement
+// PUT /api/events/management/submissions/:submissionId/placement
 router.put('/submissions/:submissionId/placement', setSubmissionPlacement);
 
-// --- Rute Manajemen Berdasarkan ID Event ---
-// Cocok untuk: GET, PUT, DELETE /api/events/management/:id
-router.route('/:id')
-    .get(getEventByIdForAdmin)
-    .put(updateEvent)
-    .delete(deleteEvent);
+// GET /api/events/management/:id
+router.get('/:id', getEventByIdForAdmin);
 
-// Cocok untuk: GET /api/events/management/:id/submissions
+// PUT /api/events/management/:id
+router.put(
+  '/:id', 
+  upload.single('image'),
+  convertToWebp('events'),
+  updateEvent
+);
+
+// DELETE /api/events/management/:id
+router.delete('/:id', deleteEvent);
+
+// GET /api/events/management/:id/submissions
 router.get('/:id/submissions', getSubmissionsForEvent);
-
 
 export default router;

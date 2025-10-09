@@ -19,60 +19,61 @@ import {
   cancelAdminEditRequest,
   revertAdminEditApproval
 } from '../controllers/articles.controller.js';
+import { upload } from '../middlewares/upload.middleware.js';
+import { convertToWebp } from '../middlewares/image.middleware.js';
 
 const router = Router();
 
-// =================================================================
-// SEMUA RUTE DI BAWAH INI MEMBUTUHKAN AUTENTIKASI
-// =================================================================
+// Middleware ini akan melindungi semua rute yang didefinisikan setelahnya
 router.use(authenticateToken);
 
-// =================================================================
-// RUTE UNTUK JURNALIS & ADMIN (Aksi Umum)
-// =================================================================
+// --- RUTE UNTUK JURNALIS (Akses Pribadi) ---
+// contoh: GET /api/articles/management/my-articles
 router.get('/my-dashboard-stats', getJournalistDashboardStats);
-router.get('/admin-dashboard-stats', authorizeRoles(['ADMIN']), getAdminDashboardStats);
 router.get('/my-articles', getMyArticles);
 router.get('/analytics/:id', getMyArticleAnalytics);
-router.post('/', createArticle);
-router.put('/:id', updateArticle);
+router.post(
+    '/',
+    upload.single('image'),
+    convertToWebp('artikel'),
+    createArticle
+);
+router.put(
+    '/:id',
+    upload.single('image'),
+    convertToWebp('artikel'),
+    updateArticle
+);
 router.delete('/:id', deleteMyArticle);
 
-// =================================================================
-// RUTE ALUR KERJA (WORKFLOW) JURNALIS
-// =================================================================
+// --- RUTE WORKFLOW JURNALIS ---
 router.post('/:id/submit', submitArticleForReview);
 router.post('/:id/start-revision', startRevision);
 router.post('/:id/finish-revision', finishRevision);
 router.post('/:id/request-edit', requestEditAccess);
 router.put('/:id/respond-edit', respondToEditRequest);
 
-// =================================================================
-// RUTE KHUSUS ADMIN (Manajemen Penuh)
-// =================================================================
 
-// Sub-router untuk semua endpoint admin
-const adminRouter = Router();
-adminRouter.use(authorizeRoles(['ADMIN']));
+// --- RUTE KHUSUS ADMIN ---
+// Rute di bawah ini memerlukan otorisasi sebagai ADMIN
+router.use(authorizeRoles(['ADMIN']));
 
-// Admin melihat semua artikel dari semua penulis
-adminRouter.get('/all', getAllArticlesForAdmin);
+// GET /api/articles/management/all
+router.get('/all', getAllArticlesForAdmin);
 
-// Admin mengubah status artikel (Publish, Reject, dll)
-adminRouter.put('/:id/status', updateArticleStatus);
+// GET /api/articles/management/admin-dashboard-stats
+router.get('/admin-dashboard-stats', getAdminDashboardStats);
 
-// Admin menghapus artikel milik siapa pun
-adminRouter.delete('/:id', deleteArticle);
+// PUT /api/articles/management/:id/status
+router.put('/:id/status', updateArticleStatus);
 
-// Admin membatalkan permintaan edit dari jurnalis
-adminRouter.put('/:id/cancel-request', cancelAdminEditRequest);
+// DELETE /api/articles/management/:id (versi admin)
+router.delete('/:id/admin', deleteArticle);
 
-// Admin mengembalikan izin edit yang sudah disetujui
-adminRouter.put('/:id/revert-approval', revertAdminEditApproval);
+// PUT /api/articles/management/:id/cancel-request
+router.put('/:id/cancel-request', cancelAdminEditRequest);
 
-// REVISI: Gunakan sub-router admin tanpa prefix tambahan
-// Karena prefix '/management' sudah diatur di server.js
-router.use(adminRouter);
-
+// PUT /api/articles/management/:id/revert-approval
+router.put('/:id/revert-approval', revertAdminEditApproval);
 
 export default router;

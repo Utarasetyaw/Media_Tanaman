@@ -28,17 +28,30 @@ const __dirname = path.dirname(__filename);
 
 // --- MIDDLEWARE DASAR ---
 
-// ▼▼▼ PERBAIKAN DI SINI ▼▼▼
-// Konfigurasi CORS yang lebih spesifik untuk mengizinkan kredensial
+// Konfigurasi CORS yang lebih fleksibel
+const whitelist = process.env.CORS_ORIGIN_WHITELIST
+    ? process.env.CORS_ORIGIN_WHITELIST.split(',')
+    : [];
+
 const corsOptions = {
-    // Ganti dengan URL frontend utama Anda, bukan backend
-    origin: "https://narapatiflora.com", 
+    origin: function (origin, callback) {
+        if (!origin || whitelist.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error("Not allowed by CORS"));
+        }
+    },
     credentials: true,
 };
 app.use(cors(corsOptions));
-// ▲▲▲ AKHIR DARI PERBAIKAN ▲▲▲
 
 app.use(express.json());
+
+// Middleware untuk mencegah caching di sisi client (API)
+app.use('/api', (req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+});
 
 // --- MENYAJIKAN FILE STATIK ---
 app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
@@ -55,17 +68,21 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/plant-types", plantTypeRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/settings", settingsRoutes);
-app.use("/api", pageRoutes);
+app.use("/api", pageRoutes); // Pastikan rute ini tidak tumpang tindih dengan yang di atas
 
 // --- GLOBAL ERROR HANDLER ---
 app.use((err, req, res, next) => {
-	console.error(err.stack);
-	res
-		.status(500)
-		.json({ error: "Something went wrong!", message: err.message });
+    console.error(err.stack);
+    // Secara khusus menangani error dari CORS
+    if (err.message === "Not allowed by CORS") {
+        return res.status(403).json({ error: "CORS Error", message: err.message });
+    }
+    res
+        .status(500)
+        .json({ error: "Something went wrong!", message: err.message });
 });
 
 // Jalankan server
 app.listen(PORT, () => {
-	console.log(`🚀 Server is running on http://localhost:${PORT}`);
+    console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });

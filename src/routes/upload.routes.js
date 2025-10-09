@@ -1,21 +1,21 @@
-// src/routes/upload.routes.js
-
 import { Router } from 'express';
-import { createUploader } from '../middlewares/upload.middleware.js';
-import { validateUploadType, uploadImage } from '../controllers/upload.controller.js';
+import { authenticateToken, authorizeRoles } from '../middlewares/auth.middleware.js';
+import { upload } from '../middlewares/upload.middleware.js';
+import { convertToWebp } from '../middlewares/image.middleware.js';
+import { uploadImage } from '../controllers/upload.controller.js';
 
 const router = Router();
 
-// Rute dinamis: POST /api/upload/:type
-// Contoh: /api/upload/artikel, /api/upload/events
 router.post(
   '/:type',
-  validateUploadType, // 1. Validasi dulu tipenya
-  (req, res, next) => { // 2. Buat uploader berdasarkan tipe
-    const uploader = createUploader(req.params.type);
-    uploader.single('image')(req, res, next); // 3. Jalankan upload
+  authenticateToken,
+  authorizeRoles(['ADMIN', 'JOURNALIST', 'USER']), 
+  upload.single('image'),
+  (req, res, next) => {
+    const subfolder = req.params.type;
+    convertToWebp(subfolder)(req, res, next);
   },
-  uploadImage // 4. Kirim respons JSON
+  uploadImage
 );
 
 export default router;

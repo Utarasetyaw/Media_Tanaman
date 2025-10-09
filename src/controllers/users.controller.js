@@ -3,7 +3,6 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-// Objek seleksi untuk memastikan password tidak pernah dikirim ke klien.
 const userSelection = {
   id: true,
   email: true,
@@ -16,7 +15,6 @@ const userSelection = {
   updatedAt: true,
 };
 
-// Helper untuk mengubah path gambar relatif menjadi URL lengkap
 const transformImageUrl = (req, item) => {
   if (item && item.imageUrl && item.imageUrl.startsWith('/')) {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -25,7 +23,6 @@ const transformImageUrl = (req, item) => {
   return item;
 };
 
-// HELPER BARU: Mengubah path relatif APAPUN menjadi URL lengkap
 const transformRelativePath = (req, relativePath) => {
   if (relativePath && relativePath.startsWith('/')) {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -34,11 +31,6 @@ const transformRelativePath = (req, relativePath) => {
   return relativePath;
 };
 
-// =================================================================
-// --- FUNGSI UNTUK ADMIN ---
-// =================================================================
-
-// ADMIN: Membuat user baru (Jurnalis atau Admin lain)
 export const createUser = async (req, res) => {
   const { name, email, password, role } = req.body;
 
@@ -66,24 +58,45 @@ export const createUser = async (req, res) => {
   }
 };
 
-// ADMIN: Melihat semua user dengan filter berdasarkan role
 export const getAllUsers = async (req, res) => {
   const { role } = req.query;
   try {
     const whereClause = role ? { role: role.toUpperCase() } : {};
     const users = await prisma.user.findMany({
       where: whereClause,
-      select: { ...userSelection, _count: { select: { articles: true } } },
+      select: { 
+        ...userSelection, 
+        _count: { 
+          select: { 
+            articles: true 
+          } 
+        },
+        articles: {
+          where: { status: 'PUBLISHED' },
+          select: { id: true }
+        }
+      },
       orderBy: { name: 'asc' },
     });
-    res.json(users);
+
+    const usersWithStats = users.map(user => {
+      const { _count, articles, ...rest } = user;
+      return {
+        ...rest,
+        articleStats: {
+          total: _count.articles,
+          published: articles.length
+        }
+      };
+    });
+
+    res.json(usersWithStats);
   } catch (error) {
       console.error("Get All Users Error:", error);
       res.status(500).json({ error: 'Failed to fetch users.' });
   }
 };
 
-// ADMIN: Melihat detail satu user, statistik, dan daftar artikelnya
 export const getUserById = async (req, res) => {
   const { id } = req.params;
   const userId = parseInt(id);
@@ -103,7 +116,6 @@ export const getUserById = async (req, res) => {
                     status: true,
                     createdAt: true,
                     viewCount: true,
-                    _count: { select: { likes: true } }
                 }
             }
         }
@@ -122,16 +134,21 @@ export const getUserById = async (req, res) => {
   }
 };
 
-// ADMIN: Update user
 export const updateUser = async (req, res) => {
   const { id } = req.params;
   const userId = parseInt(id);
-  const { name, email, role, address, phoneNumber, socialMedia } = req.body;
+  const { name, email, role, address, phoneNumber, socialMedia, password } = req.body;
   if (isNaN(userId)) return res.status(400).json({ error: 'Invalid user ID' });
+
+  const dataToUpdate = { name, email, role, address, phoneNumber, socialMedia };
+  if (password) {
+      dataToUpdate.password = await bcrypt.hash(password, 10);
+  }
+
   try {
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: { name, email, role, address, phoneNumber, socialMedia },
+      data: dataToUpdate,
       select: userSelection,
     });
     res.json(updatedUser);
@@ -140,26 +157,43 @@ export const updateUser = async (req, res) => {
   }
 };
 
-// ADMIN: Hapus user
 export const deleteUser = async (req, res) => {
   const { id } = req.params;
   const userId = parseInt(id);
   if (isNaN(userId)) return res.status(400).json({ error: 'Invalid user ID' });
   try {
+    const userToDelete = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        _count: {
+          select: {
+            articles: {
+              where: { status: 'PUBLISHED' }
+            }
+          }
+        }
+      }
+    });
+
+    if (!userToDelete) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (userToDelete.role === 'JOURNALIST' && userToDelete._count.articles > 0) {
+      return res.status(403).json({ 
+        error: `Jurnalis ini tidak dapat dihapus karena memiliki ${userToDelete._count.articles} artikel yang sudah diterbitkan. Hapus atau pindahkan artikelnya terlebih dahulu.` 
+      });
+    }
+    
     await prisma.user.delete({ where: { id: userId } });
     res.status(204).send();
+    
   } catch (error) {
-    res.status(404).json({ error: 'User not found' });
+    console.error("Delete User Error:", error);
+    res.status(500).json({ error: 'Failed to delete user.' });
   }
 };
 
-// =================================================================
-// --- FUNGSI UNTUK PENGGUNA (USER) ---
-// =================================================================
-
-/**
- * FUNGSI BARU: Untuk user mengupdate profilnya sendiri via modal
- */
 export const updateMyProfile = async (req, res) => {
   const userId = req.user.userId;
   const { address, phoneNumber, socialMedia } = req.body;
@@ -185,9 +219,6 @@ export const updateMyProfile = async (req, res) => {
   }
 };
 
-/**
- * USER: Mengambil riwayat submission milik pengguna yang sedang login.
- */
 export const getMySubmissions = async (req, res) => {
   const userId = req.user.userId;
   try {
@@ -211,10 +242,6 @@ export const getMySubmissions = async (req, res) => {
   }
 };
 
-/**
- * REVISI FINAL FUNGSI DASHBOARD
- * USER: Mengambil semua data yang diperlukan untuk halaman dashboard.
- */
 export const getUserDashboardData = async (req, res) => {
   const userId = req.user.userId;
 
@@ -245,7 +272,6 @@ export const getUserDashboardData = async (req, res) => {
       const eventWithUrl = transformImageUrl(req, event);
       const submission = event.submissions.length > 0 ? event.submissions[0] : null;
 
-      // REVISI: Buat objek submission baru dengan URL yang sudah diubah
       const formattedSubmission = submission
         ? {
             ...submission,
@@ -259,7 +285,7 @@ export const getUserDashboardData = async (req, res) => {
         imageUrl: eventWithUrl.imageUrl,
         startDate: eventWithUrl.startDate,
         endDate: eventWithUrl.endDate,
-        submission: formattedSubmission, // Gunakan objek submission yang sudah diformat
+        submission: formattedSubmission,
       };
       
       const startDate = new Date(event.startDate);

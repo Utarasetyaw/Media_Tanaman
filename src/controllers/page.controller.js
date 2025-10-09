@@ -141,40 +141,44 @@ const plantDetailSelect = {
 // =================================================================
 
 export const getLayoutData = async (req, res) => {
-	try {
-		const siteSettings = await prisma.siteSettings.findUnique({
-			where: { id: 1 },
-			select: {
-				name: true,
-				logoUrl: true,
-				faviconUrl: true,
-				businessDescription: true,
-				contactInfo: true,
-				googleAdsId: true,
-				seo: true,
-			},
-		});
+    try {
+        const siteSettings = await prisma.siteSettings.findUnique({
+            where: { id: 1 },
+            select: {
+                name: true,
+                logoUrl: true,
+                faviconUrl: true,
+                shortDescription: true, // <-- Perubahan di sini
+                contactInfo: true,
+                googleAdsId: true,
+                seo: true,
+                // Pastikan Anda juga menyertakan bannerImages jika diperlukan di layout
+                bannerImages: { 
+                    orderBy: { id: 'asc' }
+                }
+            },
+        });
 
-		const [categories, plantTypes] = await prisma.$transaction([
-			prisma.category.findMany({
-				orderBy: { name: "asc" },
-				select: { id: true, name: true },
-			}),
-			prisma.plantType.findMany({
-				orderBy: { name: "asc" },
-				select: { id: true, name: true },
-			}),
-		]);
+        const [categories, plantTypes] = await prisma.$transaction([
+            prisma.category.findMany({
+                orderBy: { name: "asc" },
+                select: { id: true, name: true },
+            }),
+            prisma.plantType.findMany({
+                orderBy: { name: "asc" },
+                select: { id: true, name: true },
+            }),
+        ]);
 
-		res.json({
-			settings: transformImageUrls(req, siteSettings),
-			categories,
-			plantTypes,
-		});
-	} catch (error) {
-		console.error("Error fetching layout data:", error);
-		res.status(500).json({ error: "Gagal mengambil data layout." });
-	}
+        res.json({
+            settings: transformImageUrls(req, siteSettings),
+            categories,
+            plantTypes,
+        });
+    } catch (error) {
+        console.error("Error fetching layout data:", error);
+        res.status(500).json({ error: "Gagal mengambil data layout." });
+    }
 };
 
 export const getHomePageData = async (req, res) => {
@@ -695,4 +699,25 @@ export const getAdPlacementsByType = async (req, res) => {
 		console.error(`Error fetching ${type} ads:`, error);
 		res.status(500).json({ error: "Gagal mengambil data iklan." });
 	}
+};
+
+export const trackStoreClick = async (req, res) => {
+    const { id } = req.params;
+    const storeId = parseInt(id);
+
+    if (isNaN(storeId)) {
+        return res.status(400).json({ error: 'Invalid store ID.' });
+    }
+
+    try {
+        const store = await prisma.store.update({
+            where: { id: storeId },
+            data: { clicks: { increment: 1 } },
+        });
+        
+        res.redirect(store.url);
+    } catch (error) {
+        console.error("Track click error:", error);
+        res.redirect('/'); // Redirect ke halaman utama jika ada error
+    }
 };
