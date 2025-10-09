@@ -23,22 +23,22 @@ dotenv.config();
 const app = express();
 const PORT = 3009;
 
+// ▼▼▼ TAMBAHKAN BARIS INI ▼▼▼
+// Memberitahu Express untuk mempercayai header dari reverse proxy (penting untuk HTTPS)
+app.set('trust proxy', 1);
+// ▲▲▲ AKHIR PERUBAHAN ▲▲▲
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // --- MIDDLEWARE DASAR ---
-
-// ▼▼▼ PERUBAHAN DI SINI: Konfigurasi CORS disederhanakan ▼▼▼
-// Mengizinkan semua origin untuk mengakses API, sambil tetap mengizinkan credentials (cookies, auth headers)
 app.use(cors({
     origin: true,
     credentials: true,
 }));
-// ▲▲▲ AKHIR PERUBAHAN ▲▲▲
 
 app.use(express.json());
 
-// Middleware untuk mencegah caching di sisi client (API)
 app.use('/api', (req, res, next) => {
     res.set('Cache-Control', 'no-store');
     next();
@@ -64,7 +64,6 @@ app.use("/api", pageRoutes);
 // --- GLOBAL ERROR HANDLER ---
 app.use((err, req, res, next) => {
     console.error(err.stack);
-    // ▼▼▼ PERUBAHAN DI SINI: Penanganan error spesifik CORS dihapus ▼▼▼
     res
         .status(500)
         .json({ error: "Something went wrong!", message: err.message });
