@@ -3,21 +3,18 @@ import api from '../../services/apiService';
 import type { SiteSettings, BannerImage, AnnouncementSettings } from '../../types/admin/adminsettings';
 import { toast } from 'react-hot-toast';
 
-// --- FUNGSI API PENGATURAN UMUM ---
+// --- FUNGSI API ---
 
 const getSiteSettings = async (): Promise<SiteSettings> => {
   const { data } = await api.get('/settings');
   return data;
 };
 
-// ▼▼▼ FUNGSI INI DIPERBARUI ▼▼▼
+// Fungsi ini kembali menjadi helper internal
 const uploadFile = async (folder: string, file: File, isFavicon: boolean = false): Promise<{ imageUrl: string }> => {
     const formData = new FormData();
     formData.append('image', file);
-    
-    // Gunakan endpoint yang berbeda untuk favicon agar tidak dikonversi ke WebP
     const endpoint = isFavicon ? '/upload/favicon' : `/upload/${folder}`;
-    
     const { data } = await api.post(endpoint, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
     });
@@ -39,20 +36,14 @@ interface UpdateSettingsPayload {
   faviconFile?: File | null;
 }
 
-// --- FUNGSI API PENGUMUMAN ---
-
 const getAnnouncements = async (): Promise<AnnouncementSettings> => {
   const { data } = await api.get('/settings/announcements');
   return data;
 };
 
-
 // --- HOOK UTAMA ---
-
 export const useSiteSettings = () => {
   const queryClient = useQueryClient();
-
-  // --- QUERIES (PENGAMBILAN DATA) ---
 
   const { data: settings, isLoading: isLoadingSettings, isError: isErrorSettings } = useQuery<SiteSettings, Error>({
     queryKey: ['siteSettings'],
@@ -64,25 +55,24 @@ export const useSiteSettings = () => {
     queryFn: getAnnouncements,
   });
 
-
-  // --- MUTATIONS (UPDATE DATA) ---
-
-  // ▼▼▼ MUTASI INI DIPERBARUI ▼▼▼
+  // --- MUTATIONS ---
   const updateSettingsMutation = useMutation({
     mutationFn: async ({ settingsData, logoFile, faviconFile }: UpdateSettingsPayload) => {
-      let dataToSave = { ...settingsData };
-      // Hapus properti yang tidak seharusnya dikirim saat update teks
+      const dataToSave = { ...settingsData };
       delete dataToSave.bannerImages;
 
+      // Proses upload terjadi di dalam mutasi
       if (logoFile) {
-        // Logo akan dikonversi ke WebP via endpoint umum
+        toast.loading('Mengunggah logo...');
         const res = await uploadFile('settings', logoFile, false);
         dataToSave.logoUrl = res.imageUrl;
+        toast.dismiss();
       }
       if (faviconFile) {
-        // Favicon TIDAK akan dikonversi ke WebP via endpoint khusus
-        const res = await uploadFile('settings', faviconFile, true); // <-- 'true' untuk menandakan ini favicon
+        toast.loading('Mengunggah favicon...');
+        const res = await uploadFile('settings', faviconFile, true);
         dataToSave.faviconUrl = res.imageUrl;
+        toast.dismiss();
       }
       
       const { data } = await api.put('/settings', dataToSave);
@@ -93,12 +83,12 @@ export const useSiteSettings = () => {
       toast.success('Pengaturan berhasil disimpan!');
     },
     onError: (error) => {
+      toast.dismiss(); // Hapus toast loading jika ada error
       console.error("Failed to save settings:", error);
       toast.error('Gagal menyimpan pengaturan.');
     }
   });
 
-  // ▼▼▼ MUTASI BARU UNTUK MENAMBAH BANNER ▼▼▼
   const addBannerMutation = useMutation({
     mutationFn: addBannerApi,
     onSuccess: (updatedSettings) => {
@@ -112,11 +102,9 @@ export const useSiteSettings = () => {
   });
 
   const deleteBannerMutation = useMutation({
-      mutationFn: async (bannerId: number) => {
-          return api.delete(`/settings/banners/${bannerId}`);
-      },
+      mutationFn: (bannerId: number) => api.delete(`/settings/banners/${bannerId}`),
       onSuccess: (_data, bannerId) => {
-          queryClient.setQueryData(['siteSettings'], (oldData: SiteSettings | undefined) => {
+          queryClient.setQueryData<SiteSettings | undefined>(['siteSettings'], (oldData) => {
               if (!oldData) return oldData;
               return {
                   ...oldData,
@@ -132,10 +120,7 @@ export const useSiteSettings = () => {
   });
 
   const updateAnnouncementsMutation = useMutation({
-    mutationFn: async (dataToSave: Partial<AnnouncementSettings>) => {
-      const { data } = await api.put('/settings/announcements', dataToSave);
-      return data;
-    },
+    mutationFn: (dataToSave: Partial<AnnouncementSettings>) => api.put('/settings/announcements', dataToSave).then(res => res.data),
     onSuccess: (savedData) => {
       queryClient.setQueryData(['announcements'], savedData);
       toast.success('Pengumuman berhasil disimpan!');
@@ -146,8 +131,6 @@ export const useSiteSettings = () => {
     }
   });
 
-  // --- RETURN SEMUA DATA DAN FUNGSI ---
-
   return { 
     settings, 
     isLoadingSettings, 
@@ -155,7 +138,6 @@ export const useSiteSettings = () => {
     updateSettings: updateSettingsMutation.mutate, 
     isSavingSettings: updateSettingsMutation.isPending,
     
-    // ▼▼▼ EXPORT FUNGSI BANNER YANG BARU ▼▼▼
     addBanner: addBannerMutation.mutate,
     isAddingBanner: addBannerMutation.isPending,
     deleteBanner: deleteBannerMutation.mutate,
